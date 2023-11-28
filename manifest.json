@@ -1,0 +1,48 @@
+{
+    "name": "Excalibur Dev Tools",
+    "version": "0.0.1",
+    "description": "Excalibur.js browser plugin for debugging your games",
+    "manifest_version": 3,
+    "devtools_page": "devtools.html",
+    "permissions": [
+        "scripting"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content-script.js"
+            ],
+            "all_frames": true,
+            "css": [],
+            "world": "MAIN"
+        }
+    ],
+    "host_permissions": [
+        "http://localhost/*",
+        "http://*/*",
+        "https://*/*",
+        "file://*/*"
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' http://localhost;object-src 'self';"
+    },
+    "icons": {
+        "16": "icon.png",
+        "32": "icon.png",
+        "48": "icon.png",
+        "64": "icon.png",
+        "128": "icon.png"
+    },
+    "action": {
+        "default_icon": {
+            "16": "icon.png",
+            "32": "icon.png",
+            "48": "icon.png",
+            "64": "icon.png",
+            "128": "icon.png"
+        }
+    }
+}
