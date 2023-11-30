@@ -19,12 +19,34 @@ console.log('hello from panel');
 
 const toggleDebugButton$ = document.getElementById('toggle-debug');
 
+const currentScene$ = document.getElementById('current-scene-name');
+
 const backgroundConnection = chrome.runtime.connect({
     name: 'panel'
 });
 
+// Current Engine representation in the extension
+const engine = {
+    currentScene: 'root',
+    scenes: [],
+    entities: []
+}
+
 backgroundConnection.onMessage.addListener((message) => {
-    console.log('panel got message', message)
+    switch(message.name) {
+        case 'scenes': {
+            engine.scenes = message.data;
+            break;
+        }
+        case 'current-scene': {
+            engine.currentScene = message.data;
+            currentScene$.innerText = engine.currentScene;
+            break;
+        }
+        default: {
+            console.warn('Unknown message', message);
+        }
+    }
 });
 
 backgroundConnection.postMessage({
@@ -37,5 +59,10 @@ toggleDebugButton$.addEventListener('click', () => {
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
         dispatch: 'toggle-debug'
+    });
+    backgroundConnection.postMessage({
+        name: 'command',
+        tabId: chrome.devtools.inspectedWindow.tabId,
+        dispatch: 'echo'
     });
 });

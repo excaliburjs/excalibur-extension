@@ -8,6 +8,14 @@ function toggleDebug() {
     }
 }
 
+function installExcaliburMessager() {
+    console.log('echo()');
+    window.postMessage({
+        source: 'excalibur-dev-tools',
+        name: 'echo'
+    });
+}
+
 
 var connections = {};
 
@@ -24,15 +32,30 @@ chrome.runtime.onConnect.addListener(function (port) {
 
 	    // other message handling
         if (message.name === 'command') {
-            // send command to excalibur on the page via a executed script
-            // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
-            chrome.scripting.executeScript({
-                target: {tabId: message.tabId },
-                world: 'MAIN',
-                func: toggleDebug
-            }).then(injectionResults => {
-                console.log(injectionResults);
-            });
+            switch(message.dispatch) {
+                case 'toggle-debug': {
+                    // send command to excalibur on the page via a executed script
+                    // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
+                    chrome.scripting.executeScript({
+                        target: {tabId: message.tabId },
+                        world: 'MAIN',
+                        func: toggleDebug
+                    }).then(injectionResults => {
+                        console.log(injectionResults);
+                    });
+                    break;
+                }
+                case 'echo': {
+                    chrome.scripting.executeScript({
+                        target: {tabId: message.tabId },
+                        world: 'MAIN',
+                        func: installExcaliburMessager
+                    }).then(injectionResults => {
+                        console.log(injectionResults);
+                    });
+                    break;
+                }
+            }
         }
     }
 

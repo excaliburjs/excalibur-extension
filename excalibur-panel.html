@@ -4,11 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excalibur Dev Tools</title>
+    <style>
+        .debug-settings {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
 </head>
 <body>
     <h1>Excalibur Dev Tools</h1>
+    <div>Current Scene: <span id="current-scene-name"></span></div>
 
-    <button id="toggle-debug">Toggle Debug</button>
+    <div>Switch Scene</div>
+
+    <div class="debug-settings">
+        <h2>Debug Settings</h2>
+
+        <div>
+            <button id="toggle-debug">Toggle Debug</button>
+        </div>
+        
+        <div>
+            <input type="checkbox" name="show names" id="show-names">
+            <label for="show-names">Show Names</label>
+        </div>
+
+        <div>
+            <input type="color" name="graphics bounds colors" id="graphics-bounds-colors">
+            <label for="graphics-bounds-colors">Graphics Bounds Color</label>
+        </div>
+        
+        <div>
+            <input type="color" name="collider bounds colors" id="collider-bounds-colors">
+            <label for="graphics-bounds-colors">Collider Bounds Color</label>
+        </div>
+    </div>
+
+    <h2>Entities</h2>
     <script src="/excalibur-panel.js"></script>
 </body>
 </html>
