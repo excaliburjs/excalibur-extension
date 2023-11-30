@@ -15,11 +15,12 @@
     <h1>Excalibur Dev Tools</h1>
     <div>Current Scene: <span id="current-scene-name"></span></div>
 
-    <div>Switch Scene</div>
+    <div>Switch Scene: <span id="scenes"></span></div>
 
     <div class="debug-settings">
         <h2>Debug Settings</h2>
 
+        
         <div>
             <button id="toggle-debug">Toggle Debug</button>
         </div>
@@ -38,7 +39,14 @@
             <input type="color" name="collider bounds colors" id="collider-bounds-colors">
             <label for="graphics-bounds-colors">Collider Bounds Color</label>
         </div>
+
+        <div>
+            <pre id="debug-settings-raw"></pre>
+        </div>
+
     </div>
+
+
 
     <h2>Entities</h2>
     <script src="/excalibur-panel.js"></script>

@@ -8,7 +8,44 @@ function toggleDebug() {
     }
 }
 
-function installExcaliburMessager() {
+function installExcaliburMessenger() {
+    console.log('install()');
+    if ((window).___EXCALIBUR_DEVTOOL) {
+        const game = window.___EXCALIBUR_DEVTOOL;
+
+        let currentSceneName = 'root';
+        let sceneNames = [];
+        for(let [name, value] of Object.entries(game.scenes)) {
+            if (game.currentScene === value) {
+                currentSceneName = name;
+            }
+            sceneNames.push(name);
+        }
+
+        let entities = [];
+        for (let entity of game.currentScene.entities) {
+            entities.push({
+                id: entity.id,
+                name: entity.name,
+                pos: entity?.pos?.toString() ?? 'none'
+            });
+        }
+
+
+        window.postMessage({
+            source: 'excalibur-dev-tools',
+            name: 'install',
+            data: {
+                debug: JSON.stringify({...game.debug, _engine: undefined, colorBlindMode: undefined}),
+                currentScene: currentSceneName,
+                scenes: sceneNames,
+                entities
+            }
+        });
+    }
+}
+
+function echo() {
     console.log('echo()');
     window.postMessage({
         source: 'excalibur-dev-tools',
@@ -45,11 +82,21 @@ chrome.runtime.onConnect.addListener(function (port) {
                     });
                     break;
                 }
+                case 'install': {
+                    chrome.scripting.executeScript({
+                        target: {tabId: message.tabId },
+                        world: 'MAIN',
+                        func: installExcaliburMessenger
+                    }).then(injectionResults => {
+                        console.log(injectionResults);
+                    });
+                    break;
+                }
                 case 'echo': {
                     chrome.scripting.executeScript({
                         target: {tabId: message.tabId },
                         world: 'MAIN',
-                        func: installExcaliburMessager
+                        func: echo
                     }).then(injectionResults => {
                         console.log(injectionResults);
                     });
