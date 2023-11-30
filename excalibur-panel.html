@@ -5,20 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excalibur Dev Tools</title>
     <style>
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #282828;
+                color: #ccc;
+            }
+        }
         .debug-settings {
             display: flex;
             flex-direction: column;
+        }
+
+        .section {
+            border: solid 2px;
+            padding: 10px;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
     <h1>Excalibur Dev Tools</h1>
-    <div>Current Scene: <span id="current-scene-name"></span></div>
 
-    <div>Switch Scene: <span id="scenes"></span></div>
+    <h2>Stats</h2>
+    <div class="section">
+        <div>FPS: <span id="fps"></span></div>
+        <div>Frame Time: <span id="frame-time"></span></div>
+        <div>Frame Budget: <span id="frame-budget"></span></div>
+        <div>Update Time: <span id="update-time"></span></div>
+        <div>Draw Time: <span id="draw-time"></span></div>
+        <div>Draw Calls: <span id="draw-calls"></span></div>
+        <div>Actors: <span id="num-actors"></span></div>
+    </div>
 
-    <div class="debug-settings">
-        <h2>Debug Settings</h2>
+    <h2>Scene</h2>
+    <div class="section">
+        <div>Current Scene: <span id="current-scene-name"></span></div>
+        <div>Switch Scene: <span id="scenes"></span></div>
+    </div>
+
+    <h2>Debug Settings</h2>
+    <div class="debug-settings section">
 
         
         <div>
@@ -49,6 +75,9 @@
 
 
     <h2>Entities</h2>
+    <div class="section">
+        
+    </div>
     <script src="/excalibur-panel.js"></script>
 </body>
 </html>

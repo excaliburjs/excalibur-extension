@@ -45,6 +45,44 @@ function installExcaliburMessenger() {
     }
 }
 
+function installHeartBeat(pollingInterval = 200) {
+    if ((window).___EXCALIBUR_DEVTOOL) {
+        const game = window.___EXCALIBUR_DEVTOOL;
+
+        setInterval(() => {
+
+            let currentSceneName = 'root';
+            let sceneNames = [];
+            for(let [name, value] of Object.entries(game.scenes)) {
+                if (game.currentScene === value) {
+                    currentSceneName = name;
+                }
+                sceneNames.push(name);
+            }
+
+            let entities = [];
+            for (let entity of game.currentScene.entities) {
+                entities.push({
+                    id: entity.id,
+                    name: entity.name,
+                    pos: entity?.pos?.toString() ?? 'none'
+                });
+            }
+
+            window.postMessage({
+                source: 'excalibur-dev-tools',
+                name: 'heartbeat',
+                data: {
+                    debug: JSON.stringify({...game.debug, _engine: undefined, colorBlindMode: undefined}),
+                    currentScene: currentSceneName,
+                    scenes: sceneNames,
+                    entities
+                }
+            });
+        }, pollingInterval);
+    }
+}
+
 function echo() {
     console.log('echo()');
     window.postMessage({
@@ -87,6 +125,16 @@ chrome.runtime.onConnect.addListener(function (port) {
                         target: {tabId: message.tabId },
                         world: 'MAIN',
                         func: installExcaliburMessenger
+                    }).then(injectionResults => {
+                        console.log(injectionResults);
+                    });
+                    break;
+                }
+                case 'install-heartbeat': {
+                    chrome.scripting.executeScript({
+                        target: {tabId: message.tabId },
+                        world: 'MAIN',
+                        func: installHeartBeat
                     }).then(injectionResults => {
                         console.log(injectionResults);
                     });
