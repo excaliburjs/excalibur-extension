@@ -1,3 +1,14 @@
+function toggleDebug() {
+    if ((window).___EXCALIBUR_DEVTOOL) {
+        console.log('toggleDebug()');
+        const game = window.___EXCALIBUR_DEVTOOL;
+        game.toggleDebug();
+    } else {
+        console.log('no excalibur!!!');
+    }
+}
+
+
 var connections = {};
 
 chrome.runtime.onConnect.addListener(function (port) {
@@ -6,12 +17,23 @@ chrome.runtime.onConnect.addListener(function (port) {
 
         // The original connection event doesn't include the tab ID of the
         // DevTools page, so we need to send it explicitly.
-        if (message.name == "init") {
+        if (message.name === 'init') {
           connections[message.tabId] = port;
           return;
         }
 
-	// other message handling
+	    // other message handling
+        if (message.name === 'command') {
+            // send command to excalibur on the page via a executed script
+            // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
+            chrome.scripting.executeScript({
+                target: {tabId: message.tabId },
+                world: 'MAIN',
+                func: toggleDebug
+            }).then(injectionResults => {
+                console.log(injectionResults);
+            });
+        }
     }
 
     // Listen to messages sent from the DevTools page
