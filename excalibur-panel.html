@@ -1,83 +1,302 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excalibur Dev Tools</title>
     <style>
+        :root {
+            --background-color: #292929;
+            --panel-color: #1e1e1e;
+            --darker-panel-color: #1a1a1a;
+            --green-highlight: #232A2C;
+            --green-background: #273635;
+            --blue-background: #272935;
+            --yellow-background: #333025;
+            --red-background: #612525;
+            --green-text: #25A786;
+            --blue-text: #48EDF1;
+            --black-accent: #151515;
+            --yellow-accent: #FFF423;
+            --orange-accent: #FDA124;
+            --dark-orange-accent: #F25223;
+            --red-accent: #F22337;
+            --purple-accent: #FD2484;
+            --ex-blue-accent: #176BAA;
+        }
+
+        body {
+            font-family: sans-serif;
+            font-size: 16px;
+        }
+
+        button {
+            all: unset;
+            cursor: pointer;
+            background-color: var(--green-background);
+            color: var(--green-text);
+            padding: 5px;
+            margin-bottom: 5px;
+        }
+        button:hover {
+            background-color: var(--green-highlight);
+        }
+        button:active {
+            background-color: var(--green-background);
+        }
+
         @media (prefers-color-scheme: dark) {
             body {
-                background-color: #282828;
+                background-color: var(--background-color);
                 color: #ccc;
             }
         }
+
+        h1 {
+            margin: 5px;
+            display: flex;
+            align-items: center;
+        }
+        h1 img {
+            max-height: 70px;
+            margin-left: -40px;
+            margin-right: -40px;
+        }
+
+        h2 {
+            position: relative;
+            background-color: var(--panel-color);
+            padding: 10px;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        h2::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 0;
+            height: 100%;
+            border-left: 5px solid var(--ex-blue-accent);
+        }
+
         .debug-settings {
             display: flex;
             flex-direction: column;
         }
 
         .section {
-            border: solid 2px;
+            position: relative;
+            /* border: solid 2px; */
             padding: 10px;
-            border-radius: 5px;
+            /* border-radius: 5px; */
+            background-color: var(--panel-color);
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 0;
+            height: 100%;
+            border-left: 5px solid var(--red-accent);
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .form-row {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+        }
+
+        .form-row > *:not(:last-child) {
+            margin-right: 5px;
+        }
+
+        .form-row > *:last-child {
+
+            margin-left: auto;
+        }
+
+        .widget {
+            min-width: 300px;
+            margin: 10px;
+        }
+        .entity {
+            display: flex;
+            padding: 5px;
+            background-color: var(--darker-panel-color);
+            margin-bottom: 5px;
+            position: relative;
+            cursor: pointer;
+            align-items: center;
+        }
+        .entity::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 0;
+            height: 100%;
+            border-left: 5px solid var(--blue-text);
+        }
+        .entity:hover {
+            background-color: #202732;
+        }
+
+        .entity .name {
+            background-color: var(--green-background);
+            padding: 5px;
+            border-radius: 2px;
+            max-width: fit-content;
+            margin-right: 5px;
+        }
+        .entity .id {
+            background-color: var(--blue-background);
+            padding: 5px;
+            border-radius: 2px;
+            max-width: fit-content;
+            margin-right: 5px;
+        }
+
+        .entity .pos {
+            background-color: var(--yellow-background);
+            padding: 5px;
+            border-radius: 2px;
+            max-width: fit-content;
+            margin-right: 5px;
+        }
+
+        .entity button {
+            margin-left: auto;
+            background-image: url(./kenny_game-icons/PNG/White/2x/cross.png);
+            width: 20px;
+            height: 20px;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: contain;
+        }
+
+        .entity button:hover {
+            background-color: var(--red-background);
         }
     </style>
 </head>
+
 <body>
-    <h1>Excalibur Dev Tools</h1>
+    <h1><img src="./logo-white@2x.png" alt="Excalibur Dev Tools">Dev Tools</h1>
+    
 
-    <h2>Stats</h2>
-    <div class="section">
-        <div>FPS: <span id="fps"></span></div>
-        <div>Frame Time: <span id="frame-time"></span></div>
-        <div>Frame Budget: <span id="frame-budget"></span></div>
-        <div>Update Time: <span id="update-time"></span></div>
-        <div>Draw Time: <span id="draw-time"></span></div>
-        <div>Draw Calls: <span id="draw-calls"></span></div>
-        <div>Actors: <span id="num-actors"></span></div>
+    <div class="row">
+        <div class="widget">
+            <h2>Stats</h2>
+            <div class="section">
+                <div>FPS: <span id="fps"></span></div>
+                <div>Frame Time: <span id="frame-time"></span></div>
+                <div>Frame Budget: <span id="frame-budget"></span></div>
+                <div>Update Time: <span id="update-time"></span></div>
+                <div>Draw Time: <span id="draw-time"></span></div>
+                <div>Draw Calls: <span id="draw-calls"></span></div>
+                <div>Actors: <span id="num-actors"></span></div>
+            </div>
+        </div>
+
+        <div class="widget">
+            <h2>Debug Settings</h2>
+            <div class="debug-settings section">
+                <div>
+                    <button id="toggle-debug">Toggle Debug</button>
+                </div>
+
+                <div>
+                    <input type="checkbox" name="show names" id="show-names">
+                    <label for="show-names">Show Names</label>
+                </div>
+                <div>
+                    <input type="checkbox" name="show ids" id="show-ids">
+                    <label for="show-ids">Show Ids</label>
+                </div>
+                <div class="form-row">
+                    <div>
+                        <input type="checkbox" name="show position" id="show-pos">
+                        <label for="show-pos">Show Position</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" name="show position label" id="show-pos-label">
+                        <label for="show-pos-label">Show Label</label>
+                    </div>
+                    <div>
+                        <input type="color" name="Position color" id="show-pos-color">
+                        <label for="show-pos-color">Color</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <input type="checkbox" name="show graphics bounds" id="show-graphics-bounds">
+                        <label for="show-graphics-bounds">Show Graphics Bounds</label>
+                    </div>
+    
+                    <div>
+                        <input type="color" name="graphics bounds colors" id="graphics-bounds-colors">
+                        <label for="graphics-bounds-colors">Color</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <input type="checkbox" name="show collider bounds" id="show-collider-bounds">
+                        <label for="show-collider-bounds">Show Collider Bounds</label>
+                    </div>
+    
+                    <div>
+                        <input type="color" name="collider bounds colors" id="collider-bounds-colors">
+                        <label for="collider-bounds-colors">Color</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <input type="checkbox" name="show collider geometry" id="show-geometry-bounds">
+                        <label for="show-geometry-bounds">Show Geometry</label>
+                    </div>
+    
+                    <div>
+                        <input type="color" name="collider geometry colors" id="collider-geometry-colors">
+                        <label for="collider-geometry-colors">Color</label>
+                    </div>
+                </div>
+
+                <div>
+                    <pre id="debug-settings-raw"></pre>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 
-    <h2>Scene</h2>
-    <div class="section">
-        <div>Current Scene: <span id="current-scene-name"></span></div>
-        <div>Switch Scene: <span id="scenes"></span></div>
-    </div>
 
-    <h2>Debug Settings</h2>
-    <div class="debug-settings section">
-
-        
-        <div>
-            <button id="toggle-debug">Toggle Debug</button>
+    <div class="row">
+        <div class="widget">
+            <h2>Entities</h2>
+            <div class="section">
+                <div id="entity-list"></div>
+            </div>
         </div>
-        
-        <div>
-            <input type="checkbox" name="show names" id="show-names">
-            <label for="show-names">Show Names</label>
+        <div class="widget">
+            <h2>Scene</h2>
+            <div class="section">
+                <div>Current Scene: <span id="current-scene-name"></span></div>
+                <div>Switch Scene: <span id="scenes"></span></div>
+            </div>
+
         </div>
-
-        <div>
-            <input type="color" name="graphics bounds colors" id="graphics-bounds-colors">
-            <label for="graphics-bounds-colors">Graphics Bounds Color</label>
-        </div>
-        
-        <div>
-            <input type="color" name="collider bounds colors" id="collider-bounds-colors">
-            <label for="graphics-bounds-colors">Collider Bounds Color</label>
-        </div>
-
-        <div>
-            <pre id="debug-settings-raw"></pre>
-        </div>
-
-    </div>
-
-
-
-    <h2>Entities</h2>
-    <div class="section">
-        
     </div>
     <script src="/excalibur-panel.js"></script>
 </body>
+
 </html>

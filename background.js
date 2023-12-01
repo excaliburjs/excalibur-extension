@@ -62,10 +62,11 @@ function installHeartBeat(pollingInterval = 200) {
 
             let entities = [];
             for (let entity of game.currentScene.entities) {
+                const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
                 entities.push({
                     id: entity.id,
                     name: entity.name,
-                    pos: entity?.pos?.toString() ?? 'none'
+                    pos: pos ?? 'none'
                 });
             }
 
@@ -80,6 +81,22 @@ function installHeartBeat(pollingInterval = 200) {
                 }
             });
         }, pollingInterval);
+    }
+}
+
+function updateDebug(debug) {
+    if ((window).___EXCALIBUR_DEVTOOL) {
+        const game = window.___EXCALIBUR_DEVTOOL;
+        const {filter, entity, transform, graphics, collider } = debug;
+        game.debug = {...game.debug, filter, entity, transform, graphics, collider };
+    }
+}
+
+function kill(actorId) {
+    if ((window).___EXCALIBUR_DEVTOOL) {
+        const game = window.___EXCALIBUR_DEVTOOL;
+        const actor = game.currentScene.world.entityManager.getById(actorId);
+        actor.kill();
     }
 }
 
@@ -147,6 +164,24 @@ chrome.runtime.onConnect.addListener(function (port) {
                         func: echo
                     }).then(injectionResults => {
                         console.log(injectionResults);
+                    });
+                    break;
+                }
+                case 'update-debug': {
+                    chrome.scripting.executeScript({
+                        target: {tabId: message.tabId },
+                        world: 'MAIN',
+                        func: updateDebug,
+                        args: [ message.debug ]
+                    });
+                    break;
+                }
+                case 'kill': {
+                    chrome.scripting.executeScript({
+                        target: {tabId: message.tabId },
+                        world: 'MAIN',
+                        func: kill,
+                        args: [ message.actorId ]
                     });
                     break;
                 }
