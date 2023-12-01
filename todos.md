@@ -11,6 +11,8 @@ Debug
 * Colliders
 * Scenes
 
+![Example Extension Running](./extension.gif)
+
 
 ## Todos
 
