@@ -2,12 +2,21 @@
 
 ⚠️ Currently a work in progress! ⚠️
 
+This excalibur game developers to easily inspect their games while making them!
+
+Debug
+* Performance issues
+* Actor graphics
+* Actor geometry
+* Colliders
+* Scenes
+
 
 ## Todos
 
 * [ ] Figure out TS/lit html
-* [ ] Toggle debug values
-* [ ] Style cooler than the current
+* [x] Toggle debug values
+* [x] Style cooler than the current
 * [ ] Entity inspector side panel
 * [ ] Cool ass charts with d3
   - [ ] FPS over time https://gist.github.com/ralphbean/1271115/de23af71ba74876775aa3569abc8968072696aff
