@@ -6,6 +6,183 @@ let engine = {
     entities: []
 }
 
+// graph
+function createFpsGraph() {
+    const fpsChart$ = document.getElementById('fps-chart');
+
+    const totalHeight = 100;//px
+    const totalWidth = 300;//px
+    const tickWidth = 1; // px
+
+    const nTicks = Math.floor(totalWidth / tickWidth);
+    const zeroes = () => 0;
+    let data = d3.range(nTicks).map(zeroes);
+
+    const marginLeft = 10;
+    const marginRight = 0;
+    const marginTop = 10;
+    const marginBottom = -15;
+
+    const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
+
+    const y = d3.scaleLinear([0, 120], [totalHeight - marginBottom, marginTop]);
+
+    const svg = d3.create('svg')
+        .attr('width', tickWidth * data.length)
+        .attr('height', totalHeight)
+        .attr("viewBox", [0, 0, totalWidth, totalHeight + 20]) // -10,-10,310,140
+        .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
+
+    svg.append("g")
+        .attr('id', 'yAxis')
+        .attr("transform", `translate(${0},0)`)
+        .call(d3.axisLeft(y).tickArguments([4]));
+
+    svg.append("text")
+        .style('fill', 'currentColor')
+        .attr("class", "y label")
+        .attr("text-anchor", "start")
+        .attr("y", marginTop)
+        .attr("x", 20)
+        .attr("dy", ".75em")
+        // .attr("transform", "rotate(-90)")
+        .text("FPS");
+
+    const line = d3.line()
+        .x((_, index) => x(index))
+        .y(d => y(d));
+
+    // draw first line
+    svg.append("path")
+        .attr('id','line')
+        .attr("fill", "none")
+        .attr("stroke", "steelblue")
+        .attr("stroke-width", 1.5)
+        .attr("d", line(data));
+
+    fpsChart$.appendChild(svg.node());
+
+    function draw(fps) {
+        data.push(fps);
+        data.shift();
+
+        // Append a path for the line.
+        svg.select("path#line")
+            .attr("fill", "none")
+            .attr("stroke", "steelblue")
+            .attr("stroke-width", 1.5)
+            .attr("d", line(data));
+    }
+    return draw;
+}
+
+var drawFps = createFpsGraph();
+
+
+function createFrameTimeGraph() {
+    const frameTimeChart = document.getElementById('frame-time-chart');
+
+    const totalHeight = 100;//px
+    const totalWidth = 300;//px
+    const tickWidth = 1; // px
+
+    const nTicks = Math.floor(totalWidth / tickWidth);
+    const zeroes = () => 0;
+    let frameTimeData = d3.range(nTicks).map(zeroes);
+    let updateTimeData = d3.range(nTicks).map(zeroes);
+    let drawTimeData = d3.range(nTicks).map(zeroes);
+
+    const marginLeft = 10;
+    const marginRight = 0;
+    const marginTop = 10;
+    const marginBottom = -15;
+
+    const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
+
+    const y = d3.scaleLinear([0, 16], [totalHeight - marginBottom, marginTop]);
+
+    const svg = d3.create('svg')
+        .attr('width', tickWidth * frameTimeData.length)
+        .attr('height', totalHeight)
+        .attr("viewBox", [0, 0, totalWidth, totalHeight + 20]) // -10,-10,310,140
+        .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
+
+    svg.append("g")
+        .attr('id', 'yAxis')
+        .attr("transform", `translate(${0},0)`)
+        .call(d3.axisLeft(y).tickArguments([16]));
+
+    svg.append("text")
+        .style('fill', 'currentColor')
+        .attr("class", "y label")
+        .attr("text-anchor", "start")
+        .attr("y", marginTop)
+        .attr("x", 20)
+        .attr("dy", ".75em")
+        // .attr("transform", "rotate(-90)")
+        .text("Frame Time (ms)");
+
+    const line = d3.line()
+        .x((_, index) => x(index))
+        .y(d => y(d));
+
+    // draw first line
+    svg.append("path")
+        .attr('id','line')
+        .attr("fill", "none")
+        .attr("stroke", "steelblue")
+        .attr("stroke-width", 1.5)
+        .attr("d", line(frameTimeData));
+
+    svg.append("path")
+        .attr('id','line-update')
+        .attr("fill", "none")
+        .attr("stroke", "green")
+        .attr("stroke-width", 1.5)
+        .attr("d", line(updateTimeData));
+
+    svg.append("path")
+        .attr('id','line-draw')
+        .attr("fill", "none")
+        .attr("stroke", "red")
+        .attr("stroke-width", 1.5)
+        .attr("d", line(drawTimeData));
+
+
+    frameTimeChart.appendChild(svg.node());
+
+    function draw(frameTime, updateTime, drawTime, max) {
+        frameTimeData.push(frameTime);
+        frameTimeData.shift();
+        updateTimeData.push(updateTime);
+        updateTimeData.shift();
+        drawTimeData.push(drawTime);
+        drawTimeData.shift();
+
+        // Append a path for the line.
+        svg.select("path#line")
+            .attr("fill", "none")
+            .attr("stroke", "steelblue")
+            .attr("stroke-width", 1.5)
+            .attr("d", line(frameTimeData));
+
+        svg.select("path#line-update")
+            .attr("fill", "none")
+            .attr("stroke", "green")
+            .attr("stroke-width", 1.5)
+            .attr("d", line(updateTimeData));
+    
+        svg.select("path#line-draw")
+            .attr("fill", "none")
+            .attr("stroke", "red")
+            .attr("stroke-width", 1.5)
+            .attr("d", line(drawTimeData));
+    }
+    return draw;
+}
+
+var drawFrameTime = createFrameTimeGraph();
+
 const backgroundConnection = chrome.runtime.connect({
     name: 'panel'
 });
@@ -15,7 +192,7 @@ const hexToColor = (hex) => {
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-    return {r, g, b, a: 1.0};
+    return { r, g, b, a: 1.0 };
 }
 
 const colorToHex = (color) => {
@@ -36,7 +213,7 @@ const updateDebug = (debug) => {
 }
 
 const selectActor = (actorId) => {
-    const newDebug = {...engine.debug};
+    const newDebug = { ...engine.debug };
     newDebug.filter.useFilter = true;
     newDebug.filter.ids = [actorId];
     updateDebug(newDebug);
@@ -70,77 +247,77 @@ const numActors$ = document.getElementById('num-actors');
 // settings
 const posColor$ = document.getElementById('show-pos-color');
 posColor$.addEventListener('input', evt => {
-    const newDebug = {...engine.debug};
+    const newDebug = { ...engine.debug };
     newDebug.transform.positionColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showNames$ = document.getElementById('show-names');
-showNames$.addEventListener('change', function(evt) {
-    const newDebug = {...engine.debug};
+showNames$.addEventListener('change', function (evt) {
+    const newDebug = { ...engine.debug };
     newDebug.entity.showName = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showIds$ = document.getElementById('show-ids');
-showIds$.addEventListener('change', function(evt) {
-    const newDebug = {...engine.debug};
+showIds$.addEventListener('change', function (evt) {
+    const newDebug = { ...engine.debug };
     newDebug.entity.showId = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showPos$ = document.getElementById('show-pos');
-showPos$.addEventListener('change', function(evt) {
-    const newDebug = {...engine.debug};
+showPos$.addEventListener('change', function (evt) {
+    const newDebug = { ...engine.debug };
     newDebug.transform.showPosition = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showPosLabel$ = document.getElementById('show-pos-label');
-showPosLabel$.addEventListener('change', function(evt) {
-    const newDebug = {...engine.debug};
+showPosLabel$.addEventListener('change', function (evt) {
+    const newDebug = { ...engine.debug };
     newDebug.transform.showPositionLabel = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showGraphicsBounds$ = document.getElementById('show-graphics-bounds');
-showGraphicsBounds$.addEventListener('change', function(evt) {
-    const newDebug = {...engine.debug};
+showGraphicsBounds$.addEventListener('change', function (evt) {
+    const newDebug = { ...engine.debug };
     newDebug.graphics.showBounds = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const graphicsBoundsColor$ = document.getElementById('graphics-bounds-colors');
 graphicsBoundsColor$.addEventListener('input', evt => {
-    const newDebug = {...engine.debug};
+    const newDebug = { ...engine.debug };
     newDebug.graphics.boundsColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showColliderBounds$ = document.getElementById('show-collider-bounds');
-showColliderBounds$.addEventListener('change', function(evt) {
-    const newDebug = {...engine.debug};
+showColliderBounds$.addEventListener('change', function (evt) {
+    const newDebug = { ...engine.debug };
     newDebug.collider.showBounds = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const colliderBoundsColor$ = document.getElementById('collider-bounds-colors');
 colliderBoundsColor$.addEventListener('input', evt => {
-    const newDebug = {...engine.debug};
+    const newDebug = { ...engine.debug };
     newDebug.collider.boundsColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showGeometryBounds$ = document.getElementById('show-geometry-bounds');
-showGeometryBounds$.addEventListener('change', function(evt) {
-    const newDebug = {...engine.debug};
+showGeometryBounds$.addEventListener('change', function (evt) {
+    const newDebug = { ...engine.debug };
     newDebug.collider.showGeometry = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const colliderGeometryColor$ = document.getElementById('collider-geometry-colors');
 colliderGeometryColor$.addEventListener('input', evt => {
-    const newDebug = {...engine.debug};
+    const newDebug = { ...engine.debug };
     newDebug.collider.geometryColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
@@ -149,17 +326,20 @@ colliderGeometryColor$.addEventListener('input', evt => {
 
 
 const updateStats = (debug) => {
-    
+
     currentScene$.innerText = engine.currentScene;
     scenes$.innerText = engine.scenes.join(',');
-    fps$.innerText = debug.stats.currFrame._fps.toFixed(2);
+    const fps = debug.stats.currFrame._fps;
+    fps$.innerText = fps.toFixed(2);
+    drawFps(fps);
     const delta = debug.stats.currFrame._delta;
     const frameBudget = (delta - debug.stats.currFrame._durationStats.total);
     const frameTime = debug.stats.currFrame._durationStats.total;
-    frameTime$.innerText = `${frameTime.toFixed(2)}ms (${((frameTime/delta) * 100).toFixed(2)}%)`;
+    frameTime$.innerText = `${frameTime.toFixed(2)}ms (${((frameTime / delta) * 100).toFixed(2)}%)`;
     drawTime$.innerText = debug.stats.currFrame._durationStats.draw.toFixed(2);
     updateTime$.innerText = debug.stats.currFrame._durationStats.update.toFixed(2);
-    frameBudget$.innerText = `${frameBudget.toFixed(2)}ms (${((frameBudget/delta) * 100).toFixed(2)}%)`
+    frameBudget$.innerText = `${frameBudget.toFixed(2)}ms (${((frameBudget / delta) * 100).toFixed(2)}%)`
+    drawFrameTime(frameTime, debug.stats.currFrame._durationStats.update, debug.stats.currFrame._durationStats.draw, delta);
     numActors$.innerText = debug.stats.currFrame._actorStats.total;
     drawCalls$.innerText = debug.stats.currFrame._graphicsStats.drawCalls;
     // debugSettingsRaw$.innerText = JSON.stringify(debug, null, 2);
@@ -176,15 +356,15 @@ const updateDebugSettings = (debug) => {
     showPosLabel$.checked = debug.transform.showPositionLabel;
     const positionColor = debug.transform.positionColor;
     posColor$.value = colorToHex(positionColor);
-    
+
     showGraphicsBounds$.checked = debug.graphics.showBounds;
     const graphicsColor = debug.graphics.boundsColor;
     graphicsBoundsColor$.value = colorToHex(graphicsColor);
-    
+
     showColliderBounds$.checked = debug.collider.showBounds;
     const colliderColor = debug.collider.boundsColor;
     colliderBoundsColor$.value = colorToHex(colliderColor);
-    
+
     showGeometryBounds$.checked = debug.collider.showGeometry;
     const geometryColor = debug.collider.geometryColor;
     colliderGeometryColor$.value = colorToHex(geometryColor);
@@ -230,7 +410,7 @@ const updateEntityList = (entities) => {
                 killActor(+id);
                 entityList$.removeChild(div$);
             })
-            
+
             div$.appendChild(id$);
             div$.appendChild(name$);
             div$.appendChild(pos$);
@@ -242,7 +422,7 @@ const updateEntityList = (entities) => {
 }
 
 backgroundConnection.onMessage.addListener((message) => {
-    switch(message.name) {
+    switch (message.name) {
         case 'scenes': {
             engine.scenes = message.data;
             break;
@@ -269,7 +449,7 @@ backgroundConnection.onMessage.addListener((message) => {
             break;
         }
         default: {
-            console.warn('Unknown message', message);
+            // console.warn('Unknown message', message);
         }
     }
 });
@@ -299,7 +479,7 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
             name: 'init',
             tabId: chrome.devtools.inspectedWindow.tabId
         });
-        
+
         backgroundConnection.postMessage({
             name: 'command',
             tabId: chrome.devtools.inspectedWindow.tabId,
@@ -307,3 +487,4 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
         })
     }
 })
+
