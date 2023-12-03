@@ -5,7 +5,7 @@
     "manifest_version": 3,
     "devtools_page": "devtools.html",
     "permissions": [
-        "scripting", "tabs", "activeTab"
+        "scripting", "tabs"
     ],
     "background": {
         "service_worker": "background.js"
@@ -29,17 +29,6 @@
         "https://*/*",
         "file://*/*"
     ],
-    "externally_connectable": {
-        "ids":[
-            "*"
-        ],
-        "matches": [
-            "http://localhost/*",
-            "http://*/*",
-            "https://*/*",
-            "file://*/*"
-        ]
-    },
     "content_security_policy": {
         "extension_pages": "script-src 'self' http://localhost;object-src 'self';"
     },
