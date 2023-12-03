@@ -7,3 +7,4 @@ chrome.devtools.panels.create(
         console.log('excalibur dev tools', evt)
     }
 )
+

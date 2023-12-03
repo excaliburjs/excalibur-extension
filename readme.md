@@ -17,6 +17,14 @@ Debug
 ## Todos
 
 * [ ] Figure out TS/lit html
+* [ ] Screen settings
+  * resolution
+  * displaymode
+  * antialiasing
+  * content area
+* [ ] Show loaded resources
+* [ ] keyboard shortcut ctrl-shift-x?
+* [ ] Show world/screen/page coordinates under pointer
 * [x] Toggle debug values
 * [x] Style cooler than the current
 * [ ] Entity inspector side panel

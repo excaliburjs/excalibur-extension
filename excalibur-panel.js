@@ -190,8 +190,6 @@ const updateDebugSettings = (debug) => {
     colliderGeometryColor$.value = colorToHex(geometryColor);
 }
 
-// const entityMap = new Map();
-
 const updateEntityList = (entities) => {
     for (let entity of entities) {
         const entityDivId = 'entity-' + entity.id;
@@ -294,3 +292,18 @@ toggleDebugButton$.addEventListener('click', () => {
         dispatch: 'toggle-debug'
     });
 });
+
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+    if (changeInfo.status === 'complete') {
+        backgroundConnection.postMessage({
+            name: 'init',
+            tabId: chrome.devtools.inspectedWindow.tabId
+        });
+        
+        backgroundConnection.postMessage({
+            name: 'command',
+            tabId: chrome.devtools.inspectedWindow.tabId,
+            dispatch: 'install-heartbeat'
+        })
+    }
+})
