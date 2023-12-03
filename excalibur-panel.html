@@ -48,12 +48,13 @@
             background-color: var(--green-background);
         }
 
-        @media (prefers-color-scheme: dark) {
+        /* TODO support lite mode */
+        /* @media (prefers-color-scheme: dark) { */
             body {
                 background-color: var(--background-color);
                 color: #ccc;
             }
-        }
+        /* } */
 
         h1 {
             margin: 5px;
@@ -198,6 +199,14 @@
             margin-right: 5px;
         }
 
+        .entity .tags {
+            background-color: var(--red-background);
+            padding: 5px;
+            border-radius: 2px;
+            max-width: fit-content;
+            margin-right: 5px;
+        }
+
         .entity button {
             margin-left: auto;
             background-image: url(./kenny_game-icons/PNG/White/2x/cross.png);
@@ -265,10 +274,6 @@
                 </div>
             </div>
 
-        </div>
-
-        <div class="widget">
-            <h2>Audio</h2>
         </div>
 
         <div class="widget">
@@ -351,6 +356,14 @@
         <div class="widget">
             <h2>Entities</h2>
             <div class="section">
+                <div class="form-row">
+                    <input type="text" name="filter entities" id="filter-entities">
+                    <label for="filter-entities">Filter Entities</label>
+                </div>
+                <div class="form-row">
+                    <input type="checkbox" id="show-offscreen" name="show offscreen actors">
+                    <label for="show-offscreen">Show Offscreen Entities</label>
+                </div>
                 <div id="entity-list"></div>
             </div>
         </div>

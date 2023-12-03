@@ -419,7 +419,40 @@ const updateDebugSettings = (debug) => {
     colliderGeometryColor$.value = colorToHex(geometryColor);
 }
 
+let entityListChanged = true;
+
+const filterEntities$ = document.getElementById('filter-entities')
+let entityFilter = '';
+filterEntities$.addEventListener('change', evt => {
+    entityFilter = evt.target.value;
+})
+filterEntities$.addEventListener('keyup', evt => {
+    entityFilter = evt.target.value;
+})
+
+const showOffscreenEntities$ = document.getElementById('show-offscreen');
+let showOffscreen = false;
+showOffscreenEntities$.addEventListener('change', evt => {
+    showOffscreen = !!evt.target.checked;
+})
+
+
 const updateEntityList = (entities) => {
+
+    if (!showOffscreen) {
+        entities = entities.filter(e => !e.tags.includes('ex.offscreen'));
+    }
+
+    if (entityFilter) {
+        entities = entities.filter(e => e.name.includes(entityFilter));
+    }
+
+    if (entities.length !== entityList$.children.length) {
+        while(entityList$.firstChild) {
+            entityList$.removeChild(entityList$.firstChild);
+        }
+    }
+
     for (let entity of entities) {
         const entityDivId = 'entity-' + entity.id;
         const maybeDiv = document.getElementById(entityDivId);
@@ -427,6 +460,7 @@ const updateEntityList = (entities) => {
             maybeDiv.children[0].innerText = entity.id;
             maybeDiv.children[1].innerText = entity.name;
             maybeDiv.children[2].innerText = entity.pos;
+            maybeDiv.children[3].innerText = 'tags: ' + entity.tags.join(', ');
 
         } else {
             const div$ = document.createElement('div');
@@ -451,6 +485,9 @@ const updateEntityList = (entities) => {
             pos$.innerText = entity.pos;
             pos$.className = 'pos';
 
+            const tags$ = document.createElement('div');
+            tags$.className = 'tags'
+
             const kill$ = document.createElement('button');
             kill$.setAttribute('entity-id', entity.id);
             kill$.addEventListener('click', evt => {
@@ -463,6 +500,7 @@ const updateEntityList = (entities) => {
             div$.appendChild(id$);
             div$.appendChild(name$);
             div$.appendChild(pos$);
+            div$.appendChild(tags$);
             div$.appendChild(kill$);
             entityList$.appendChild(div$);
             // entityMap.set(entity.id, div$);

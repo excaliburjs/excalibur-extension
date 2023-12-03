@@ -40,10 +40,12 @@ function installHeartBeat(pollingInterval = 200) {
                 let entities = [];
                 for (let entity of game.currentScene.entities) {
                     const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
+                    const tags = entity.tags;
                     entities.push({
                         id: entity.id,
                         name: entity.name,
-                        pos: pos ?? 'none'
+                        pos: pos ?? 'none',
+                        tags
                     });
                 }
 

@@ -19,6 +19,7 @@ Debug
 * [ ] List active event listeners on stuff for debugging!
 * [ ] Remember debug settings across refreshes
 * [ ] Figure out TS/lit html
+* [ ] Show entities as a tree view
 * [ ] Screen settings
   * resolution
   * displaymode
@@ -31,7 +32,7 @@ Debug
   * Interpolation
   * Gravity
   * Iterations
-* [ ] Frame stepping! for debugging physics
+* [x] Frame stepping! for debugging physics
 * [ ] Show loaded resources
 * [x] Show world/screen/page coordinates under pointer
 * [x] Toggle debug values
