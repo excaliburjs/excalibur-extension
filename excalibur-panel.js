@@ -3,7 +3,8 @@ let engine = {
     currentScene: 'root',
     debug: {},
     scenes: [],
-    entities: []
+    entities: [],
+    pointer: null
 }
 
 // graph
@@ -252,12 +253,21 @@ const killActor = (actorId) => {
     });
 }
 
+// version
+const excaliburVersion$ = document.getElementById('excalibur-version');
 
+
+// ui components
 const toggleDebugButton$ = document.getElementById('toggle-debug');
 const currentScene$ = document.getElementById('current-scene-name');
 const scenes$ = document.getElementById('scenes');
 const debugSettingsRaw$ = document.getElementById('debug-settings-raw');
 const entityList$ = document.getElementById('entity-list');
+
+// input 
+const worldPos$ = document.getElementById('world-pos');
+const screenPos$ = document.getElementById('screen-pos');
+const pagePos$ = document.getElementById('page-pos');
 
 // stats
 const fps$ = document.getElementById('fps');
@@ -347,6 +357,14 @@ colliderGeometryColor$.addEventListener('input', evt => {
 });
 
 
+const updateInput = (pointer) => {
+
+    if (pointer?.worldPos && pointer?.screenPos && pointer?.pagePos) {
+        worldPos$.innerText = `(${pointer.worldPos._x.toFixed(2)},${pointer.worldPos._y.toFixed(2)})`
+        screenPos$.innerText = `(${pointer.screenPos._x.toFixed(2)},${pointer.screenPos._y.toFixed(2)})`
+        pagePos$.innerText = `(${pointer.pagePos._x.toFixed(2)},${pointer.pagePos._y.toFixed(2)})`
+    }
+}
 
 
 const updateStats = (debug) => {
@@ -467,8 +485,10 @@ backgroundConnection.onMessage.addListener((message) => {
             engine = message.data;
             engine.debug = debug;
 
+            excaliburVersion$.innerText = engine.version;
+            updateInput(engine.pointer);
             updateStats(debug);
-            updateEntityList(message.data.entities);
+            updateEntityList(engine.entities);
             updateDebugSettings(debug);
             break;
         }

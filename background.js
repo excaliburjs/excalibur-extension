@@ -15,7 +15,7 @@ function installExcaliburMessenger() {
 
         let currentSceneName = 'root';
         let sceneNames = [];
-        for(let [name, value] of Object.entries(game.scenes)) {
+        for (let [name, value] of Object.entries(game.scenes)) {
             if (game.currentScene === value) {
                 currentSceneName = name;
             }
@@ -36,7 +36,7 @@ function installExcaliburMessenger() {
             source: 'excalibur-dev-tools',
             name: 'install',
             data: {
-                debug: JSON.stringify({...game.debug, _engine: undefined, colorBlindMode: undefined}),
+                debug: JSON.stringify({ ...game.debug, _engine: undefined, colorBlindMode: undefined }),
                 currentScene: currentSceneName,
                 scenes: sceneNames,
                 entities
@@ -46,49 +46,66 @@ function installExcaliburMessenger() {
 }
 
 function installHeartBeat(pollingInterval = 200) {
+    // Use excalibur's built in global
     if ((window).___EXCALIBUR_DEVTOOL) {
         const game = window.___EXCALIBUR_DEVTOOL;
 
-        setInterval(() => {
-
-            let currentSceneName = 'root';
-            let sceneNames = [];
-            for(let [name, value] of Object.entries(game.scenes)) {
-                if (game.currentScene === value) {
-                    currentSceneName = name;
-                }
-                sceneNames.push(name);
-            }
-
-            let entities = [];
-            for (let entity of game.currentScene.entities) {
-                const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
-                entities.push({
-                    id: entity.id,
-                    name: entity.name,
-                    pos: pos ?? 'none'
-                });
-            }
-
-            window.postMessage({
-                source: 'excalibur-dev-tools',
-                name: 'heartbeat',
-                data: {
-                    debug: JSON.stringify({...game.debug, _engine: undefined, colorBlindMode: undefined}),
-                    currentScene: currentSceneName,
-                    scenes: sceneNames,
-                    entities
-                }
+        if (!window.___EXCALIBUR_DEVTOOL_EXTENSION_INSTALLED) {
+            window.___EXCALIBUR_DEVTOOL_EXTENSION_INSTALLED = true;
+            let pointer = {
+                worldPos: null,
+                screenPos: null,
+                pagePos: null
+            };
+            game.input.pointers.primary.on('move', evt => {
+                pointer.worldPos = evt.worldPos;
+                pointer.screenPos = evt.screenPos;
+                pointer.pagePos = evt.pagePos;
             });
-        }, pollingInterval);
+
+            setInterval(() => {
+
+                let currentSceneName = 'root';
+                let sceneNames = [];
+                for (let [name, value] of Object.entries(game.scenes)) {
+                    if (game.currentScene === value) {
+                        currentSceneName = name;
+                    }
+                    sceneNames.push(name);
+                }
+
+                let entities = [];
+                for (let entity of game.currentScene.entities) {
+                    const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
+                    entities.push({
+                        id: entity.id,
+                        name: entity.name,
+                        pos: pos ?? 'none'
+                    });
+                }
+
+                window.postMessage({
+                    source: 'excalibur-dev-tools',
+                    name: 'heartbeat',
+                    data: {
+                        version: game.version ?? 'unknown',
+                        debug: JSON.stringify({ ...game.debug, _engine: undefined, colorBlindMode: undefined }),
+                        currentScene: currentSceneName,
+                        scenes: sceneNames,
+                        pointer,
+                        entities
+                    }
+                });
+            }, pollingInterval);
+        }
     }
 }
 
 function updateDebug(debug) {
     if ((window).___EXCALIBUR_DEVTOOL) {
         const game = window.___EXCALIBUR_DEVTOOL;
-        const {filter, entity, transform, graphics, collider } = debug;
-        game.debug = {...game.debug, filter, entity, transform, graphics, collider };
+        const { filter, entity, transform, graphics, collider } = debug;
+        game.debug = { ...game.debug, filter, entity, transform, graphics, collider };
     }
 }
 
@@ -118,18 +135,18 @@ chrome.runtime.onConnect.addListener(function (port) {
         // The original connection event doesn't include the tab ID of the
         // DevTools page, so we need to send it explicitly.
         if (message.name === 'init') {
-          connections[message.tabId] = port;
-          return;
+            connections[message.tabId] = port;
+            return;
         }
 
-	    // other message handling
+        // other message handling
         if (message.name === 'command') {
-            switch(message.dispatch) {
+            switch (message.dispatch) {
                 case 'toggle-debug': {
                     // send command to excalibur on the page via a executed script
                     // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
                     chrome.scripting.executeScript({
-                        target: {tabId: message.tabId },
+                        target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: toggleDebug
                     }).then(injectionResults => {
@@ -139,7 +156,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                 }
                 case 'install': {
                     chrome.scripting.executeScript({
-                        target: {tabId: message.tabId },
+                        target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: installExcaliburMessenger
                     }).then(injectionResults => {
@@ -149,7 +166,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                 }
                 case 'install-heartbeat': {
                     chrome.scripting.executeScript({
-                        target: {tabId: message.tabId },
+                        target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: installHeartBeat
                     }).then(injectionResults => {
@@ -159,7 +176,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                 }
                 case 'echo': {
                     chrome.scripting.executeScript({
-                        target: {tabId: message.tabId },
+                        target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: echo
                     }).then(injectionResults => {
@@ -169,19 +186,19 @@ chrome.runtime.onConnect.addListener(function (port) {
                 }
                 case 'update-debug': {
                     chrome.scripting.executeScript({
-                        target: {tabId: message.tabId },
+                        target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: updateDebug,
-                        args: [ message.debug ]
+                        args: [message.debug]
                     });
                     break;
                 }
                 case 'kill': {
                     chrome.scripting.executeScript({
-                        target: {tabId: message.tabId },
+                        target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: kill,
-                        args: [ message.actorId ]
+                        args: [message.actorId]
                     });
                     break;
                 }
@@ -192,32 +209,32 @@ chrome.runtime.onConnect.addListener(function (port) {
     // Listen to messages sent from the DevTools page
     port.onMessage.addListener(extensionListener);
 
-    port.onDisconnect.addListener(function(port) {
+    port.onDisconnect.addListener(function (port) {
         port.onMessage.removeListener(extensionListener);
 
         var tabs = Object.keys(connections);
-        for (var i=0, len=tabs.length; i < len; i++) {
-          if (connections[tabs[i]] == port) {
-            delete connections[tabs[i]]
-            break;
-          }
+        for (var i = 0, len = tabs.length; i < len; i++) {
+            if (connections[tabs[i]] == port) {
+                delete connections[tabs[i]]
+                break;
+            }
         }
     });
 });
 
 // Receive message from content script and relay to the devTools page for the
 // current tab
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     // Messages from content scripts should have sender.tab set
     if (sender.tab) {
-      var tabId = sender.tab.id;
-      if (tabId in connections) {
-        connections[tabId].postMessage(request);
-      } else {
-        console.log("Tab not found in connection list.");
-      }
+        var tabId = sender.tab.id;
+        if (tabId in connections) {
+            connections[tabId].postMessage(request);
+        } else {
+            console.log("Tab not found in connection list.");
+        }
     } else {
-      console.log("sender.tab not defined.");
+        console.log("sender.tab not defined.");
     }
     return true;
 });

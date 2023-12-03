@@ -29,6 +29,8 @@
         body {
             font-family: sans-serif;
             font-size: 16px;
+            margin: 0;
+            padding: 0;
         }
 
         button {
@@ -78,6 +80,10 @@
             top: 0;
             height: 100%;
             border-left: 5px solid var(--ex-blue-accent);
+        }
+
+        .version {
+            margin-left: 10px;
         }
 
         .debug-settings {
@@ -204,8 +210,17 @@
 <body>
     <h1><img src="./logo-white@2x.png" alt="Excalibur Dev Tools">Dev Tools</h1>
     
-
+    <div class="version">Engine Version: <span id="excalibur-version">???</span></div>
     <div class="row">
+        <div class="widget">
+            <h2>Input</h2>
+            <div class="section">
+                <div>World Pos: <span id="world-pos"></span></div>
+                <div>Screen Pos: <span id="screen-pos"></span></div>
+                <div>Page Pos: <span id="page-pos"></span></div>
+            </div>
+        </div>
+
         <div class="widget">
             <h2>Stats</h2>
             <div class="section">
@@ -222,10 +237,10 @@
         </div>
 
         <div class="widget">
-            <h2>Debug Settings</h2>
+            <h2>Debug Draw Settings</h2>
             <div class="debug-settings section">
                 <div>
-                    <button id="toggle-debug">Toggle Debug</button>
+                    <button id="toggle-debug">Toggle Debug Draw</button>
                 </div>
 
                 <div>
