@@ -487,6 +487,7 @@ const updateEntityList = (entities) => {
 
             const tags$ = document.createElement('div');
             tags$.className = 'tags'
+            tags$.innerText = 'tags: ';
 
             const kill$ = document.createElement('button');
             kill$.setAttribute('entity-id', entity.id);
