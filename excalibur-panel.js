@@ -81,6 +81,8 @@ var drawFps = createFpsGraph();
 
 function createFrameTimeGraph() {
     const frameTimeChart = document.getElementById('frame-time-chart');
+    const legendKeys = ['Total', 'Update', 'Draw']
+    const color = d3.scaleOrdinal().domain(legendKeys).range(d3.schemeDark2);
 
     const totalHeight = 100;//px
     const totalWidth = 300;//px
@@ -99,7 +101,7 @@ function createFrameTimeGraph() {
 
     const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
 
-    const y = d3.scaleLinear([0, 16], [totalHeight - marginBottom, marginTop]);
+    const y = d3.scaleLinear([0, 33.333], [totalHeight - marginBottom, marginTop]);
 
     const svg = d3.create('svg')
         .attr('width', tickWidth * frameTimeData.length)
@@ -107,10 +109,31 @@ function createFrameTimeGraph() {
         .attr("viewBox", [0, 0, totalWidth, totalHeight + 20]) // -10,-10,310,140
         .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
 
+    svg.selectAll("mydots")
+        .data(legendKeys)
+        .enter()
+        .append("circle")
+          .attr("cx", 250)
+          .attr("cy", function(d,i){ return 20 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+          .attr("r", 7)
+          .style("fill", function(d){ return color(d)})
+      
+      // Add one dot in the legend for each name.
+    svg.selectAll("mylabels")
+        .data(legendKeys)
+        .enter()
+        .append("text")
+          .attr("x", 270)
+          .attr("y", function(d,i){ return 20 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+          .style("fill", function(d){ return color(d)})
+          .text(function(d){ return d})
+          .attr("text-anchor", "left")
+          .style("alignment-baseline", "middle")
+
     svg.append("g")
         .attr('id', 'yAxis')
         .attr("transform", `translate(${0},0)`)
-        .call(d3.axisLeft(y).tickArguments([16]));
+        .call(d3.axisLeft(y).tickArguments([5]));
 
     svg.append("text")
         .style('fill', 'currentColor')
@@ -126,25 +149,35 @@ function createFrameTimeGraph() {
         .x((_, index) => x(index))
         .y(d => y(d));
 
+    // draw max line
+    svg.append("line")
+        .style("stroke-dasharray", "3, 3")
+        .attr("stroke", "currentColor")
+        .attr("x1", x(0))
+        .attr("x2", x(nTicks * .75))
+        .attr("y1", y(16.6))
+        .attr("y2", y(16.6))
+
+
     // draw first line
     svg.append("path")
         .attr('id','line')
         .attr("fill", "none")
-        .attr("stroke", "steelblue")
+        .attr("stroke", color(legendKeys[0]))
         .attr("stroke-width", 1.5)
         .attr("d", line(frameTimeData));
 
     svg.append("path")
         .attr('id','line-update')
         .attr("fill", "none")
-        .attr("stroke", "green")
+        .attr("stroke", color(legendKeys[1]))
         .attr("stroke-width", 1.5)
         .attr("d", line(updateTimeData));
 
     svg.append("path")
         .attr('id','line-draw')
         .attr("fill", "none")
-        .attr("stroke", "red")
+        .attr("stroke", color(legendKeys[2]))
         .attr("stroke-width", 1.5)
         .attr("d", line(drawTimeData));
 
@@ -161,21 +194,12 @@ function createFrameTimeGraph() {
 
         // Append a path for the line.
         svg.select("path#line")
-            .attr("fill", "none")
-            .attr("stroke", "steelblue")
-            .attr("stroke-width", 1.5)
             .attr("d", line(frameTimeData));
 
         svg.select("path#line-update")
-            .attr("fill", "none")
-            .attr("stroke", "green")
-            .attr("stroke-width", 1.5)
             .attr("d", line(updateTimeData));
     
         svg.select("path#line-draw")
-            .attr("fill", "none")
-            .attr("stroke", "red")
-            .attr("stroke-width", 1.5)
             .attr("d", line(drawTimeData));
     }
     return draw;
