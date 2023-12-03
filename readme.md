@@ -15,7 +15,8 @@ Debug
 
 
 ## Todos
-
+* [ ] Make sure lite mode looks okay
+* [ ] List active event listeners on stuff for debugging!
 * [ ] Remember debug settings across refreshes
 * [ ] Figure out TS/lit html
 * [ ] Screen settings
@@ -32,7 +33,6 @@ Debug
   * Iterations
 * [ ] Frame stepping! for debugging physics
 * [ ] Show loaded resources
-* [ ] keyboard shortcut ctrl-shift-x?
 * [x] Show world/screen/page coordinates under pointer
 * [x] Toggle debug values
 * [x] Style cooler than the current

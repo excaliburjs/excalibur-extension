@@ -256,6 +256,13 @@ const killActor = (actorId) => {
 // version
 const excaliburVersion$ = document.getElementById('excalibur-version');
 
+// clock
+const toggleTestClock$ = document.getElementById('toggle-test-clock');
+const startClock$ = document.getElementById('start-clock');
+const stopClock$ = document.getElementById('stop-clock');
+const clockStepMs$ = document.getElementById('clock-step-ms');
+const stepClock$ = document.getElementById('step-clock');
+
 
 // ui components
 const toggleDebugButton$ = document.getElementById('toggle-debug');
@@ -508,13 +515,44 @@ backgroundConnection.postMessage({
     tabId: chrome.devtools.inspectedWindow.tabId,
     dispatch: 'install-heartbeat'
 })
-
+// debug
 toggleDebugButton$.addEventListener('click', () => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
         dispatch: 'toggle-debug'
     });
+});
+
+// clock
+toggleTestClock$.addEventListener('click', () => {
+    backgroundConnection.postMessage({
+        name: 'command',
+        tabId: chrome.devtools.inspectedWindow.tabId,
+        dispatch: 'toggle-test-clock'
+    })
+});
+startClock$.addEventListener('click', () => {
+    backgroundConnection.postMessage({
+        name: 'command',
+        tabId: chrome.devtools.inspectedWindow.tabId,
+        dispatch: 'start-clock'
+    })
+});
+stopClock$.addEventListener('click', () => {
+    backgroundConnection.postMessage({
+        name: 'command',
+        tabId: chrome.devtools.inspectedWindow.tabId,
+        dispatch: 'stop-clock'
+    })
+});
+stepClock$.addEventListener('click', () => {
+    backgroundConnection.postMessage({
+        name: 'command',
+        tabId: chrome.devtools.inspectedWindow.tabId,
+        dispatch: 'step-clock',
+        stepMs: +clockStepMs$.value
+    })
 });
 
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {

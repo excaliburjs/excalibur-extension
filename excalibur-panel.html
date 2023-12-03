@@ -82,6 +82,13 @@
             border-left: 5px solid var(--ex-blue-accent);
         }
 
+        h3 {
+            position: relative;
+            padding: 0;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
         .version {
             margin-left: 10px;
         }
@@ -215,6 +222,7 @@
         <div class="widget">
             <h2>Input</h2>
             <div class="section">
+                <h3>Pointer</h3>
                 <div>World Pos: <span id="world-pos"></span></div>
                 <div>Screen Pos: <span id="screen-pos"></span></div>
                 <div>Page Pos: <span id="page-pos"></span></div>
@@ -234,6 +242,33 @@
             </div>
             <div id="fps-chart" class="chart"></div>
             <div id="frame-time-chart" class="chart"></div>
+        </div>
+
+        <div class="widget">
+            <h2>Clock</h2>
+            <div class="section">
+                <div>
+                    <button id="toggle-test-clock">Toggle Test Clock</button>
+                </div>
+
+                <div class="form-row">
+                    <input id="clock-step-ms" type="number" value="16" step="1", min="1", max="100">
+                    <label for="clock-step">Clock Step(ms)</label>
+                </div>
+                <div>
+                    <button id="stop-clock">Stop</button>
+                    <button id="start-clock">Start</button>
+                    <button id="step-clock">Step</button>
+                </div>
+                <div class="form-row">
+
+                </div>
+            </div>
+
+        </div>
+
+        <div class="widget">
+            <h2>Audio</h2>
         </div>
 
         <div class="widget">
