@@ -44,6 +44,7 @@ function installHeartBeat(pollingInterval = 200) {
                     entities.push({
                         id: entity.id,
                         name: entity.name,
+                        ctor: entity.constructor.name,
                         pos: pos ?? 'none',
                         tags
                     });

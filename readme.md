@@ -15,6 +15,7 @@ Debug
 
 
 ## Todos
+* [x] Show constructor name if anonymous
 * [ ] Make sure lite mode looks okay
 * [ ] List active event listeners on stuff for debugging!
 * [ ] Remember debug settings across refreshes

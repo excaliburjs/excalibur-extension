@@ -459,8 +459,9 @@ const updateEntityList = (entities) => {
         if (maybeDiv) {
             maybeDiv.children[0].innerText = entity.id;
             maybeDiv.children[1].innerText = entity.name;
-            maybeDiv.children[2].innerText = entity.pos;
-            maybeDiv.children[3].innerText = 'tags: ' + entity.tags.join(', ');
+            maybeDiv.children[2].innerText = entity.ctor;
+            maybeDiv.children[3].innerText = entity.pos;
+            maybeDiv.children[4].innerText = 'tags: ' + entity.tags.join(', ');
 
         } else {
             const div$ = document.createElement('div');
@@ -481,6 +482,10 @@ const updateEntityList = (entities) => {
             name$.innerText = entity.name;
             name$.className = 'name';
 
+            const ctor$ = document.createElement('div');
+            ctor$.innerText = entity.ctor;
+            ctor$.className = 'ctor';
+
             const pos$ = document.createElement('div');
             pos$.innerText = entity.pos;
             pos$.className = 'pos';
@@ -500,6 +505,7 @@ const updateEntityList = (entities) => {
 
             div$.appendChild(id$);
             div$.appendChild(name$);
+            div$.appendChild(ctor$);
             div$.appendChild(pos$);
             div$.appendChild(tags$);
             div$.appendChild(kill$);

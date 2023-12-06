@@ -156,7 +156,9 @@
             margin: 10px;
         }
         .entity {
+            width: 250px;
             display: flex;
+            flex-wrap: wrap;
             padding: 5px;
             background-color: var(--darker-panel-color);
             margin-bottom: 5px;
@@ -177,6 +179,13 @@
         }
 
         .entity .name {
+            background-color: var(--green-background);
+            padding: 5px;
+            border-radius: 2px;
+            max-width: fit-content;
+            margin-right: 5px;
+        }
+        .entity .ctor {
             background-color: var(--green-background);
             padding: 5px;
             border-radius: 2px;
