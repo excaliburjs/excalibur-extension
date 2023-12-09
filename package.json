@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "start": "parcel watch manifest.json --host localhost --config @parcel/config-webextension",
-    "build": "parcel build manifest.json --config @parcel/config-webextension"
+    "start": "parcel watch src/manifest.json --host localhost --config @parcel/config-webextension",
+    "build": "parcel build src/manifest.json --config @parcel/config-webextension"
   },
   "dependencies": {
     "@shoelace-style/shoelace": "2.12.0",
