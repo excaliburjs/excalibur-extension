@@ -22,8 +22,10 @@ Debug
 * [ ] Make sure lite mode looks okay
 * [ ] List active event listeners on stuff for debugging!
 * [ ] Remember debug settings across refreshes
+* [ ] Refactor into multiple files
 * [ ] Figure out TS/lit html
 * [ ] Show entities as a tree view
+* [ ] Show entity explorer
 * [ ] Screen settings
   * resolution
   * displaymode

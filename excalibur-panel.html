@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="sl-theme-dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excalibur Dev Tools</title>
+    <link rel="stylesheet" href="./node_modules/@shoelace-style/shoelace/cdn/themes/dark.css" />
     <style>
         :root {
             --background-color: #292929;
@@ -41,19 +42,22 @@
             padding: 5px;
             margin-bottom: 5px;
         }
+
         button:hover {
             background-color: var(--green-highlight);
         }
+
         button:active {
             background-color: var(--green-background);
         }
 
         /* TODO support lite mode */
         /* @media (prefers-color-scheme: dark) { */
-            body {
-                background-color: var(--background-color);
-                color: #ccc;
-            }
+        body {
+            background-color: var(--background-color);
+            color: #ccc;
+        }
+
         /* } */
 
         h1 {
@@ -61,6 +65,7 @@
             display: flex;
             align-items: center;
         }
+
         h1 img {
             max-height: 70px;
             margin-left: -40px;
@@ -74,6 +79,7 @@
             margin-top: 0;
             margin-bottom: 10px;
         }
+
         h2::before {
             content: '';
             position: absolute;
@@ -122,6 +128,7 @@
             background-color: var(--panel-color);
             margin-bottom: 10px;
         }
+
         .chart::before {
             content: '';
             position: absolute;
@@ -142,11 +149,11 @@
             align-items: center;
         }
 
-        .form-row > *:not(:last-child) {
+        .form-row>*:not(:last-child) {
             margin-right: 5px;
         }
 
-        .form-row > *:last-child {
+        .form-row>*:last-child {
 
             margin-left: auto;
         }
@@ -155,6 +162,7 @@
             min-width: 300px;
             margin: 10px;
         }
+
         .entity {
             width: 250px;
             display: flex;
@@ -166,6 +174,7 @@
             cursor: pointer;
             align-items: center;
         }
+
         .entity::before {
             content: '';
             position: absolute;
@@ -174,6 +183,7 @@
             height: 100%;
             border-left: 5px solid var(--blue-text);
         }
+
         .entity:hover {
             background-color: #202732;
         }
@@ -185,6 +195,7 @@
             max-width: fit-content;
             margin-right: 5px;
         }
+
         .entity .ctor {
             background-color: var(--green-background);
             padding: 5px;
@@ -192,6 +203,7 @@
             max-width: fit-content;
             margin-right: 5px;
         }
+
         .entity .id {
             background-color: var(--blue-background);
             padding: 5px;
@@ -234,169 +246,202 @@
 
 <body>
     <h1><img src="./logo-white@2x.png" alt="Excalibur Dev Tools">Dev Tools</h1>
-    
+
     <div class="version">Engine Version: <span id="excalibur-version">???</span></div>
-    <div class="row">
-        
+    <entity-inspector></entity-inspector>
 
-        <div class="widget">
-            <h2>Stats</h2>
-            <div class="section">
-                <div>FPS: <span id="fps"></span></div>
-                <div>Frame Time: <span id="frame-time"></span></div>
-                <div>Frame Budget: <span id="frame-budget"></span></div>
-                <div>Update Time: <span id="update-time"></span></div>
-                <div>Draw Time: <span id="draw-time"></span></div>
-                <div>Draw Calls: <span id="draw-calls"></span></div>
-                <div>Actors: <span id="num-actors"></span></div>
+    <sl-tab-group>
+        <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
+        <sl-tab slot="nav" panel="perf">Performance</sl-tab>
+        <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
+
+        <sl-tab-panel name="inspector">
+            <sl-split-panel position="75">
+                <div slot="start">
+
+                    <div class="row">
+                        <div class="widget">
+                            <h2>Clock</h2>
+                            <div class="section">
+                                <div>
+                                    <button id="toggle-test-clock">Toggle Test Clock</button>
+                                </div>
+
+                                <div class="form-row">
+                                    <input id="clock-step-ms" type="number" value="16" step="1" , min="1" , max="100">
+                                    <label for="clock-step-ms">Clock Step(ms)</label>
+                                </div>
+                                <div>
+                                    <button id="stop-clock">Stop</button>
+                                    <button id="start-clock">Start</button>
+                                    <button id="step-clock">Step</button>
+                                </div>
+                                <div class="form-row">
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="widget">
+                            <h2>Input</h2>
+                            <div class="section">
+                                <h3>Pointer</h3>
+                                <div>World Pos: <span id="world-pos"></span></div>
+                                <div>Screen Pos: <span id="screen-pos"></span></div>
+                                <div>Page Pos: <span id="page-pos"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="widget">
+                            <h2>Entities</h2>
+                            <div class="section">
+                                <div class="form-row">
+                                    <!-- <input type="text" name="filter entities" id="filter-entities"> -->
+                                    <sl-input id="filter-entities" placeholder="Filter Entities"></sl-input>
+                                    <!-- <label for="filter-entities">Filter Entities</label> -->
+                                </div>
+                                <div class="form-row">
+                                    <!-- <input type="checkbox" id="show-offscreen" name="show offscreen actors"> -->
+                                    <sl-switch id="show-offscreen">Show Offscreen Entities</sl-switch>
+                                    <!-- <label for="show-offscreen">Show Offscreen Entities</label> -->
+                                </div>
+                                <div id="entity-list"></div>
+                            </div>
+                        </div>
+                        <div class="widget">
+                            <h2>Scene</h2>
+                            <div class="section">
+                                <div>Current Scene: <span id="current-scene-name"></span></div>
+                                <div>Switch Scene: <span id="scenes"></span></div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div slot="end">
+                    End
+                </div>
+            </sl-split-panel>
+        </sl-tab-panel>
+        <sl-tab-panel name="perf">
+            <div class="row">
+                <div class="widget">
+                    <h2>Stats</h2>
+                    <div class="row">
+                        <div class="section">
+                            <div>FPS: <span id="fps"></span></div>
+                            <div>Frame Time: <span id="frame-time"></span></div>
+                            <div>Frame Budget: <span id="frame-budget"></span></div>
+                            <div>Update Time: <span id="update-time"></span></div>
+                            <div>Draw Time: <span id="draw-time"></span></div>
+                            <div>Draw Calls: <span id="draw-calls"></span></div>
+                            <div>Actors: <span id="num-actors"></span></div>
+                        </div>
+                        <div class="widget">
+                            <div id="fps-chart" class="chart"></div>
+                        </div>
+                        <div class="widget">
+                            <div id="frame-time-chart" class="chart"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-            <div id="fps-chart" class="chart"></div>
-            <div id="frame-time-chart" class="chart"></div>
-        </div>
-
-        
-        <div class="widget">
-            <h2>Debug Draw Settings</h2>
-            <div class="debug-settings section">
-                <div>
-                    <button id="toggle-debug">Toggle Debug Draw</button>
-                </div>
-
-                <div>
-                    <input type="checkbox" name="show names" id="show-names">
-                    <label for="show-names">Show Names</label>
-                </div>
-                <div>
-                    <input type="checkbox" name="show ids" id="show-ids">
-                    <label for="show-ids">Show Ids</label>
-                </div>
-                <div class="form-row">
-                    <div>
-                        <input type="checkbox" name="show position" id="show-pos">
-                        <label for="show-pos">Show Position</label>
+            <div class="row">
+                <div class="widget">
+                    <h2>Profiling</h2>
+                    <div class="section" style="width: 1000px;">
+                        <div>Requires a dev build of excalibur to be used (v0.28.3+)</div>
+                        <div>Read more <a href="https://excaliburjs.com/docs/" target="_blank" rel="noopener">here</a>
+                        </div>
+                        <div>
+                            <button id="start">Start Profile</button>
+                            <button id="collect">Collect</button>
+                        </div>
+                        <canvas id="flame-canvas" width="980" height="400"></canvas>
+                        <div id="profile-chart" style="color:black"></div>
                     </div>
-                    <div>
-                        <input type="checkbox" name="show position label" id="show-pos-label">
-                        <label for="show-pos-label">Show Label</label>
-                    </div>
-                    <div>
-                        <input type="color" name="Position color" id="show-pos-color">
-                        <label for="show-pos-color">Color</label>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div>
-                        <input type="checkbox" name="show graphics bounds" id="show-graphics-bounds">
-                        <label for="show-graphics-bounds">Show Graphics Bounds</label>
-                    </div>
-    
-                    <div>
-                        <input type="color" name="graphics bounds colors" id="graphics-bounds-colors">
-                        <label for="graphics-bounds-colors">Color</label>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div>
-                        <input type="checkbox" name="show collider bounds" id="show-collider-bounds">
-                        <label for="show-collider-bounds">Show Collider Bounds</label>
-                    </div>
-    
-                    <div>
-                        <input type="color" name="collider bounds colors" id="collider-bounds-colors">
-                        <label for="collider-bounds-colors">Color</label>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div>
-                        <input type="checkbox" name="show collider geometry" id="show-geometry-bounds">
-                        <label for="show-geometry-bounds">Show Geometry</label>
-                    </div>
-    
-                    <div>
-                        <input type="color" name="collider geometry colors" id="collider-geometry-colors">
-                        <label for="collider-geometry-colors">Color</label>
-                    </div>
-                </div>
-
-                <div>
-                    <pre id="debug-settings-raw"></pre>
-                </div>
-
-            </div>
-        </div>
-
-        <div class="widget">
-            <h2>Clock</h2>
-            <div class="section">
-                <div>
-                    <button id="toggle-test-clock">Toggle Test Clock</button>
-                </div>
-
-                <div class="form-row">
-                    <input id="clock-step-ms" type="number" value="16" step="1", min="1", max="100">
-                    <label for="clock-step-ms">Clock Step(ms)</label>
-                </div>
-                <div>
-                    <button id="stop-clock">Stop</button>
-                    <button id="start-clock">Start</button>
-                    <button id="step-clock">Step</button>
-                </div>
-                <div class="form-row">
-
                 </div>
             </div>
-            <h2>Input</h2>
-            <div class="section">
-                <h3>Pointer</h3>
-                <div>World Pos: <span id="world-pos"></span></div>
-                <div>Screen Pos: <span id="screen-pos"></span></div>
-                <div>Page Pos: <span id="page-pos"></span></div>
-            </div>
-        </div>
-    </div>
+        </sl-tab-panel>
+        <sl-tab-panel name="debugdraw">
+            <div class="row">
+                <div class="widget">
+                    <h2>Debug Draw Settings</h2>
+                    <div class="debug-settings section">
+                        <div>
+                            <button id="toggle-debug">Toggle Debug Draw</button>
+                        </div>
 
-    <div class="row">
-        <div class="widget">
-            <h2>Profile</h2>
-            <div class="section" style="width: 1000px;" >
-                <div>Requires a dev build of excalibur to be used (v0.28.3+)</div>
-                <div>
-                    <button id="start">Start Profile</button>
-                    <button id="collect">Collect</button>
-                </div>
-                <canvas id="flame-canvas" width="980" height="400"></canvas>
-                <div id="profile-chart" style="color:black"></div>
-            </div>
-        </div>
-    </div>
+                        <div>
+                            <sl-switch id="show-names"></sl-switch>
+                            <label for="show-names">Show Names</label>
+                        </div>
+                        <div>
+                            <sl-switch id="show-ids"></sl-switch>
+                            <label for="show-ids">Show Ids</label>
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <sl-switch id="show-pos"></sl-switch>
+                                <label for="show-pos">Show Position</label>
+                            </div>
+                            <div>
+                                <sl-switch id="show-pos-label"></sl-switch>
+                                <label for="show-pos-label">Show Label</label>
+                            </div>
+                            <div>
+                                <sl-color-picker id="show-pos-color">Color</sl-color-picker>
+                            </div>
+                        </div>
 
-    <div class="row">
-        <div class="widget">
-            <h2>Entities</h2>
-            <div class="section">
-                <div class="form-row">
-                    <input type="text" name="filter entities" id="filter-entities">
-                    <label for="filter-entities">Filter Entities</label>
+                        <div class="form-row">
+                            <div>
+                                <sl-switch id="show-graphics-bounds"></sl-switch>
+                                <label for="show-graphics-bounds">Show Graphics Bounds</label>
+                            </div>
+
+                            <div>
+                                <sl-color-picker id="graphics-bounds-colors">Color</sl-color-picker>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div>
+                                <sl-switch id="show-collider-bounds"></sl-switch>
+                                <label for="show-collider-bounds">Show Collider Bounds</label>
+                            </div>
+
+                            <div>
+                                <sl-color-picker id="collider-bounds-colors">Color</sl-color-picker>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div>
+                                <sl-switch id="show-geometry-bounds"></sl-switch>
+                                <label for="show-geometry-bounds">Show Geometry</label>
+                            </div>
+
+                            <div>
+                                <sl-color-picker id="collider-geometry-colors">Color</sl-color-picker>
+                            </div>
+                        </div>
+
+                        <div>
+                            <pre id="debug-settings-raw"></pre>
+                        </div>
+
+                    </div>
                 </div>
-                <div class="form-row">
-                    <input type="checkbox" id="show-offscreen" name="show offscreen actors">
-                    <label for="show-offscreen">Show Offscreen Entities</label>
-                </div>
-                <div id="entity-list"></div>
-            </div>
-        </div>
-        <div class="widget">
-            <h2>Scene</h2>
-            <div class="section">
-                <div>Current Scene: <span id="current-scene-name"></span></div>
-                <div>Switch Scene: <span id="scenes"></span></div>
             </div>
 
-        </div>
-    </div>
+        </sl-tab-panel>
+    </sl-tab-group>
+
+
+
+    <script type="module" src="./node_modules/@shoelace-style/shoelace/cdn/shoelace.js"></script>
     <script src="/lib/d3.js"></script>
     <script src="/lib/d3-flamegraph.js"></script>
     <script src="/lib/flame-chart-js.js"></script>

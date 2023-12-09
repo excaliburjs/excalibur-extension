@@ -162,6 +162,9 @@ var connections = {};
 chrome.runtime.onConnect.addListener(function (port) {
 
     var extensionListener = function (message, sender, sendResponse) {
+        if (message.__parcel_hmr_reload__) {
+            return;
+        }
 
         // The original connection event doesn't include the tab ID of the
         // DevTools page, so we need to send it explicitly.

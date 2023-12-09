@@ -1,3 +1,7 @@
+(function() {
+
+
+
 // Current Engine representation in the extension
 let engine = {
     currentScene: 'root',
@@ -302,77 +306,77 @@ const collectProfiler$ = document.getElementById('collect');
 
 // settings
 const posColor$ = document.getElementById('show-pos-color');
-posColor$.addEventListener('input', evt => {
+posColor$.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
     newDebug.transform.positionColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showNames$ = document.getElementById('show-names');
-showNames$.addEventListener('change', function (evt) {
+showNames$.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.entity.showName = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showIds$ = document.getElementById('show-ids');
-showIds$.addEventListener('change', function (evt) {
+showIds$.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.entity.showId = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showPos$ = document.getElementById('show-pos');
-showPos$.addEventListener('change', function (evt) {
+showPos$.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.transform.showPosition = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showPosLabel$ = document.getElementById('show-pos-label');
-showPosLabel$.addEventListener('change', function (evt) {
+showPosLabel$.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.transform.showPositionLabel = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showGraphicsBounds$ = document.getElementById('show-graphics-bounds');
-showGraphicsBounds$.addEventListener('change', function (evt) {
+showGraphicsBounds$.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.graphics.showBounds = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const graphicsBoundsColor$ = document.getElementById('graphics-bounds-colors');
-graphicsBoundsColor$.addEventListener('input', evt => {
+graphicsBoundsColor$.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
     newDebug.graphics.boundsColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showColliderBounds$ = document.getElementById('show-collider-bounds');
-showColliderBounds$.addEventListener('change', function (evt) {
+showColliderBounds$.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.collider.showBounds = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const colliderBoundsColor$ = document.getElementById('collider-bounds-colors');
-colliderBoundsColor$.addEventListener('input', evt => {
+colliderBoundsColor$.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
     newDebug.collider.boundsColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showGeometryBounds$ = document.getElementById('show-geometry-bounds');
-showGeometryBounds$.addEventListener('change', function (evt) {
+showGeometryBounds$.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.collider.showGeometry = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const colliderGeometryColor$ = document.getElementById('collider-geometry-colors');
-colliderGeometryColor$.addEventListener('input', evt => {
+colliderGeometryColor$.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
     newDebug.collider.geometryColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
@@ -671,3 +675,4 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
     }
 })
 
+})();

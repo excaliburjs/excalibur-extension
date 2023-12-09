@@ -5,7 +5,8 @@
     "manifest_version": 3,
     "devtools_page": "devtools.html",
     "permissions": [
-        "scripting", "tabs"
+        "scripting",
+        "tabs"
     ],
     "background": {
         "service_worker": "background.js"
@@ -18,7 +19,7 @@
             "js": [
                 "content-script.js"
             ],
-            "all_frames": false,
+            "all_frames": true,
             "css": [],
             "run_at": "document_start"
         }
@@ -32,6 +33,16 @@
     "content_security_policy": {
         "extension_pages": "script-src 'self' http://localhost;object-src 'self';"
     },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "excalibur-panel.html"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
     "icons": {
         "16": "icon-16.png",
         "32": "icon-32.png",
