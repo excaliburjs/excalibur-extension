@@ -15,6 +15,9 @@ Debug
 
 
 ## Todos
+* [ ] Support firefox https://extensionworkshop.com/documentation/develop/porting-a-google-chrome-extension/
+* [ ] Show "no excalibur detected" if something isn't in the extension
+* [ ] Reload on error or disconnect
 * [x] Show constructor name if anonymous
 * [ ] Make sure lite mode looks okay
 * [ ] List active event listeners on stuff for debugging!

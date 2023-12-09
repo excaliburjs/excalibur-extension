@@ -337,7 +337,7 @@
 
                 <div class="form-row">
                     <input id="clock-step-ms" type="number" value="16" step="1", min="1", max="100">
-                    <label for="clock-step">Clock Step(ms)</label>
+                    <label for="clock-step-ms">Clock Step(ms)</label>
                 </div>
                 <div>
                     <button id="stop-clock">Stop</button>
@@ -358,6 +358,20 @@
         </div>
     </div>
 
+    <div class="row">
+        <div class="widget">
+            <h2>Profile</h2>
+            <div class="section" style="width: 1000px;" >
+                <div>Requires a dev build of excalibur to be used (v0.28.3+)</div>
+                <div>
+                    <button id="start">Start Profile</button>
+                    <button id="collect">Collect</button>
+                </div>
+                <canvas id="flame-canvas" width="980" height="400"></canvas>
+                <div id="profile-chart" style="color:black"></div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="widget">
@@ -384,6 +398,8 @@
         </div>
     </div>
     <script src="/lib/d3.js"></script>
+    <script src="/lib/d3-flamegraph.js"></script>
+    <script src="/lib/flame-chart-js.js"></script>
     <script src="/excalibur-panel.js"></script>
 </body>
 

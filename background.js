@@ -67,6 +67,35 @@ function installHeartBeat(pollingInterval = 200) {
     }
 }
 
+function startProfiler(time) {
+    if ((window).___EXCALIBUR_DEVTOOL && window.ex) {
+        console.log('Starting excalibur profiler');
+        ex.Profiler.init();
+        // Only allow 1 second for now
+        setTimeout(() => {
+            console.log('Collecting excalibur profiler');
+            const data = ex.Profiler.collect();
+            window.postMessage({
+                source: 'excalibur-dev-tools',
+                name: 'collect-profiler',
+                data
+            });
+        }, time ?? 100);
+    }
+}
+
+function collectProfiler() {
+    if ((window).___EXCALIBUR_DEVTOOL && window.ex) {
+        const data = ex.Profiler.collect();
+        console.log('Collecting excalibur profiler');
+        window.postMessage({
+            source: 'excalibur-dev-tools',
+            name: 'collect-profiler',
+            data
+        });
+    }
+}
+
 function updateDebug(debug) {
     if ((window).___EXCALIBUR_DEVTOOL) {
         const game = window.___EXCALIBUR_DEVTOOL;
@@ -224,6 +253,23 @@ chrome.runtime.onConnect.addListener(function (port) {
                         world: 'MAIN',
                         func: stepClock,
                         args: [message.stepMs]
+                    });
+                    break;
+                }
+                case 'start-profiler': {
+                    chrome.scripting.executeScript({
+                        target: { tabId: message.tabId },
+                        world: 'MAIN',
+                        func: startProfiler,
+                        args: [message.time]
+                    });
+                    break;
+                }
+                case 'collect-profiler': {
+                    chrome.scripting.executeScript({
+                        target: { tabId: message.tabId },
+                        world: 'MAIN',
+                        func: collectProfiler
                     });
                     break;
                 }

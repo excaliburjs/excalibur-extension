@@ -285,6 +285,21 @@ const drawTime$ = document.getElementById('draw-time');
 const drawCalls$ = document.getElementById('draw-calls');
 const numActors$ = document.getElementById('num-actors');
 
+
+// profiler
+const chart = flamegraph().width(1000).setColorHue('blue').selfValue(false).inverted(true).minFrameSize(0);
+const details = document.getElementById("details");
+chart.setDetailsElement(details);
+chart.label((data) => {
+    return data.data.name + ':' + data.data.value.toString() + '(ms)'
+});
+
+const flameCanvas = document.getElementById('flame-canvas');
+
+
+const startProfiler$ = document.getElementById('start');
+const collectProfiler$ = document.getElementById('collect');
+
 // settings
 const posColor$ = document.getElementById('show-pos-color');
 posColor$.addEventListener('input', evt => {
@@ -544,12 +559,33 @@ backgroundConnection.onMessage.addListener((message) => {
             updateDebugSettings(debug);
             break;
         }
+        case 'collect-profiler': {
+            const data = message.data;
+            // d3.select('#profile-chart')
+            //     .datum(data)
+            //     .call(chart);
+
+            const flameChart = new flameChartJs.FlameChart({
+                canvas: flameCanvas,
+                data: [data],
+                settings: {
+                    styles: {
+                        main: {
+                            backgroundColor: '#1a1a1a'
+                        }
+                    }
+                }
+            });
+            break;
+        }
         default: {
             // console.warn('Unknown message', message);
         }
     }
 });
 
+
+// install content script telemetry
 backgroundConnection.postMessage({
     name: 'init',
     tabId: chrome.devtools.inspectedWindow.tabId
@@ -600,6 +636,26 @@ stepClock$.addEventListener('click', () => {
     })
 });
 
+// profiler
+
+startProfiler$.addEventListener('click', () => {
+    backgroundConnection.postMessage({
+        name: 'command',
+        tabId: chrome.devtools.inspectedWindow.tabId,
+        dispatch: 'start-profiler',
+        time: 30,
+    })
+});
+
+collectProfiler$.addEventListener('click', () => {
+    backgroundConnection.postMessage({
+        name: 'command',
+        tabId: chrome.devtools.inspectedWindow.tabId,
+        dispatch: 'collect-profiler'
+    })
+})
+
+// Handles when user navigates and re-installs the content script telemetry
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
     if (changeInfo.status === 'complete') {
         backgroundConnection.postMessage({
