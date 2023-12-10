@@ -17,6 +17,16 @@ export const common = css`
     border-left: 5px solid var(--red-accent);
 }
 
+.row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.widget {
+    min-width: 300px;
+    margin: 10px;
+}
+
 .form-row {
     display: flex;
     flex-wrap: nowrap;

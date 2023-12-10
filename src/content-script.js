@@ -1,4 +1,4 @@
-// Relay's messages from injected scripts that post messages to the window
+// Relays messages from injected scripts that post messages to the window
 
 window.addEventListener('message', function (event) {
     // Only accept messages from the same frame
