@@ -191,8 +191,6 @@ chrome.runtime.onConnect.addListener(function (port) {
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: toggleDebug
-                    }).then(injectionResults => {
-                        console.log(injectionResults);
                     });
                     break;
                 }
@@ -201,8 +199,6 @@ chrome.runtime.onConnect.addListener(function (port) {
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: installHeartBeat
-                    }).then(injectionResults => {
-                        console.log(injectionResults);
                     });
                     break;
                 }
@@ -211,8 +207,6 @@ chrome.runtime.onConnect.addListener(function (port) {
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: echo
-                    }).then(injectionResults => {
-                        console.log(injectionResults);
                     });
                     break;
                 }

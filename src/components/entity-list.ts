@@ -16,6 +16,9 @@ export interface Entity {
     tags: string[]
 }
 
+/**
+ * @event kill-actor
+ */
 @customElement('entity-list')
 export class EntityList extends LitElement {
     static styles = [
@@ -92,6 +95,12 @@ export class EntityList extends LitElement {
         this.entityFilter = (evt.target as SlInput).value;
     }
 
+    handleKill(id: number) {
+        return () => {
+            this.dispatchEvent(new CustomEvent('kill-actor', { detail: id}));
+        }
+    }
+
     render() {
         let entities = this.entities.slice();
         if (!this.showOffscreen) {
@@ -99,19 +108,22 @@ export class EntityList extends LitElement {
         }
     
         if (this.entityFilter) {
-            entities = entities.filter(e => e.name.includes(this.entityFilter));
+            entities = entities.filter(e => 
+                e.name.includes(this.entityFilter) || 
+                e.ctor.includes(this.entityFilter) ||
+                e.tags.some(t => t.includes(this.entityFilter)));
         }
 
         return html`
         <div class="section">
-            <sl-input id="filter-entities" @sl-input=${this._inputFilter} placeholder="Filter Entities by Name"></sl-input>
+            <sl-input id="filter-entities" @sl-input=${this._inputFilter} placeholder="Filter Entities by Name, Ctor, or Tag"></sl-input>
             <sl-switch id="show-offscreen" @sl-change=${this._toggleOffscreen}>Show Offscreen Entities</sl-switch>
             <ul class="scrollbar">
             ${repeat(entities, (entity: Entity) => entity.id, (entity: Entity) => html`
                 <li>
                     <sl-card>
                         <div slot="header"> ${entity.name} | ${entity.ctor} 
-                            <sl-icon-button name="trash" label="kill"></sl-icon-button> 
+                            <sl-icon-button name="trash" label="kill" @click=${this.handleKill(entity.id)}></sl-icon-button> 
                         </div>
                             <sl-tag variant="primary">id:${entity.id}</sl-tag>
                             <sl-tag variant="neutral">pos:${entity.pos}</sl-tag>

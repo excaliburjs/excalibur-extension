@@ -333,6 +333,16 @@ export class App extends LitElement {
         })
     }
 
+    killActor(evt: any) {
+        const id = evt.detail as number;
+        this.backgroundConnection.postMessage({
+            name: 'command',
+            tabId: chrome.devtools.inspectedWindow.tabId,
+            dispatch: 'kill',
+            actorId: id
+        })
+    }
+ 
     override render() {
         return html`
         <h1><img src=${logoImg} alt="Excalibur Dev Tools">Dev Tools</h1>
@@ -383,7 +393,7 @@ export class App extends LitElement {
                         <div class="row">
                             <div class="widget">
                                 <h2>Entities</h2>
-                                <entity-list .entities=${this.engine.entities}></entity-list>
+                                <entity-list .entities=${this.engine.entities} @kill-actor=${this.killActor}></entity-list>
                             </div>
                             <div class="widget">
                                 <h2>Scene</h2>
@@ -396,7 +406,7 @@ export class App extends LitElement {
                         </div>
                     </div>
                     <div slot="end">
-                        End
+                        <!-- TODO entity inspector here -->
                     </div>
                 </sl-split-panel>
             </sl-tab-panel>

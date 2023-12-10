@@ -95,6 +95,6 @@ export class FpsGraph extends LitElement {
     }
 
     override render() {
-        return html`<div id='fps-chart'></div>`
+        return html`<div id='fps-chart' class="chart"></div>`
     }
 };
