@@ -1,4 +1,4 @@
-console.log('hello from excalibur dev tools content script!')
+// Relay's messages from injected scripts that post messages to the window
 
 window.addEventListener('message', function (event) {
     // Only accept messages from the same frame
@@ -15,8 +15,4 @@ window.addEventListener('message', function (event) {
     }
 
     chrome.runtime.sendMessage(message);
-});
-
-chrome.runtime.sendMessage({
-    type: 'hello'
 });

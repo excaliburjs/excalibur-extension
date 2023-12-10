@@ -1,222 +1,156 @@
-(function() {
+import './components/fps-graph';
+import { FpsGraph } from './components/fps-graph';
+
+import './components/frame-time-graph';
+import { FrameTimeGraph } from './components/frame-time-graph';
+
+import './components/stats-list';
+import { StatsList } from './components/stats-list';
+
+import './components/entity-list';;
+import { EntityList } from './components/entity-list';
 
 
+interface DebugStats {
+
+}
+
+interface ColorBlindFlags {
+
+}
+
+interface Color {
+    r: number;
+    g: number;
+    b: number;
+}
+
+interface Debug {
+    /**
+     * Performance statistics
+     */
+    stats: DebugStats;
+    /**
+     * Correct or simulate color blindness using [[ColorBlindnessPostProcessor]].
+     * @warning Will reduce FPS.
+     */
+    colorBlindMode: ColorBlindFlags;
+    /**
+     * Filter debug context to named entities or entity ids
+     */
+    filter: {
+        useFilter: boolean;
+        nameQuery: string;
+        ids: number[];
+    };
+    /**
+     * Entity debug settings
+     */
+    entity: {
+        showAll: boolean;
+        showId: boolean;
+        showName: boolean;
+    };
+    /**
+     * Transform component debug settings
+     */
+    transform: {
+        showAll: boolean;
+        showPosition: boolean;
+        showPositionLabel: boolean;
+        positionColor: Color;
+        showZIndex: boolean;
+        showScale: boolean;
+        scaleColor: Color;
+        showRotation: boolean;
+        rotationColor: Color;
+    };
+    /**
+     * Graphics component debug settings
+     */
+    graphics: {
+        showAll: boolean;
+        showBounds: boolean;
+        boundsColor: Color;
+    };
+    /**
+     * Collider component debug settings
+     */
+    collider: {
+        showAll: boolean;
+        showBounds: boolean;
+        boundsColor: Color;
+        showOwner: boolean;
+        showGeometry: boolean;
+        geometryColor: Color;
+    };
+    /**
+     * Physics simulation debug settings
+     */
+    physics: {
+        showAll: boolean;
+        showBroadphaseSpacePartitionDebug: boolean;
+        showCollisionNormals: boolean;
+        collisionNormalColor: Color;
+        showCollisionContacts: boolean;
+        collisionContactColor: Color;
+    };
+    /**
+     * Motion component debug settings
+     */
+    motion: {
+        showAll: boolean;
+        showVelocity: boolean;
+        velocityColor: Color;
+        showAcceleration: boolean;
+        accelerationColor: Color;
+    };
+    /**
+     * Body component debug settings
+     */
+    body: {
+        showAll: boolean;
+        showCollisionGroup: boolean;
+        showCollisionType: boolean;
+        showSleeping: boolean;
+        showMotion: boolean;
+        showMass: boolean;
+    };
+    /**
+     * Camera debug settings
+     */
+    camera: {
+        showAll: boolean;
+        showFocus: boolean;
+        focusColor: Color;
+        showZoom: boolean;
+    };
+}
 
 // Current Engine representation in the extension
-let engine = {
+interface Engine {
+    version: string;
+    currentScene: string;
+    debug: Debug;
+    scenes: any[];
+    entities: any[];
+    pointer: any;
+}
+
+let engine: Engine = {
+    version: '???',
     currentScene: 'root',
-    debug: {},
+    debug: {} as Debug,
     scenes: [],
     entities: [],
     pointer: null
 }
 
-// graph
-function createFpsGraph() {
-    const fpsChart$ = document.getElementById('fps-chart');
-
-    const totalHeight = 100;//px
-    const totalWidth = 300;//px
-    const tickWidth = 1; // px
-
-    const nTicks = Math.floor(totalWidth / tickWidth);
-    const zeroes = () => 0;
-    let data = d3.range(nTicks).map(zeroes);
-
-    const marginLeft = 10;
-    const marginRight = 0;
-    const marginTop = 10;
-    const marginBottom = -15;
-
-    const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
-
-    const y = d3.scaleLinear([0, 120], [totalHeight - marginBottom, marginTop]);
-
-    const svg = d3.create('svg')
-        .attr('width', tickWidth * data.length)
-        .attr('height', totalHeight)
-        .attr("viewBox", [0, 0, totalWidth, totalHeight + 20]) // -10,-10,310,140
-        .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
-
-    svg.append("g")
-        .attr('id', 'yAxis')
-        .attr("transform", `translate(${0},0)`)
-        .call(d3.axisLeft(y).tickArguments([4]));
-
-    svg.append("text")
-        .style('fill', 'currentColor')
-        .attr("class", "y label")
-        .attr("text-anchor", "start")
-        .attr("y", marginTop)
-        .attr("x", 20)
-        .attr("dy", ".75em")
-        // .attr("transform", "rotate(-90)")
-        .text("FPS");
-
-    const line = d3.line()
-        .x((_, index) => x(index))
-        .y(d => y(d));
-
-    // draw first line
-    svg.append("path")
-        .attr('id','line')
-        .attr("fill", "none")
-        .attr("stroke", "steelblue")
-        .attr("stroke-width", 1.5)
-        .attr("d", line(data));
-
-    fpsChart$.appendChild(svg.node());
-
-    function draw(fps) {
-        data.push(fps);
-        data.shift();
-
-        // Append a path for the line.
-        svg.select("path#line")
-            .attr("fill", "none")
-            .attr("stroke", "steelblue")
-            .attr("stroke-width", 1.5)
-            .attr("d", line(data));
-    }
-    return draw;
-}
-
-var drawFps = createFpsGraph();
-
-
-function createFrameTimeGraph() {
-    const frameTimeChart = document.getElementById('frame-time-chart');
-    const legendKeys = ['Total', 'Update', 'Draw']
-    const color = d3.scaleOrdinal().domain(legendKeys).range(d3.schemeDark2);
-
-    const totalHeight = 100;//px
-    const totalWidth = 300;//px
-    const tickWidth = 1; // px
-
-    const nTicks = Math.floor(totalWidth / tickWidth);
-    const zeroes = () => 0;
-    let frameTimeData = d3.range(nTicks).map(zeroes);
-    let updateTimeData = d3.range(nTicks).map(zeroes);
-    let drawTimeData = d3.range(nTicks).map(zeroes);
-
-    const marginLeft = 10;
-    const marginRight = 0;
-    const marginTop = 10;
-    const marginBottom = -15;
-
-    const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
-
-    const y = d3.scaleLinear([0, 33.333], [totalHeight - marginBottom, marginTop]);
-
-    const svg = d3.create('svg')
-        .attr('width', tickWidth * frameTimeData.length)
-        .attr('height', totalHeight)
-        .attr("viewBox", [0, 0, totalWidth, totalHeight + 20]) // -10,-10,310,140
-        .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
-
-    svg.selectAll("mydots")
-        .data(legendKeys)
-        .enter()
-        .append("circle")
-          .attr("cx", 250)
-          .attr("cy", function(d,i){ return 20 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
-          .attr("r", 7)
-          .style("fill", function(d){ return color(d)})
-      
-      // Add one dot in the legend for each name.
-    svg.selectAll("mylabels")
-        .data(legendKeys)
-        .enter()
-        .append("text")
-          .attr("x", 270)
-          .attr("y", function(d,i){ return 20 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
-          .style("fill", function(d){ return color(d)})
-          .text(function(d){ return d})
-          .attr("text-anchor", "left")
-          .style("alignment-baseline", "middle")
-
-    svg.append("g")
-        .attr('id', 'yAxis')
-        .attr("transform", `translate(${0},0)`)
-        .call(d3.axisLeft(y).tickArguments([5]));
-
-    svg.append("text")
-        .style('fill', 'currentColor')
-        .attr("class", "y label")
-        .attr("text-anchor", "start")
-        .attr("y", marginTop)
-        .attr("x", 20)
-        .attr("dy", ".75em")
-        // .attr("transform", "rotate(-90)")
-        .text("Frame Time (ms)");
-
-    const line = d3.line()
-        .x((_, index) => x(index))
-        .y(d => y(d));
-
-    // draw max line
-    svg.append("line")
-        .style("stroke-dasharray", "3, 3")
-        .attr("stroke", "currentColor")
-        .attr("x1", x(0))
-        .attr("x2", x(nTicks * .75))
-        .attr("y1", y(16.6))
-        .attr("y2", y(16.6))
-
-
-    // draw first line
-    svg.append("path")
-        .attr('id','line')
-        .attr("fill", "none")
-        .attr("stroke", color(legendKeys[0]))
-        .attr("stroke-width", 1.5)
-        .attr("d", line(frameTimeData));
-
-    svg.append("path")
-        .attr('id','line-update')
-        .attr("fill", "none")
-        .attr("stroke", color(legendKeys[1]))
-        .attr("stroke-width", 1.5)
-        .attr("d", line(updateTimeData));
-
-    svg.append("path")
-        .attr('id','line-draw')
-        .attr("fill", "none")
-        .attr("stroke", color(legendKeys[2]))
-        .attr("stroke-width", 1.5)
-        .attr("d", line(drawTimeData));
-
-
-    frameTimeChart.appendChild(svg.node());
-
-    function draw(frameTime, updateTime, drawTime, max) {
-        frameTimeData.push(frameTime);
-        frameTimeData.shift();
-        updateTimeData.push(updateTime);
-        updateTimeData.shift();
-        drawTimeData.push(drawTime);
-        drawTimeData.shift();
-
-        // Append a path for the line.
-        svg.select("path#line")
-            .attr("d", line(frameTimeData));
-
-        svg.select("path#line-update")
-            .attr("d", line(updateTimeData));
-    
-        svg.select("path#line-draw")
-            .attr("d", line(drawTimeData));
-    }
-    return draw;
-}
-
-var drawFrameTime = createFrameTimeGraph();
-
 const backgroundConnection = chrome.runtime.connect({
     name: 'panel'
 });
 
-const hexToColor = (hex) => {
+const hexToColor = (hex: string) => {
     hex = hex.substring(1);
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
@@ -224,7 +158,7 @@ const hexToColor = (hex) => {
     return { r, g, b, a: 1.0 };
 }
 
-const colorToHex = (color) => {
+const colorToHex = (color: Color ) => {
     const r = color.r.toString(16).padStart(2, '0');
     const g = color.g.toString(16).padStart(2, '0');
     const b = color.b.toString(16).padStart(2, '0');
@@ -232,7 +166,7 @@ const colorToHex = (color) => {
 }
 
 
-const updateDebug = (debug) => {
+const updateDebug = (debug: Debug) => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
@@ -241,14 +175,14 @@ const updateDebug = (debug) => {
     });
 }
 
-const selectActor = (actorId) => {
-    const newDebug = { ...engine.debug };
+const selectActor = (actorId: number) => {
+    const newDebug: Debug = { ...engine.debug };
     newDebug.filter.useFilter = true;
     newDebug.filter.ids = [actorId];
     updateDebug(newDebug);
 }
 
-const killActor = (actorId) => {
+const killActor = (actorId: number) => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
@@ -259,6 +193,11 @@ const killActor = (actorId) => {
 
 // version
 const excaliburVersion$ = document.getElementById('excalibur-version');
+
+// graphs
+const litFpsChart = document.querySelector('fps-graph') as FpsGraph;
+const litFrameTimeGraph = document.querySelector('frame-time-graph') as FrameTimeGraph;
+const litStatsList = document.querySelector('stats-list') as StatsList;
 
 // clock
 const toggleTestClock$ = document.getElementById('toggle-test-clock');
@@ -280,15 +219,6 @@ const worldPos$ = document.getElementById('world-pos');
 const screenPos$ = document.getElementById('screen-pos');
 const pagePos$ = document.getElementById('page-pos');
 
-// stats
-const fps$ = document.getElementById('fps');
-const frameTime$ = document.getElementById('frame-time');
-const frameBudget$ = document.getElementById('frame-budget');
-const updateTime$ = document.getElementById('update-time');
-const drawTime$ = document.getElementById('draw-time');
-const drawCalls$ = document.getElementById('draw-calls');
-const numActors$ = document.getElementById('num-actors');
-
 
 // profiler
 const chart = flamegraph().width(1000).setColorHue('blue').selfValue(false).inverted(true).minFrameSize(0);
@@ -306,77 +236,77 @@ const collectProfiler$ = document.getElementById('collect');
 
 // settings
 const posColor$ = document.getElementById('show-pos-color');
-posColor$.addEventListener('sl-input', evt => {
+posColor$!.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
     newDebug.transform.positionColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showNames$ = document.getElementById('show-names');
-showNames$.addEventListener('sl-change', function (evt) {
+showNames$!.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.entity.showName = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showIds$ = document.getElementById('show-ids');
-showIds$.addEventListener('sl-change', function (evt) {
+showIds$!.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.entity.showId = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showPos$ = document.getElementById('show-pos');
-showPos$.addEventListener('sl-change', function (evt) {
+showPos$!.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.transform.showPosition = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showPosLabel$ = document.getElementById('show-pos-label');
-showPosLabel$.addEventListener('sl-change', function (evt) {
+showPosLabel$!.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.transform.showPositionLabel = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const showGraphicsBounds$ = document.getElementById('show-graphics-bounds');
-showGraphicsBounds$.addEventListener('sl-change', function (evt) {
+showGraphicsBounds$!.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.graphics.showBounds = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const graphicsBoundsColor$ = document.getElementById('graphics-bounds-colors');
-graphicsBoundsColor$.addEventListener('sl-input', evt => {
+graphicsBoundsColor$!.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
     newDebug.graphics.boundsColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showColliderBounds$ = document.getElementById('show-collider-bounds');
-showColliderBounds$.addEventListener('sl-change', function (evt) {
+showColliderBounds$!.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.collider.showBounds = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const colliderBoundsColor$ = document.getElementById('collider-bounds-colors');
-colliderBoundsColor$.addEventListener('sl-input', evt => {
+colliderBoundsColor$!.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
     newDebug.collider.boundsColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
 });
 
 const showGeometryBounds$ = document.getElementById('show-geometry-bounds');
-showGeometryBounds$.addEventListener('sl-change', function (evt) {
+showGeometryBounds$!.addEventListener('sl-change', function (evt) {
     const newDebug = { ...engine.debug };
     newDebug.collider.showGeometry = !!evt.target.checked;
     updateDebug(newDebug);
 });
 
 const colliderGeometryColor$ = document.getElementById('collider-geometry-colors');
-colliderGeometryColor$.addEventListener('sl-input', evt => {
+colliderGeometryColor$!.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
     newDebug.collider.geometryColor = hexToColor(evt.target.value);
     updateDebug(newDebug);
@@ -386,74 +316,83 @@ colliderGeometryColor$.addEventListener('sl-input', evt => {
 const updateInput = (pointer) => {
 
     if (pointer?.worldPos && pointer?.screenPos && pointer?.pagePos) {
-        worldPos$.innerText = `(${pointer.worldPos._x.toFixed(2)},${pointer.worldPos._y.toFixed(2)})`
-        screenPos$.innerText = `(${pointer.screenPos._x.toFixed(2)},${pointer.screenPos._y.toFixed(2)})`
-        pagePos$.innerText = `(${pointer.pagePos._x.toFixed(2)},${pointer.pagePos._y.toFixed(2)})`
+        worldPos$!.innerText = `(${pointer.worldPos._x.toFixed(2)},${pointer.worldPos._y.toFixed(2)})`
+        screenPos$!.innerText = `(${pointer.screenPos._x.toFixed(2)},${pointer.screenPos._y.toFixed(2)})`
+        pagePos$!.innerText = `(${pointer.pagePos._x.toFixed(2)},${pointer.pagePos._y.toFixed(2)})`
     }
 }
 
 
-const updateStats = (debug) => {
+const updateStats = (debug: any) => {
 
-    currentScene$.innerText = engine.currentScene;
-    scenes$.innerText = engine.scenes.join(',');
+    currentScene$!.innerText = engine.currentScene;
+    scenes$!.innerText = engine.scenes.join(',');
+
     const fps = debug.stats.currFrame._fps;
-    fps$.innerText = fps.toFixed(2);
-    drawFps(fps);
-    const delta = debug.stats.currFrame._delta;
-    const frameBudget = (delta - debug.stats.currFrame._durationStats.total);
-    const frameTime = debug.stats.currFrame._durationStats.total;
-    frameTime$.innerText = `${frameTime.toFixed(2)}ms (${((frameTime / delta) * 100).toFixed(2)}%)`;
-    drawTime$.innerText = debug.stats.currFrame._durationStats.draw.toFixed(2);
-    updateTime$.innerText = debug.stats.currFrame._durationStats.update.toFixed(2);
-    frameBudget$.innerText = `${frameBudget.toFixed(2)}ms (${((frameBudget / delta) * 100).toFixed(2)}%)`
-    drawFrameTime(frameTime, debug.stats.currFrame._durationStats.update, debug.stats.currFrame._durationStats.draw, delta);
-    numActors$.innerText = debug.stats.currFrame._actorStats.total;
-    drawCalls$.innerText = debug.stats.currFrame._graphicsStats.drawCalls;
-    // debugSettingsRaw$.innerText = JSON.stringify(debug, null, 2);
+    litFpsChart.draw(fps);
+    litFrameTimeGraph.draw(
+        debug.stats.currFrame._durationStats.total,
+        debug.stats.currFrame._durationStats.update,
+        debug.stats.currFrame._durationStats.draw, 
+        debug.stats.currFrame._delta);
+
+    litStatsList.updateStats({
+        fps,
+        delta: debug.stats.currFrame._delta,
+        frameBudget: debug.stats.currFrame._delta - debug.stats.currFrame._durationStats.total,
+        frameTime: debug.stats.currFrame._durationStats.total,
+        updateTime: debug.stats.currFrame._durationStats.update,
+        drawTime: debug.stats.currFrame._durationStats.draw,
+        drawCalls: debug.stats.currFrame._graphicsStats.drawCalls,
+        numActors: debug.stats.currFrame._actorStats.total
+    });
+
+    
 }
 
 
 
 const updateDebugSettings = (debug) => {
 
-    showNames$.checked = debug.entity.showName;
-    showIds$.checked = debug.entity.showId;
+    showNames$!.checked = debug.entity.showName;
+    showIds$!.checked = debug.entity.showId;
 
-    showPos$.checked = debug.transform.showPosition;
-    showPosLabel$.checked = debug.transform.showPositionLabel;
+    showPos$!.checked = debug.transform.showPosition;
+    showPosLabel$!.checked = debug.transform.showPositionLabel;
     const positionColor = debug.transform.positionColor;
-    posColor$.value = colorToHex(positionColor);
+    posColor$!.value = colorToHex(positionColor);
 
-    showGraphicsBounds$.checked = debug.graphics.showBounds;
+    showGraphicsBounds$!.checked = debug.graphics.showBounds;
     const graphicsColor = debug.graphics.boundsColor;
-    graphicsBoundsColor$.value = colorToHex(graphicsColor);
+    graphicsBoundsColor$!.value = colorToHex(graphicsColor);
 
-    showColliderBounds$.checked = debug.collider.showBounds;
+    showColliderBounds$!.checked = debug.collider.showBounds;
     const colliderColor = debug.collider.boundsColor;
-    colliderBoundsColor$.value = colorToHex(colliderColor);
+    colliderBoundsColor$!.value = colorToHex(colliderColor);
 
-    showGeometryBounds$.checked = debug.collider.showGeometry;
+    showGeometryBounds$!.checked = debug.collider.showGeometry;
     const geometryColor = debug.collider.geometryColor;
-    colliderGeometryColor$.value = colorToHex(geometryColor);
+    colliderGeometryColor$!.value = colorToHex(geometryColor);
 }
 
 let entityListChanged = true;
 
 const filterEntities$ = document.getElementById('filter-entities')
 let entityFilter = '';
-filterEntities$.addEventListener('change', evt => {
+filterEntities$!.addEventListener('change', evt => {
     entityFilter = evt.target.value;
 })
-filterEntities$.addEventListener('keyup', evt => {
+filterEntities$!.addEventListener('keyup', evt => {
     entityFilter = evt.target.value;
 })
 
 const showOffscreenEntities$ = document.getElementById('show-offscreen');
 let showOffscreen = false;
-showOffscreenEntities$.addEventListener('change', evt => {
+showOffscreenEntities$!.addEventListener('sl-change', evt => {
     showOffscreen = !!evt.target.checked;
 })
+
+const entityListElement = document.querySelector('entity-list') as EntityList;
 
 
 const updateEntityList = (entities) => {
@@ -466,9 +405,9 @@ const updateEntityList = (entities) => {
         entities = entities.filter(e => e.name.includes(entityFilter));
     }
 
-    if (entities.length !== entityList$.children.length) {
-        while(entityList$.firstChild) {
-            entityList$.removeChild(entityList$.firstChild);
+    if (entities.length !== entityList$!.children.length) {
+        while(entityList$!.firstChild) {
+            entityList$!.removeChild(entityList$!.firstChild);
         }
     }
 
@@ -519,7 +458,7 @@ const updateEntityList = (entities) => {
                 const id = evt.target.getAttribute('entity-id');
                 console.log('kill', id);
                 killActor(+id);
-                entityList$.removeChild(div$);
+                entityList$!.removeChild(div$);
             })
 
             div$.appendChild(id$);
@@ -528,7 +467,7 @@ const updateEntityList = (entities) => {
             div$.appendChild(pos$);
             div$.appendChild(tags$);
             div$.appendChild(kill$);
-            entityList$.appendChild(div$);
+            entityList$!.appendChild(div$);
             // entityMap.set(entity.id, div$);
         }
     }
@@ -542,12 +481,12 @@ backgroundConnection.onMessage.addListener((message) => {
         }
         case 'current-scene': {
             engine.currentScene = message.data;
-            currentScene$.innerText = engine.currentScene;
+            currentScene$!.innerText = engine.currentScene;
             break;
         }
         case 'echo': {
             engine.currentScene = 'echo';
-            currentScene$.innerText = engine.currentScene;
+            currentScene$!.innerText = engine.currentScene;
             break;
         }
         case 'heartbeat':
@@ -556,19 +495,16 @@ backgroundConnection.onMessage.addListener((message) => {
             engine = message.data;
             engine.debug = debug;
 
-            excaliburVersion$.innerText = engine.version;
+            excaliburVersion$!.innerText = engine.version;
             updateInput(engine.pointer);
             updateStats(debug);
+            entityListElement.entities = engine.entities;
             updateEntityList(engine.entities);
             updateDebugSettings(debug);
             break;
         }
         case 'collect-profiler': {
             const data = message.data;
-            // d3.select('#profile-chart')
-            //     .datum(data)
-            //     .call(chart);
-
             const flameChart = new flameChartJs.FlameChart({
                 canvas: flameCanvas,
                 data: [data],
@@ -601,7 +537,7 @@ backgroundConnection.postMessage({
     dispatch: 'install-heartbeat'
 })
 // debug
-toggleDebugButton$.addEventListener('click', () => {
+toggleDebugButton$!.addEventListener('click', () => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
@@ -610,39 +546,39 @@ toggleDebugButton$.addEventListener('click', () => {
 });
 
 // clock
-toggleTestClock$.addEventListener('click', () => {
+toggleTestClock$!.addEventListener('click', () => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
         dispatch: 'toggle-test-clock'
     })
 });
-startClock$.addEventListener('click', () => {
+startClock$!.addEventListener('click', () => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
         dispatch: 'start-clock'
     })
 });
-stopClock$.addEventListener('click', () => {
+stopClock$!.addEventListener('click', () => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
         dispatch: 'stop-clock'
     })
 });
-stepClock$.addEventListener('click', () => {
+stepClock$!.addEventListener('click', () => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
         dispatch: 'step-clock',
-        stepMs: +clockStepMs$.value
+        stepMs: +clockStepMs$!.value
     })
 });
 
 // profiler
 
-startProfiler$.addEventListener('click', () => {
+startProfiler$!.addEventListener('click', () => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
@@ -651,7 +587,7 @@ startProfiler$.addEventListener('click', () => {
     })
 });
 
-collectProfiler$.addEventListener('click', () => {
+collectProfiler$!.addEventListener('click', () => {
     backgroundConnection.postMessage({
         name: 'command',
         tabId: chrome.devtools.inspectedWindow.tabId,
@@ -674,5 +610,3 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
         })
     }
 })
-
-})();

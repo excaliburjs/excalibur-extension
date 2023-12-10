@@ -159,10 +159,18 @@ function echo() {
 
 var connections = {};
 
+var popup = null;
+
 chrome.runtime.onConnect.addListener(function (port) {
 
     var extensionListener = function (message, sender, sendResponse) {
         if (message.__parcel_hmr_reload__) {
+            return;
+        }
+
+        if (message.name === 'init-popup') {
+            popup = sender;
+            popup.postMessage({name: 'test'});
             return;
         }
 
@@ -310,5 +318,4 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     } else {
         console.log("sender.tab not defined.");
     }
-    // return true;
 });

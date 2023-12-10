@@ -1,4 +1,5 @@
 
+
 chrome.devtools.panels.create(
     "Excalibur",
     "icon.png",

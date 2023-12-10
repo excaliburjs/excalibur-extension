@@ -5,11 +5,16 @@
   },
   "dependencies": {
     "@shoelace-style/shoelace": "2.12.0",
+    "bootstrap-icons": "1.11.2",
+    "d3": "7.8.5",
     "lit": "3.1.0"
   },
   "devDependencies": {
     "@parcel/config-webextension": "2.10.3",
+    "@types/chrome": "0.0.254",
+    "@types/d3": "7.4.3",
     "parcel": "2.10.3",
+    "parcel-reporter-static-files-copy": "1.5.3",
     "process": "^0.11.10"
   }
 }

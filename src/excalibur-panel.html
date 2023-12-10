@@ -6,248 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excalibur Dev Tools</title>
     <link rel="stylesheet" href="../node_modules/@shoelace-style/shoelace/cdn/themes/dark.css" />
-    <style>
-        :root {
-            --background-color: #292929;
-            --panel-color: #1e1e1e;
-            --darker-panel-color: #1a1a1a;
-            --green-highlight: #232A2C;
-            --green-background: #273635;
-            --blue-background: #272935;
-            --yellow-background: #333025;
-            --red-background: #612525;
-            --green-text: #25A786;
-            --blue-text: #48EDF1;
-            --black-accent: #151515;
-            --yellow-accent: #FFF423;
-            --orange-accent: #FDA124;
-            --dark-orange-accent: #F25223;
-            --red-accent: #F22337;
-            --purple-accent: #FD2484;
-            --ex-blue-accent: #176BAA;
-        }
-
-        body {
-            font-family: sans-serif;
-            font-size: 16px;
-            margin: 0;
-            padding: 0;
-        }
-
-        button {
-            all: unset;
-            cursor: pointer;
-            background-color: var(--green-background);
-            color: var(--green-text);
-            padding: 5px;
-            margin-bottom: 5px;
-        }
-
-        button:hover {
-            background-color: var(--green-highlight);
-        }
-
-        button:active {
-            background-color: var(--green-background);
-        }
-
-        /* TODO support lite mode */
-        /* @media (prefers-color-scheme: dark) { */
-        body {
-            background-color: var(--background-color);
-            color: #ccc;
-        }
-
-        /* } */
-
-        h1 {
-            margin: 5px;
-            display: flex;
-            align-items: center;
-        }
-
-        h1 img {
-            max-height: 70px;
-            margin-left: -40px;
-            margin-right: -40px;
-        }
-
-        h2 {
-            position: relative;
-            background-color: var(--panel-color);
-            padding: 10px;
-            margin-top: 0;
-            margin-bottom: 10px;
-        }
-
-        h2::before {
-            content: '';
-            position: absolute;
-            left: -5px;
-            top: 0;
-            height: 100%;
-            border-left: 5px solid var(--ex-blue-accent);
-        }
-
-        h3 {
-            position: relative;
-            padding: 0;
-            margin-top: 0;
-            margin-bottom: 10px;
-        }
-
-        .version {
-            margin-left: 10px;
-        }
-
-        .debug-settings {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .section {
-            position: relative;
-            /* border: solid 2px; */
-            padding: 10px;
-            /* border-radius: 5px; */
-            background-color: var(--panel-color);
-            margin-bottom: 10px;
-        }
-
-        .section::before {
-            content: '';
-            position: absolute;
-            left: -5px;
-            top: 0;
-            height: 100%;
-            border-left: 5px solid var(--red-accent);
-        }
-
-        .chart {
-            position: relative;
-            background-color: var(--panel-color);
-            margin-bottom: 10px;
-        }
-
-        .chart::before {
-            content: '';
-            position: absolute;
-            left: -5px;
-            top: 0;
-            height: 100%;
-            border-left: 5px solid var(--purple-accent);
-        }
-
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-        }
-
-        .form-row {
-            display: flex;
-            flex-wrap: nowrap;
-            align-items: center;
-        }
-
-        .form-row>*:not(:last-child) {
-            margin-right: 5px;
-        }
-
-        .form-row>*:last-child {
-
-            margin-left: auto;
-        }
-
-        .widget {
-            min-width: 300px;
-            margin: 10px;
-        }
-
-        .entity {
-            width: 250px;
-            display: flex;
-            flex-wrap: wrap;
-            padding: 5px;
-            background-color: var(--darker-panel-color);
-            margin-bottom: 5px;
-            position: relative;
-            cursor: pointer;
-            align-items: center;
-        }
-
-        .entity::before {
-            content: '';
-            position: absolute;
-            left: -5px;
-            top: 0;
-            height: 100%;
-            border-left: 5px solid var(--blue-text);
-        }
-
-        .entity:hover {
-            background-color: #202732;
-        }
-
-        .entity .name {
-            background-color: var(--green-background);
-            padding: 5px;
-            border-radius: 2px;
-            max-width: fit-content;
-            margin-right: 5px;
-        }
-
-        .entity .ctor {
-            background-color: var(--green-background);
-            padding: 5px;
-            border-radius: 2px;
-            max-width: fit-content;
-            margin-right: 5px;
-        }
-
-        .entity .id {
-            background-color: var(--blue-background);
-            padding: 5px;
-            border-radius: 2px;
-            max-width: fit-content;
-            margin-right: 5px;
-        }
-
-        .entity .pos {
-            background-color: var(--yellow-background);
-            padding: 5px;
-            border-radius: 2px;
-            max-width: fit-content;
-            margin-right: 5px;
-        }
-
-        .entity .tags {
-            background-color: var(--red-background);
-            padding: 5px;
-            border-radius: 2px;
-            max-width: fit-content;
-            margin-right: 5px;
-        }
-
-        .entity button {
-            margin-left: auto;
-            background-image: url(../res/kenny_game-icons/PNG/White/2x/cross.png);
-            width: 20px;
-            height: 20px;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: contain;
-        }
-
-        .entity button:hover {
-            background-color: var(--red-background);
-        }
-    </style>
+    <link rel="stylesheet" href="./excalibur.css">
 </head>
 
 <body>
     <h1><img src="../res/logo-white@2x.png" alt="Excalibur Dev Tools">Dev Tools</h1>
     <div class="version">Engine Version: <span id="excalibur-version">???</span></div>
     <entity-inspector></entity-inspector>
+    
 
     <sl-tab-group>
         <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
@@ -293,6 +59,7 @@
                     <div class="row">
                         <div class="widget">
                             <h2>Entities</h2>
+                            <entity-list></entity-list>
                             <div class="section">
                                 <div class="form-row">
                                     <!-- <input type="text" name="filter entities" id="filter-entities"> -->
@@ -327,20 +94,12 @@
                 <div class="widget">
                     <h2>Stats</h2>
                     <div class="row">
-                        <div class="section">
-                            <div>FPS: <span id="fps"></span></div>
-                            <div>Frame Time: <span id="frame-time"></span></div>
-                            <div>Frame Budget: <span id="frame-budget"></span></div>
-                            <div>Update Time: <span id="update-time"></span></div>
-                            <div>Draw Time: <span id="draw-time"></span></div>
-                            <div>Draw Calls: <span id="draw-calls"></span></div>
-                            <div>Actors: <span id="num-actors"></span></div>
+                        <stats-list></stats-list>
+                        <div class="widget">
+                            <fps-graph class="chart"></fps-graph>
                         </div>
                         <div class="widget">
-                            <div id="fps-chart" class="chart"></div>
-                        </div>
-                        <div class="widget">
-                            <div id="frame-time-chart" class="chart"></div>
+                            <frame-time-graph class="chart"></frame-time-graph>
                         </div>
                     </div>
                 </div>
@@ -438,13 +197,10 @@
         </sl-tab-panel>
     </sl-tab-group>
 
-
-
     <script type="module" src="/node_modules/@shoelace-style/shoelace/cdn/shoelace.js"></script>
-    <script src="../lib/d3.js"></script>
     <script src="../lib/d3-flamegraph.js"></script>
     <script src="../lib/flame-chart-js.js"></script>
-    <script src="./excalibur-panel.js"></script>
+    <script type="module" src="./excalibur-panel.ts"></script>
 </body>
 
 </html>

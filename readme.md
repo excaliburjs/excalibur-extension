@@ -15,6 +15,7 @@ Debug
 
 
 ## Todos
+* [ ] Support popup
 * [ ] Support firefox https://extensionworkshop.com/documentation/develop/porting-a-google-chrome-extension/
 * [ ] Show "no excalibur detected" if something isn't in the extension
 * [ ] Reload on error or disconnect
