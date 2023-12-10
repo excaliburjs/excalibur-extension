@@ -60,19 +60,6 @@
                         <div class="widget">
                             <h2>Entities</h2>
                             <entity-list></entity-list>
-                            <div class="section">
-                                <div class="form-row">
-                                    <!-- <input type="text" name="filter entities" id="filter-entities"> -->
-                                    <sl-input id="filter-entities" placeholder="Filter Entities"></sl-input>
-                                    <!-- <label for="filter-entities">Filter Entities</label> -->
-                                </div>
-                                <div class="form-row">
-                                    <!-- <input type="checkbox" id="show-offscreen" name="show offscreen actors"> -->
-                                    <sl-switch id="show-offscreen">Show Offscreen Entities</sl-switch>
-                                    <!-- <label for="show-offscreen">Show Offscreen Entities</label> -->
-                                </div>
-                                <div id="entity-list"></div>
-                            </div>
                         </div>
                         <div class="widget">
                             <h2>Scene</h2>
@@ -94,13 +81,13 @@
                 <div class="widget">
                     <h2>Stats</h2>
                     <div class="row">
-                        <stats-list></stats-list>
                         <div class="widget">
                             <fps-graph class="chart"></fps-graph>
                         </div>
                         <div class="widget">
                             <frame-time-graph class="chart"></frame-time-graph>
                         </div>
+                        <stats-list></stats-list>
                     </div>
                 </div>
 
@@ -126,6 +113,7 @@
             <div class="row">
                 <div class="widget">
                     <h2>Debug Draw Settings</h2>
+                    <debug-settings></debug-settings>
                     <div class="debug-settings section">
                         <div>
                             <button id="toggle-debug">Toggle Debug Draw</button>

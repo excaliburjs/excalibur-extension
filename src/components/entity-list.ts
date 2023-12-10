@@ -1,8 +1,9 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js'
+import { customElement, property, state } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat';
 import { colors } from '../colors';
 import { common } from '../common';
+import { SlChangeEvent, SlInput, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
 
 // import '@shoelace-style/shoelace/dist/components/card';
 // import '@shoelace-style/shoelace/dist/components/tag';
@@ -47,6 +48,13 @@ export class EntityList extends LitElement {
                 margin: 2px;
             }
 
+            sl-input {
+                padding-bottom: 10px;
+            }
+            sl-switch {
+                padding-bottom: 10px;
+            }
+
             .scrollbar::-webkit-scrollbar-track
             {
                 -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
@@ -70,11 +78,36 @@ export class EntityList extends LitElement {
 
     @property({ type: Array }) entities: Entity[] = [];
 
+    @state()
+    showOffscreen = false;
+    
+    @state()
+    entityFilter = '';
+
+    private _toggleOffscreen(evt: SlChangeEvent) {
+        this.showOffscreen = !!(evt?.target as SlSwitch).checked;
+    }
+
+    private _inputFilter(evt: SlInputEvent) {
+        this.entityFilter = (evt.target as SlInput).value;
+    }
+
     render() {
+        let entities = this.entities.slice();
+        if (!this.showOffscreen) {
+            entities = entities.filter(e => !e.tags.includes('ex.offscreen'));
+        }
+    
+        if (this.entityFilter) {
+            entities = entities.filter(e => e.name.includes(this.entityFilter));
+        }
+
         return html`
         <div class="section">
+            <sl-input id="filter-entities" @sl-input=${this._inputFilter} placeholder="Filter Entities by Name"></sl-input>
+            <sl-switch id="show-offscreen" @sl-change=${this._toggleOffscreen}>Show Offscreen Entities</sl-switch>
             <ul class="scrollbar">
-            ${repeat(this.entities, (entity: Entity) => entity.id, (entity: Entity) => html`
+            ${repeat(entities, (entity: Entity) => entity.id, (entity: Entity) => html`
                 <li>
                     <sl-card>
                         <div slot="header"> ${entity.name} | ${entity.ctor} 

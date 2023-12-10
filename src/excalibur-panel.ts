@@ -7,24 +7,20 @@ import { FrameTimeGraph } from './components/frame-time-graph';
 import './components/stats-list';
 import { StatsList } from './components/stats-list';
 
-import './components/entity-list';;
+import './components/entity-list';
 import { EntityList } from './components/entity-list';
 
+import './components/debug-settings';
+import { DebugSettings } from './components/debug-settings';
 
-interface DebugStats {
 
-}
-
-interface ColorBlindFlags {
-
-}
-
+interface DebugStats {}
+interface ColorBlindFlags {}
 interface Color {
     r: number;
     g: number;
     b: number;
 }
-
 interface Debug {
     /**
      * Performance statistics
@@ -211,8 +207,6 @@ const stepClock$ = document.getElementById('step-clock');
 const toggleDebugButton$ = document.getElementById('toggle-debug');
 const currentScene$ = document.getElementById('current-scene-name');
 const scenes$ = document.getElementById('scenes');
-const debugSettingsRaw$ = document.getElementById('debug-settings-raw');
-const entityList$ = document.getElementById('entity-list');
 
 // input 
 const worldPos$ = document.getElementById('world-pos');
@@ -235,6 +229,8 @@ const startProfiler$ = document.getElementById('start');
 const collectProfiler$ = document.getElementById('collect');
 
 // settings
+const debugSettings = document.querySelector('debug-settings') as DebugSettings;
+
 const posColor$ = document.getElementById('show-pos-color');
 posColor$!.addEventListener('sl-input', evt => {
     const newDebug = { ...engine.debug };
@@ -352,7 +348,21 @@ const updateStats = (debug: any) => {
 
 
 
-const updateDebugSettings = (debug) => {
+const updateDebugSettings = (debug: any) => {
+
+    debugSettings.updateSettings({
+        showNames: debug.entity.showName,
+        showIds: debug.entity.showId,
+        showPos: debug.transform.showPosition,
+        showPosLabel: debug.transform.showPositionLabel,
+        posColor: debug.transform.positionColor,
+        showGraphicsBounds: debug.graphics.showBounds,
+        graphicsBoundsColor: debug.graphics.boundsColor,
+        showColliderBounds: debug.collider.showBounds,
+        colldierBoundsColor: debug.collider.boundsColor,
+        showGeometryBounds: debug.collider.showGeometry,
+        geometryBoundsColor: debug.collider.geometryColor
+    })
 
     showNames$!.checked = debug.entity.showName;
     showIds$!.checked = debug.entity.showId;
@@ -375,103 +385,8 @@ const updateDebugSettings = (debug) => {
     colliderGeometryColor$!.value = colorToHex(geometryColor);
 }
 
-let entityListChanged = true;
-
-const filterEntities$ = document.getElementById('filter-entities')
-let entityFilter = '';
-filterEntities$!.addEventListener('change', evt => {
-    entityFilter = evt.target.value;
-})
-filterEntities$!.addEventListener('keyup', evt => {
-    entityFilter = evt.target.value;
-})
-
-const showOffscreenEntities$ = document.getElementById('show-offscreen');
-let showOffscreen = false;
-showOffscreenEntities$!.addEventListener('sl-change', evt => {
-    showOffscreen = !!evt.target.checked;
-})
-
 const entityListElement = document.querySelector('entity-list') as EntityList;
 
-
-const updateEntityList = (entities) => {
-
-    if (!showOffscreen) {
-        entities = entities.filter(e => !e.tags.includes('ex.offscreen'));
-    }
-
-    if (entityFilter) {
-        entities = entities.filter(e => e.name.includes(entityFilter));
-    }
-
-    if (entities.length !== entityList$!.children.length) {
-        while(entityList$!.firstChild) {
-            entityList$!.removeChild(entityList$!.firstChild);
-        }
-    }
-
-    for (let entity of entities) {
-        const entityDivId = 'entity-' + entity.id;
-        const maybeDiv = document.getElementById(entityDivId);
-        if (maybeDiv) {
-            maybeDiv.children[0].innerText = entity.id;
-            maybeDiv.children[1].innerText = entity.name;
-            maybeDiv.children[2].innerText = entity.ctor;
-            maybeDiv.children[3].innerText = entity.pos;
-            maybeDiv.children[4].innerText = 'tags: ' + entity.tags.join(', ');
-
-        } else {
-            const div$ = document.createElement('div');
-            div$.id = entityDivId;
-            div$.className = 'entity';
-            div$.addEventListener('mouseover', (evt) => {
-                // selectActor(entity.id);
-            });
-            div$.addEventListener('click', (evt) => {
-                selectActor(entity.id);
-            });
-
-            const id$ = document.createElement('div');
-            id$.innerText = entity.id;
-            id$.className = 'id';
-
-            const name$ = document.createElement('div');
-            name$.innerText = entity.name;
-            name$.className = 'name';
-
-            const ctor$ = document.createElement('div');
-            ctor$.innerText = entity.ctor;
-            ctor$.className = 'ctor';
-
-            const pos$ = document.createElement('div');
-            pos$.innerText = entity.pos;
-            pos$.className = 'pos';
-
-            const tags$ = document.createElement('div');
-            tags$.className = 'tags'
-            tags$.innerText = 'tags: ';
-
-            const kill$ = document.createElement('button');
-            kill$.setAttribute('entity-id', entity.id);
-            kill$.addEventListener('click', evt => {
-                const id = evt.target.getAttribute('entity-id');
-                console.log('kill', id);
-                killActor(+id);
-                entityList$!.removeChild(div$);
-            })
-
-            div$.appendChild(id$);
-            div$.appendChild(name$);
-            div$.appendChild(ctor$);
-            div$.appendChild(pos$);
-            div$.appendChild(tags$);
-            div$.appendChild(kill$);
-            entityList$!.appendChild(div$);
-            // entityMap.set(entity.id, div$);
-        }
-    }
-}
 
 backgroundConnection.onMessage.addListener((message) => {
     switch (message.name) {
@@ -499,7 +414,6 @@ backgroundConnection.onMessage.addListener((message) => {
             updateInput(engine.pointer);
             updateStats(debug);
             entityListElement.entities = engine.entities;
-            updateEntityList(engine.entities);
             updateDebugSettings(debug);
             break;
         }
@@ -597,7 +511,7 @@ collectProfiler$!.addEventListener('click', () => {
 
 // Handles when user navigates and re-installs the content script telemetry
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-    if (changeInfo.status === 'complete') {
+    if (changeInfo.status === 'complete' && tabId === chrome.devtools.inspectedWindow.tabId) {
         backgroundConnection.postMessage({
             name: 'init',
             tabId: chrome.devtools.inspectedWindow.tabId

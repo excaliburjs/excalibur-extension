@@ -3,6 +3,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js'
 import { colors } from '../colors';
+import { common } from '../common';
 
 export interface Stats {
     fps: number;
@@ -19,9 +20,11 @@ export interface Stats {
 export class StatsList extends LitElement {
     static styles = [
         colors,
+        common,
         css`
             :host {
                 display: block;
+                width: 300px;
             }
                     .section {
             position: relative;
@@ -30,15 +33,6 @@ export class StatsList extends LitElement {
             /* border-radius: 5px; */
             background-color: var(--panel-color);
             margin-bottom: 10px;
-        }
-
-        .section::before {
-            content: '';
-            position: absolute;
-            left: -5px;
-            top: 0;
-            height: 100%;
-            border-left: 5px solid var(--red-accent);
         }
         `
     ];
