@@ -12,6 +12,18 @@ Debug
 
 ![Example Extension Running](./extension.gif)
 
+## Running Locally & Side Loading
+
+If you want to develop locally
+
+* Install node.js
+* Run `npm install` in the root directory
+* Run `npm run start` this will start a parcel dev server, or run `npm run build` to produce a prod bundle
+* Open `chrome://extensions/` and click "Load unpacked"
+  ![chrome extensions tab](chrome-extensions.png)
+* Select the dist directory in the `excalibur-extension` project
+  ![excalibur-extension dist directory](dist-dir.png)
+
 
 ## Features That We Want!
 
