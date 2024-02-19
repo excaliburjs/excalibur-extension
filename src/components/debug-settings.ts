@@ -169,6 +169,20 @@ export interface Settings {
     geometryBoundsColor: Color;
 }
 
+export const DefaultSettings: Settings = {
+    showNames: false,
+    showIds: false,
+    showPos: false,
+    showPosLabel: false,
+    posColor: {r: 0, g: 0, b: 0, a: 1},
+    showGraphicsBounds: false,
+    graphicsBoundsColor: {r: 0, g: 0, b: 0, a: 1},
+    showColliderBounds: false,
+    colliderBoundsColor: {r: 0, g: 0, b: 0, a: 1},
+    showGeometryBounds: false,
+    geometryBoundsColor: {r: 0, g: 0, b: 0, a: 1}
+}
+
 /**
  * @event debug-settings-change - Emitted when settings change
  * @event toggle-debug-draw -  Emitted when toggle debug draw is clicked
@@ -205,8 +219,7 @@ export class DebugSettings extends LitElement {
         showColliderBounds: false,
         colliderBoundsColor: {r: 0, g: 0, b: 0, a: 1},
         showGeometryBounds: false,
-        geometryBoundsColor: {r: 0, g: 0, b: 0, a: 1},
-
+        geometryBoundsColor: {r: 0, g: 0, b: 0, a: 1}
     };
 
     updateSettings(settings: Settings) {
@@ -255,6 +268,7 @@ export class DebugSettings extends LitElement {
     render() {
         return html`
         <div class="debug-settings section">
+            <form>
             <div>
                 <sl-button id="toggle-debug" @click="${this.dispatchToggleDebugDraw}">Toggle Debug Draw</sl-button>
             </div>
@@ -285,7 +299,9 @@ export class DebugSettings extends LitElement {
                     <label for="show-pos-label">Show Label</label>
                 </div>
                 <div>
-                    <sl-color-picker id="show-pos-color" 
+                    <sl-color-picker id="show-pos-color"
+                        .format=${'hex'}
+                        .noFormatToggle=${true}
                         .hoist=${true} 
                         .value=${colorToHex(this.settings?.posColor ?? black)}
                         @sl-input=${this.settingsColorInputHandler('posColor')}>Color</sl-color-picker>
@@ -342,6 +358,7 @@ export class DebugSettings extends LitElement {
                         @sl-input=${this.settingsColorInputHandler('geometryBoundsColor')}>Color</sl-color-picker>
                 </div>
             </div>
+            </form>
         </div>
         
         `;

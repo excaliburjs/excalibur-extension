@@ -11,7 +11,7 @@ import './stats-list';
 import './scene-list';
 import { colors } from '../colors';
 import { common } from '../common';
-import { Debug, Settings } from './debug-settings';
+import { Debug, DefaultSettings, Settings } from './debug-settings';
 import { FpsGraph } from './fps-graph';
 import { FrameTimeGraph } from './frame-time-graph';
 import { Stats } from './stats-list';
@@ -98,7 +98,7 @@ export class App extends LitElement {
     }
 
     @state({ hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue) })
-    settings: Settings | null = null;
+    settings: Settings | null = DefaultSettings;
 
     @state({ hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue) })
     stats: Stats = {
