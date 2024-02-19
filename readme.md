@@ -1,8 +1,6 @@
 # Excalibur Dev Tools Plugin
 
-⚠️ Currently a work in progress! ⚠️
-
-This excalibur game developers to easily inspect their games while making them!
+This [excalibur game](https://excaliburjs.com) developers to easily inspect their games while making them!
 
 Debug
 * Performance issues
@@ -10,55 +8,44 @@ Debug
 * Actor geometry
 * Colliders
 * Scenes
+* Toggle Debug Draw
 
 ![Example Extension Running](./extension.gif)
 
 
-## Todos
+## Features That We Want!
 
-* [ ] Reinstall extension button
-* [ ] Support popup
-* [ ] Support firefox https://extensionworkshop.com/documentation/develop/porting-a-google-chrome-extension/
+PR's welcome
+
+* [ ] Global audio settings
+  * [ ] List sounds that are playing
+  * [ ] Mute sounds
+* [ ] Excalibur Action Window Pop-up
+* [ ] Support firefox with manifest v3 https://extensionworkshop.com/documentation/develop/porting-a-google-chrome-extension/
 * [ ] Show "no excalibur detected" if something isn't in the extension
-* [ ] Reload on error or disconnect
-* [x] Show constructor name if anonymous
 * [ ] Make sure lite mode looks okay
 * [ ] List active event listeners on stuff for debugging!
-* [ ] Remember debug settings across refreshes
-* [x] Refactor into multiple files
-* [x] Figure out TS/lit html
-* [ ] Show entities as a tree view
-* [ ] Show entity explorer
-* [ ] Test culling logic
+* [ ] Remember debug settings across refreshes/closing
+* [ ] Show entities as a tree view so child/parent relationships are clear
 * [ ] Screen settings
-  * override camera? and add click to drag
-  * Zoom the camera!
-  * resolution
-  * displaymode
-  * antialiasing
-  * content area
-  * color blind testing tools
+  * [ ] Override camera with a click an drag
+  * [ ] Zoom the camera!
+  * [ ] Change Resolution
+  * [ ] Change DisplayMode
+  * [ ] Adjust antialiasing settings
+  * [ ] Display Content Area
+  * [ ] Expose Color Blind Testing Tools
 * [ ] Physics settings
-  * Max fps
-  * Fixed step fps
-  * Interpolation
-  * Gravity
-  * Iterations
-* [x] Frame stepping! for debugging physics
+  * [ ] Switch between solvers Arcade/Realistic
+  * [ ] Max fps
+  * [ ] Fixed step fps
+  * [ ] Interpolation
+  * [ ] Gravity
+  * [ ] Iterations
 * [ ] Show loaded resources
-* [x] Show world/screen/page coordinates under pointer
-* [x] Toggle debug values
-* [x] Style cooler than the current
-* [ ] Entity inspector side panel
-  - When you hover in the dev tool it highlights in the game!
-  - When you hover in the game it highlights in the dev tools!
-* [x] Cool ass charts with d3
-  - [x] FPS over time https://gist.github.com/ralphbean/1271115/de23af71ba74876775aa3569abc8968072696aff
-  - [x] Frame budget over time
-     - https://d3-graph-gallery.com/graph/interactivity_zoom.html
-  - [ ] Actors over time
-  - [ ] System time breakdown
-  - [ ] Query maintenance and size
+* [ ] Entity inspector side panel with component value detials
+  - When you hover over an actor/entity in the dev tool it highlights in the game!
+  - When you hover over an actor/entity in the game it highlights in the dev tools!
 
 * [ ] System JS info?
   - Possible permissions https://developer.chrome.com/docs/extensions/mv3/declare_permissions/#permissions
