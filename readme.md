@@ -15,6 +15,8 @@ Debug
 
 
 ## Todos
+
+* [ ] Reinstall extension button
 * [ ] Support popup
 * [ ] Support firefox https://extensionworkshop.com/documentation/develop/porting-a-google-chrome-extension/
 * [ ] Show "no excalibur detected" if something isn't in the extension
@@ -27,7 +29,10 @@ Debug
 * [x] Figure out TS/lit html
 * [ ] Show entities as a tree view
 * [ ] Show entity explorer
+* [ ] Test culling logic
 * [ ] Screen settings
+  * override camera? and add click to drag
+  * Zoom the camera!
   * resolution
   * displaymode
   * antialiasing

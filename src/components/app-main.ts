@@ -8,6 +8,7 @@ import './fps-graph';
 import './frame-time-graph';
 import './flame-chart';
 import './stats-list';
+import './scene-list';
 import { colors } from '../colors';
 import { common } from '../common';
 import { Debug, Settings } from './debug-settings';
@@ -342,6 +343,16 @@ export class App extends LitElement {
             actorId: id
         })
     }
+
+    goToScene(evt: any) {
+        const scene = evt.detail as string;
+        this.backgroundConnection.postMessage({
+            name: 'command',
+            tabId: chrome.devtools.inspectedWindow.tabId,
+            dispatch: 'goto',
+            scene
+        })
+    }
  
     override render() {
         return html`
@@ -355,8 +366,8 @@ export class App extends LitElement {
             <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
 
             <sl-tab-panel name="inspector">
-                <sl-split-panel position="75">
-                    <div slot="start">
+                <!-- <sl-split-panel position="75"> -->
+                    <!-- <div slot="start"> -->
 
                         <div class="row">
                             <div class="widget">
@@ -398,17 +409,18 @@ export class App extends LitElement {
                             <div class="widget">
                                 <h2>Scene</h2>
                                 <div class="section">
-                                    <div>Current Scene: <span id="current-scene-name"></span></div>
-                                    <div>Switch Scene: <span id="scenes"></span></div>
+                                    <div>Current Scene: <span id="current-scene-name">${this.engine.currentScene}</span></div>
+                                    <div>Available Scenes:
+                                        <scene-list @goto-scene=${this.goToScene} .scenes=${this.engine.scenes}></scene-list>
+                                    </div>
                                 </div>
 
                             </div>
                         </div>
-                    </div>
-                    <div slot="end">
-                        <!-- TODO entity inspector here -->
-                    </div>
-                </sl-split-panel>
+                    <!-- </div> -->
+                    <!-- <div slot="end">
+                    </div> -->
+                <!-- </sl-split-panel> -->
             </sl-tab-panel>
             <sl-tab-panel name="perf">
                 <div class="row">
@@ -426,7 +438,7 @@ export class App extends LitElement {
                     </div>
 
                 </div>
-                <div class="row">
+                <!-- <div class="row">
                     <div class="widget">
                         <h2>Profiling</h2>
                         <div class="section" style="width: 1000px;">
@@ -440,7 +452,7 @@ export class App extends LitElement {
                             <flame-chart></flame-chart>
                         </div>
                     </div>
-                </div>
+                </div> -->
             </sl-tab-panel>
             <sl-tab-panel name="debugdraw">
                 <div class="row">

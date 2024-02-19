@@ -40,7 +40,7 @@ function installHeartBeat(pollingInterval = 200) {
                 let entities = [];
                 for (let entity of game.currentScene.entities) {
                     const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
-                    const tags = entity.tags;
+                    const tags = Array.from(entity.tags);
                     entities.push({
                         id: entity.id,
                         name: entity.name,
@@ -109,6 +109,13 @@ function kill(actorId) {
         const game = window.___EXCALIBUR_DEVTOOL;
         const actor = game.currentScene.world.entityManager.getById(actorId);
         actor.kill();
+    }
+}
+
+async function goto(scene) {
+    if ((window).___EXCALIBUR_DEVTOOL) {
+        const game = window.___EXCALIBUR_DEVTOOL;
+        return await game.director.swapScene(scene);
     }
 }
 
@@ -227,6 +234,15 @@ chrome.runtime.onConnect.addListener(function (port) {
                         args: [message.actorId]
                     });
                     break;
+                }
+                case 'goto': {
+                    chrome.scripting.executeScript({
+                        target: { tabId: message.tabId },
+                        world: 'MAIN',
+                        func: goto,
+                        injectImmediately: true,
+                        args: [message.scene]
+                    });
                 }
                 case 'toggle-test-clock': {
                     chrome.scripting.executeScript({
