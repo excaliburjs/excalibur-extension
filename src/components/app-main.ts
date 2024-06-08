@@ -27,6 +27,7 @@ interface Engine {
     pointer: any;
 }
 
+
 @customElement('app-main')
 export class App extends LitElement {
     static styles = [
@@ -121,27 +122,65 @@ export class App extends LitElement {
 
     backgroundConnection!: chrome.runtime.Port;
 
-    override firstUpdated(): void {
+    override firstUpdated(): void {        
+        this.connectToExtension()
+
+        if (this.backgroundConnection) {
+            this.backgroundConnection?.onMessage.addListener(this.backgroundMessageDispatch);
+
+            // Handles when user navigates and re-installs the content script telemetry
+            chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+                if (changeInfo.status === 'complete' && tabId === chrome.devtools.inspectedWindow.tabId) {
+                    this.installTelemetry()
+                }
+            })
+
+            this.installTelemetry()
+
+        } else {
+            console.error('Could not connect to background page?');
+        }
+
+        // reload panel when tab/service-worker was reloaded
+        document.addEventListener('visibilitychange', (ev) => {            
+            if (document.visibilityState === 'visible') {        
+                try {        
+                    // this will throw an error if the extension context was lost... not sure
+                    // if there's a better way to do this
+                    this.connectToExtension()
+                } catch (err) {
+                    // i couldn't figure out a way to properly reconnect, so just reload the page
+                    if (err instanceof Error && err.message.match(/Extension context invalidated/)) {                                
+                        window.location.reload()
+                    } else {
+                        throw err
+                    }
+                    throw err
+                }
+            }
+        })
+    }
+
+    connectToExtension = () => {
         this.backgroundConnection = chrome.runtime.connect({
-            name: 'panel'
-        });
+            name: 'panel',
+        })
+        return this.backgroundConnection
+    }
 
-        this.chromeExtensionAttach(this.backgroundConnection);
-
-        // install content script telemetry
-        this.backgroundConnection.postMessage({
+    installTelemetry = () => {
+        this.backgroundConnection?.postMessage({
             name: 'init',
             tabId: chrome.devtools.inspectedWindow.tabId
         });
 
-        this.backgroundConnection.postMessage({
+        this.backgroundConnection?.postMessage({
             name: 'command',
             tabId: chrome.devtools.inspectedWindow.tabId,
             dispatch: 'install-heartbeat'
         })
     }
-
-    backgroundMessageDispatch = (message: { name: string, data: any }) => {
+    backgroundMessageDispatch = (message: { name: string, data: any }) => {                
         switch (message.name) {
             case 'scenes': {
                 this.engine.scenes = message.data;
@@ -156,7 +195,7 @@ export class App extends LitElement {
                 break;
             }
             case 'heartbeat':
-            case 'install': {
+            case 'install': {                
                 const debug = JSON.parse(message.data.debug) as Debug;
                 this.engine = message.data;
                 this.engine.debug = debug;
@@ -212,25 +251,6 @@ export class App extends LitElement {
         }
     }
 
-    chromeExtensionAttach(connection: chrome.runtime.Port) {
-        connection.onMessage.addListener(this.backgroundMessageDispatch);
-
-        // Handles when user navigates and re-installs the content script telemetry
-        chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-            if (changeInfo.status === 'complete' && tabId === chrome.devtools.inspectedWindow.tabId) {
-                connection.postMessage({
-                    name: 'init',
-                    tabId: chrome.devtools.inspectedWindow.tabId
-                });
-
-                connection.postMessage({
-                    name: 'command',
-                    tabId: chrome.devtools.inspectedWindow.tabId,
-                    dispatch: 'install-heartbeat'
-                })
-            }
-        })
-    }
 
 
     updateDebugSetting(evt: any) {
