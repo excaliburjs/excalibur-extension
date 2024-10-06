@@ -3,12 +3,12 @@
     "version": "1.0.0",
     "description": "Excalibur.js browser plugin for debugging your games",
     "manifest_version": 3,
-    "devtools_page": "devtools.html",
+    "devtools_page": "../devtools.html",
     "permissions": [
         "scripting"
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "../background.js"
     },
     "content_scripts": [
         {
@@ -16,7 +16,7 @@
                 "<all_urls>"
             ],
             "js": [
-                "content-script.js"
+                "../content-script.js"
             ],
             "all_frames": true,
             "css": [],
@@ -35,7 +35,7 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "excalibur-panel.html"
+                "../excalibur-panel.html"
             ],
             "matches": [
                 "<all_urls>"
@@ -43,10 +43,10 @@
         }
     ],
     "icons": {
-        "16": "../res/icon-16.png",
-        "32": "../res/icon-32.png",
-        "48": "../res/icon-48.png",
-        "64": "../res/icon-64.png",
-        "128": "../res/icon-128.png"
+        "16": "../../res/icon-16.png",
+        "32": "../../res/icon-32.png",
+        "48": "../../res/icon-48.png",
+        "64": "../../res/icon-64.png",
+        "128": "../../res/icon-128.png"
     }
 }

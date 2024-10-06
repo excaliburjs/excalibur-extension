@@ -18,6 +18,18 @@ import { Stats } from './stats-list';
 import { FlameChart } from './flame-chart';
 import { SlChangeEvent, SlInput } from '@shoelace-style/shoelace';
 
+
+declare namespace browser {
+    export import runtime = chrome.runtime;
+    export import tabs = chrome.tabs;
+    export import devtools = chrome.devtools;
+}
+
+if (typeof browser == "undefined") {
+    // Chrome does not support the browser namespace yet.
+    (globalThis as any).browser = chrome;
+}
+
 interface Engine {
     version: string;
     currentScene: string;
@@ -120,7 +132,7 @@ export class App extends LitElement {
     @state()
     pagePos: string = '???';
 
-    backgroundConnection!: chrome.runtime.Port;
+    backgroundConnection!: browser.runtime.Port;
 
     override firstUpdated(): void {        
         this.connectToExtension()
@@ -129,8 +141,9 @@ export class App extends LitElement {
             this.backgroundConnection?.onMessage.addListener(this.backgroundMessageDispatch);
 
             // Handles when user navigates and re-installs the content script telemetry
-            chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-                if (changeInfo.status === 'complete' && tabId === chrome.devtools.inspectedWindow.tabId) {
+            // In firefox only background scripts can access browser.tabs
+            browser?.tabs?.onUpdated.addListener((tabId, changeInfo) => {
+                if (changeInfo.status === 'complete' && tabId === browser.devtools.inspectedWindow.tabId) {
                     this.installTelemetry()
                 }
             })
@@ -162,7 +175,7 @@ export class App extends LitElement {
     }
 
     connectToExtension = () => {
-        this.backgroundConnection = chrome.runtime.connect({
+        this.backgroundConnection = browser.runtime.connect({
             name: 'panel',
         })
         return this.backgroundConnection
@@ -171,12 +184,12 @@ export class App extends LitElement {
     installTelemetry = () => {
         this.backgroundConnection?.postMessage({
             name: 'init',
-            tabId: chrome.devtools.inspectedWindow.tabId
+            tabId: browser.devtools.inspectedWindow.tabId
         });
 
         this.backgroundConnection?.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'install-heartbeat'
         })
     }
@@ -284,7 +297,7 @@ export class App extends LitElement {
         }
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'update-debug',
             debug: newDebug
         });
@@ -293,7 +306,7 @@ export class App extends LitElement {
     toggleDebugDraw() {
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'toggle-debug'
         });
     }
@@ -306,7 +319,7 @@ export class App extends LitElement {
     toggleTestClock() {
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'toggle-test-clock'
         });
     }
@@ -314,7 +327,7 @@ export class App extends LitElement {
     startClock() {
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'start-clock'
         })
     }
@@ -322,7 +335,7 @@ export class App extends LitElement {
     stopClock() {
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'stop-clock'
         })
     }
@@ -330,7 +343,7 @@ export class App extends LitElement {
     stepClock() {
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'step-clock',
             stepMs: this.clockStepMs
         })
@@ -340,7 +353,7 @@ export class App extends LitElement {
     startProfiler() {
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'start-profiler',
             time: 300,
         });
@@ -349,7 +362,7 @@ export class App extends LitElement {
     collectProfile() {
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'collect-profiler'
         })
     }
@@ -358,7 +371,7 @@ export class App extends LitElement {
         const id = evt.detail as number;
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'kill',
             actorId: id
         })
@@ -368,7 +381,7 @@ export class App extends LitElement {
         const scene = evt.detail as string;
         this.backgroundConnection.postMessage({
             name: 'command',
-            tabId: chrome.devtools.inspectedWindow.tabId,
+            tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'goto',
             scene
         })

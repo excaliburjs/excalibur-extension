@@ -1,3 +1,8 @@
+if (typeof browser == "undefined") {
+    // Chrome does not support the browser namespace yet.
+    globalThis.browser = chrome;
+}
+
 function toggleDebug() {
     if ((window).___EXCALIBUR_DEVTOOL) {
         console.log('toggleDebug()');
@@ -168,7 +173,7 @@ var connections = {};
 
 var popup = null;
 
-chrome.runtime.onConnect.addListener(function (port) {
+browser.runtime.onConnect.addListener(function (port) {
 
     var extensionListener = function (message, sender, sendResponse) {
         if (message.__parcel_hmr_reload__) {
@@ -194,7 +199,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                 case 'toggle-debug': {
                     // send command to excalibur on the page via a executed script
                     // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: toggleDebug
@@ -202,7 +207,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'install-heartbeat': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: installHeartBeat
@@ -210,7 +215,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'echo': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: echo
@@ -218,7 +223,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'update-debug': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: updateDebug,
@@ -227,7 +232,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'kill': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: kill,
@@ -236,7 +241,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'goto': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: goto,
@@ -245,7 +250,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     });
                 }
                 case 'toggle-test-clock': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: toggleTestClock
@@ -253,7 +258,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'start-clock': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: startClock
@@ -261,7 +266,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'stop-clock': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: stopClock
@@ -269,7 +274,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'step-clock': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: stepClock,
@@ -278,7 +283,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'start-profiler': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: startProfiler,
@@ -287,7 +292,7 @@ chrome.runtime.onConnect.addListener(function (port) {
                     break;
                 }
                 case 'collect-profiler': {
-                    chrome.scripting.executeScript({
+                    browser.scripting.executeScript({
                         target: { tabId: message.tabId },
                         world: 'MAIN',
                         func: collectProfiler
@@ -316,7 +321,7 @@ chrome.runtime.onConnect.addListener(function (port) {
 
 // Receive message from content script and relay to the devTools page for the
 // current tab
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     // Messages from content scripts should have sender.tab set
     if (sender.tab) {
         var tabId = sender.tab.id;

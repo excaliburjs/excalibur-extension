@@ -1,7 +1,9 @@
 {
   "scripts": {
-    "start": "parcel watch src/manifest.json --host localhost --no-source-maps",
-    "build": "parcel build src/manifest.json --no-source-maps --no-optimize"
+    "start:chrome": "parcel watch src/chrome/manifest.json --host localhost --no-source-maps --dist-dir dist-chrome",
+    "build:chrome": "parcel build src/chrome/manifest.json --no-source-maps --no-optimize --dist-dir dist-chrome",
+    "start:firefox": "parcel watch src/firefox/manifest.json --host https://localhost:1234 --no-source-maps --dist-dir dist-firefox",
+    "build:firefox": "parcel build src/firefox/manifest.json --no-source-maps --no-optimize --dist-dir dist-firefox"
   },
   "staticFiles": {
     "staticPath": "static"
@@ -13,10 +15,10 @@
     "lit": "3.1.0"
   },
   "devDependencies": {
-    "@parcel/config-webextension": "2.10.3",
-    "@types/chrome": "0.0.254",
+    "@parcel/config-webextension": "2.12.0",
+    "@types/chrome": "0.0.277",
     "@types/d3": "7.4.3",
-    "parcel": "2.10.3",
+    "parcel": "2.12.0",
     "parcel-reporter-static-files-copy": "1.5.3",
     "process": "^0.11.10"
   }
