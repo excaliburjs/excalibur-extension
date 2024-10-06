@@ -8,15 +8,11 @@
     "browser_specific_settings": {
     "gecko": {
         "id": "excalibur-dev-tools@caliburn.games",
-            "strict_min_version": "78.0"
-        },
-        "gecko_android": {
-            "strict_min_version": "79.0"
+            "strict_min_version": "109.0"
         }
     },
     "permissions": [
-        "scripting",
-        "tabs"
+        "scripting"
     ],
     "background": {
         "scripts": ["../background.js"]
