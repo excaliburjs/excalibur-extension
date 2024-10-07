@@ -12,17 +12,42 @@ Debug
 
 ![Example Extension Running](./extension.gif)
 
-## Running Locally & Side Loading
+## Chrome: Running Locally & Side Loading
 
 If you want to develop locally
 
 * Install node.js
 * Run `npm install` in the root directory
-* Run `npm run start` this will start a parcel dev server, or run `npm run build` to produce a prod bundle
+* Run `npm run start:chrome` this will start a parcel dev server, or run `npm run build:chrome` to produce a prod bundle
 * Open `chrome://extensions/` and click "Load unpacked"
   ![chrome extensions tab](chrome-extensions.png)
-* Select the dist directory in the `excalibur-extension` project
+* Select the `dist-chrome` directory in the `excalibur-extension` project
   ![excalibur-extension dist directory](dist-dir.png)
+
+## Firefox: Running Locally & Side Loading
+
+If you want to develop locally
+
+* Install node.js
+* Run `npm install` in the root directory
+* Run `npm run build:firefox` to produce a prod bundle
+* Open `about:debugging#/runtime/this-firefox` and click "Load Temporary Add-on..."
+  ![firefox extensions tab](firefox-extensions.png)
+* Zip all the files in `dist-firefox` together
+  ![excalibur-extension dist-firefox directory](ff-zip-dist-dir.png)
+* Select the final zip file in the `dist-firefox` directory in the `excalibur-extension` project
+  ![excalibur-extension dist-firefox directory](ff-dist-dir.png)
+
+## Building a release artifact for Chrome or Firefox
+
+* Install node.js
+* Run `npm install` in the root directory
+* Run `npm build:chrome` to produce the final build artifact in `dist-chrome`
+  * Zip the files in the directory, not the `dist-chrome` directory
+  * Upload the zip to chrome
+* Run `npm build:firefox` to product the final build artifact in `dist-firefox` which can be zipped and uploaded
+  * Zip the files in the directory, not the `dist-firefox` directory
+  * Upload the zip to mozilla
 
 
 ## Features That We Want!
