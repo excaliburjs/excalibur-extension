@@ -9,7 +9,8 @@ import { SlChangeEvent, SlInput, SlInputEvent, SlSwitch } from '@shoelace-style/
 export interface DebugStats {
     currFrame: {
         _fps: number;
-        _delta: number;
+        _elapsedMs: number;
+        _delta?: number;
         _durationStats: {
             total: number;
             update: number;

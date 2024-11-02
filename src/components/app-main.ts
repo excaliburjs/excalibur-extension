@@ -227,10 +227,11 @@ export class App extends LitElement {
                 }
 
                 const fps = debug.stats.currFrame._fps;
+                const elapsedMs = (debug.stats.currFrame._delta ?? debug.stats.currFrame._elapsedMs);
                 this.stats = {
                     fps,
-                    delta: debug.stats.currFrame._delta,
-                    frameBudget: debug.stats.currFrame._delta - debug.stats.currFrame._durationStats.total,
+                    delta: elapsedMs,
+                    frameBudget: elapsedMs - debug.stats.currFrame._durationStats.total,
                     frameTime: debug.stats.currFrame._durationStats.total,
                     updateTime: debug.stats.currFrame._durationStats.update,
                     drawTime: debug.stats.currFrame._durationStats.draw,
@@ -243,7 +244,7 @@ export class App extends LitElement {
                     debug.stats.currFrame._durationStats.total,
                     debug.stats.currFrame._durationStats.update,
                     debug.stats.currFrame._durationStats.draw,
-                    debug.stats.currFrame._delta);
+                    elapsedMs);
 
                 const pointer = this.engine.pointer;
 

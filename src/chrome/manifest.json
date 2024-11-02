@@ -1,6 +1,6 @@
 {
     "name": "Excalibur Dev Tools",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Excalibur.js browser plugin for debugging your games",
     "manifest_version": 3,
     "devtools_page": "../devtools.html",
