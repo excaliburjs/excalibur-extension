@@ -2,7 +2,7 @@
   "scripts": {
     "start:chrome": "parcel watch src/chrome/manifest.json --host localhost --no-source-maps --dist-dir dist-chrome",
     "build:chrome": "parcel build src/chrome/manifest.json --no-source-maps --no-optimize --dist-dir dist-chrome",
-    "start:firefox": "parcel watch src/firefox/manifest.json --host https://localhost:1234 --no-source-maps --dist-dir dist-firefox",
+    "start:firefox": "parcel watch src/firefox/manifest.json --host localhost --no-source-maps --dist-dir dist-firefox",
     "build:firefox": "parcel build src/firefox/manifest.json --no-source-maps --no-optimize --dist-dir dist-firefox"
   },
   "staticFiles": {

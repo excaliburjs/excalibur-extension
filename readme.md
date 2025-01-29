@@ -34,13 +34,10 @@ If you want to develop locally
 
 * Install node.js
 * Run `npm install` in the root directory
-* Run `npm run build:firefox` to produce a prod bundle
+* Run `npm run start:firefox` this will start a parcel dev server, or run `npm run build:firefox` to produce a prod bundle
 * Open `about:debugging#/runtime/this-firefox` and click "Load Temporary Add-on..."
   ![firefox extensions tab](firefox-extensions.png)
-* Zip all the files in `dist-firefox` together
-  ![excalibur-extension dist-firefox directory](ff-zip-dist-dir.png)
-* Select the final zip file in the `dist-firefox` directory in the `excalibur-extension` project
-  ![excalibur-extension dist-firefox directory](ff-dist-dir.png)
+* Select the manifest.json file inside the `dist-firefox` directory.
 
 ## Building a release artifact for Chrome or Firefox
 
