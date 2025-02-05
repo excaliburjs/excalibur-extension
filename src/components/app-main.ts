@@ -11,7 +11,7 @@ import './stats-list';
 import './scene-list';
 import { colors } from '../colors';
 import { common } from '../common';
-import { Debug, DefaultSettings, Settings } from './debug-settings';
+import { DefaultSettings, Settings } from './debug-settings';
 import { FpsGraph } from './fps-graph';
 import { FrameTimeGraph } from './frame-time-graph';
 import { Stats } from './stats-list';
@@ -33,7 +33,6 @@ if (typeof browser == "undefined") {
 interface Engine {
     version: string;
     currentScene: string;
-    debug: Debug;
     scenes: any[];
     entities: any[];
     pointer: any;
@@ -104,7 +103,6 @@ export class App extends LitElement {
     engine: Engine = {
         version: '???',
         currentScene: 'root',
-        debug: {} as Debug,
         scenes: [],
         entities: [],
         pointer: null
@@ -134,44 +132,14 @@ export class App extends LitElement {
 
     backgroundConnection!: browser.runtime.Port;
 
-    override firstUpdated(): void {        
+    override firstUpdated(): void {
         this.connectToExtension()
 
         if (this.backgroundConnection) {
-            this.backgroundConnection?.onMessage.addListener(this.backgroundMessageDispatch);
-
-            // Handles when user navigates and re-installs the content script telemetry
-            // In firefox only background scripts can access browser.tabs
-            browser?.tabs?.onUpdated.addListener((tabId, changeInfo) => {
-                if (changeInfo.status === 'complete' && tabId === browser.devtools.inspectedWindow.tabId) {
-                    this.installTelemetry()
-                }
-            })
-
-            this.installTelemetry()
-
+          this.backgroundConnection.onMessage.addListener(this.backgroundMessageDispatch)
         } else {
             console.error('Could not connect to background page?');
         }
-
-        // reload panel when tab/service-worker was reloaded
-        document.addEventListener('visibilitychange', (ev) => {            
-            if (document.visibilityState === 'visible') {        
-                try {        
-                    // this will throw an error if the extension context was lost... not sure
-                    // if there's a better way to do this
-                    this.connectToExtension()
-                } catch (err) {
-                    // i couldn't figure out a way to properly reconnect, so just reload the page
-                    if (err instanceof Error && err.message.match(/Extension context invalidated/)) {                                
-                        window.location.reload()
-                    } else {
-                        throw err
-                    }
-                    throw err
-                }
-            }
-        })
     }
 
     connectToExtension = () => {
@@ -181,126 +149,77 @@ export class App extends LitElement {
         return this.backgroundConnection
     }
 
-    installTelemetry = () => {
-        this.backgroundConnection?.postMessage({
-            name: 'init',
-            tabId: browser.devtools.inspectedWindow.tabId
-        });
-
-        this.backgroundConnection?.postMessage({
-            name: 'command',
-            tabId: browser.devtools.inspectedWindow.tabId,
-            dispatch: 'install-heartbeat'
-        })
-    }
-    backgroundMessageDispatch = (message: { name: string, data: any }) => {                
+    backgroundMessageDispatch = (message: { name: string, data: any }) => {
         switch (message.name) {
-            case 'scenes': {
-                this.engine.scenes = message.data;
-                break;
+            case "init": {
+              const { settings } = message.data;
+              console.log("Initializing settings:", settings);
+              this.settings = {
+                  showNames: settings.showNames,
+                  showIds: settings.showIds,
+                  showPos: settings.showPos,
+                  showPosLabel: settings.showPosLabel,
+                  posColor: settings.posColor,
+                  showGraphicsBounds: settings.showGraphicsBounds,
+                  graphicsBoundsColor: settings.graphicsBoundsColor,
+                  showColliderBounds: settings.showColliderBounds,
+                  colliderBoundsColor: settings.colliderBoundsColor,
+                  showGeometryBounds: settings.showGeometryBounds,
+                  geometryBoundsColor: settings.geometryBoundsColor,
+              }
+              break;
             }
-            case 'current-scene': {
-                this.engine.currentScene = message.data;
-                // currentScene$!.innerText = engine.currentScene;
-                break;
-            }
-            case 'echo': {
-                break;
-            }
-            case 'heartbeat':
-            case 'install': {                
-                const debug = JSON.parse(message.data.debug) as Debug;
-                this.engine = message.data;
-                this.engine.debug = debug;
-                this.settings = {
-                    showNames: debug.entity.showName,
-                    showIds: debug.entity.showId,
-                    showPos: debug.transform.showPosition,
-                    showPosLabel: debug.transform.showPositionLabel,
-                    posColor: debug.transform.positionColor,
-                    showGraphicsBounds: debug.graphics.showBounds,
-                    graphicsBoundsColor: debug.graphics.boundsColor,
-                    showColliderBounds: debug.collider.showBounds,
-                    colliderBoundsColor: debug.collider.boundsColor,
-                    showGeometryBounds: debug.collider.showGeometry,
-                    geometryBoundsColor: debug.collider.geometryColor
-                }
+            case "heartbeat": {
+              const { version, currentScene, scenes, pointer, entities, stats } = JSON.parse(message.data);
+              this.engine = {
+                version: version,
+                currentScene: currentScene,
+                scenes: scenes,
+                entities: entities,
+                pointer: pointer
+              }
 
-                const fps = debug.stats.currFrame._fps;
-                const elapsedMs = (debug.stats.currFrame._delta ?? debug.stats.currFrame._elapsedMs);
-                this.stats = {
-                    fps,
-                    delta: elapsedMs,
-                    frameBudget: elapsedMs - debug.stats.currFrame._durationStats.total,
-                    frameTime: debug.stats.currFrame._durationStats.total,
-                    updateTime: debug.stats.currFrame._durationStats.update,
-                    drawTime: debug.stats.currFrame._durationStats.draw,
-                    drawCalls: debug.stats.currFrame._graphicsStats.drawCalls,
-                    numActors: debug.stats.currFrame._actorStats.total
-                }
+              const currentPointer = this.engine.pointer;
 
-                this.fpsGraph.draw(fps);
-                this.frameTimeGraph.draw(
-                    debug.stats.currFrame._durationStats.total,
-                    debug.stats.currFrame._durationStats.update,
-                    debug.stats.currFrame._durationStats.draw,
-                    elapsedMs);
+              if (currentPointer?.worldPos && currentPointer?.screenPos && currentPointer?.pagePos) {
+                  this.worldPos = `(${currentPointer.worldPos._x.toFixed(2)},${currentPointer.worldPos._y.toFixed(2)})`
+                  this.screenPos = `(${currentPointer.screenPos._x.toFixed(2)},${currentPointer.screenPos._y.toFixed(2)})`
+                  this.pagePos = `(${currentPointer.pagePos._x.toFixed(2)},${currentPointer.pagePos._y.toFixed(2)})`
+              }
 
-                const pointer = this.engine.pointer;
+              const fps = stats.currFrame._fps
+              const elapsedMs = (stats.currFrame._delta ?? stats.currFrame._elapsedMs);
+              this.stats = {
+                  fps,
+                  delta: elapsedMs,
+                  frameBudget: elapsedMs - stats.currFrame._durationStats.total,
+                  frameTime: stats.currFrame._durationStats.total,
+                  updateTime: stats.currFrame._durationStats.update,
+                  drawTime: stats.currFrame._durationStats.draw,
+                  drawCalls: stats.currFrame._graphicsStats.drawCalls,
+                  numActors: stats.currFrame._actorStats.total
+              }
 
-                if (pointer?.worldPos && pointer?.screenPos && pointer?.pagePos) {
-                    this.worldPos = `(${pointer.worldPos._x.toFixed(2)},${pointer.worldPos._y.toFixed(2)})`
-                    this.screenPos = `(${pointer.screenPos._x.toFixed(2)},${pointer.screenPos._y.toFixed(2)})`
-                    this.pagePos = `(${pointer.pagePos._x.toFixed(2)},${pointer.pagePos._y.toFixed(2)})`
-                }
-                break;
-            }
-            case 'collect-profiler': {
-                this.flameChart.updateFlame(message.data);
-                break;
-            }
-            default: {
-                // console.warn('Unknown message', message);
+              this.fpsGraph.draw(fps);
+              this.frameTimeGraph.draw(
+                  stats.currFrame._durationStats.total,
+                  stats.currFrame._durationStats.update,
+                  stats.currFrame._durationStats.draw,
+                  elapsedMs
+              );
+              break;
             }
         }
     }
-
-
 
     updateDebugSetting(evt: any) {
         const settings = (evt as any).detail as Settings;
-        const engine = this.engine;
-        const newDebug: Debug = {
-            ...engine.debug,
-            entity: {
-                ...engine.debug.entity,
-                showId: settings.showIds,
-                showName: settings.showNames,
-            },
-            transform: {
-                ...engine.debug.transform,
-                showPosition: settings.showPos,
-                showPositionLabel: settings.showPosLabel,
-                positionColor: settings.posColor,
-            },
-            graphics: {
-                ...engine.debug.graphics,
-                showBounds: settings.showGraphicsBounds,
-                boundsColor: settings.graphicsBoundsColor
-            },
-            collider: {
-                ...engine.debug.collider,
-                showBounds: settings.showColliderBounds,
-                boundsColor: settings.colliderBoundsColor,
-                showGeometry: settings.showGeometryBounds,
-                geometryColor: settings.geometryBoundsColor
-            }
-        }
+        
         this.backgroundConnection.postMessage({
             name: 'command',
             tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'update-debug',
-            debug: newDebug
+            debug: settings,
         });
     }
 

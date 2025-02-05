@@ -12,24 +12,12 @@
         }
     },
     "permissions": [
+        "tabs",
         "scripting"
     ],
     "background": {
         "scripts": ["../background.js"]
     },
-    "content_scripts": [
-        {
-            "matches": [
-                "<all_urls>"
-            ],
-            "js": [
-                "../content-script.js"
-            ],
-            "all_frames": true,
-            "css": [],
-            "run_at": "document_start"
-        }
-    ],
     "host_permissions": [
         "http://localhost/*",
         "http://*/*",

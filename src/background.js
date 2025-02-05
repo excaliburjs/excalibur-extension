@@ -3,130 +3,38 @@ if (typeof browser == "undefined") {
     globalThis.browser = chrome;
 }
 
-function toggleDebug() {
-    if ((window).___EXCALIBUR_DEVTOOL) {
-        console.log('toggleDebug()');
-        const game = window.___EXCALIBUR_DEVTOOL;
-        game.toggleDebug();
-    } else {
-        console.log('no excalibur!!!');
+function stepClock(stepMs) {
+    if (!window.___EXCALIBUR_DEVTOOL) {
+        console.log("no excalibur!!!");
+        return;
     }
+
+    const game = window.___EXCALIBUR_DEVTOOL;
+    try {
+        game.clock.step(stepMs)
+    } catch {} // only works on test clock
 }
 
-function installHeartBeat(pollingInterval = 200) {
-    // Use excalibur's built in global
-    if ((window).___EXCALIBUR_DEVTOOL) {
-        const game = window.___EXCALIBUR_DEVTOOL;
-
-        if (!window.___EXCALIBUR_DEVTOOL_EXTENSION_INSTALLED) {
-            window.___EXCALIBUR_DEVTOOL_EXTENSION_INSTALLED = true;
-            let pointer = {
-                worldPos: null,
-                screenPos: null,
-                pagePos: null
-            };
-            game.input.pointers.primary.on('move', evt => {
-                pointer.worldPos = evt.worldPos;
-                pointer.screenPos = evt.screenPos;
-                pointer.pagePos = evt.pagePos;
-            });
-
-            setInterval(() => {
-
-                let currentSceneName = 'root';
-                let sceneNames = [];
-                for (let [name, value] of Object.entries(game.scenes)) {
-                    if (game.currentScene === value) {
-                        currentSceneName = name;
-                    }
-                    sceneNames.push(name);
-                }
-
-                let entities = [];
-                for (let entity of game.currentScene.entities) {
-                    const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
-                    const tags = Array.from(entity.tags);
-                    entities.push({
-                        id: entity.id,
-                        name: entity.name,
-                        ctor: entity.constructor.name,
-                        pos: pos ?? 'none',
-                        tags
-                    });
-                }
-
-                window.postMessage({
-                    source: 'excalibur-dev-tools',
-                    name: 'heartbeat',
-                    data: {
-                        version: game.version ?? 'unknown',
-                        debug: JSON.stringify({ ...game.debug, _engine: undefined, colorBlindMode: undefined }),
-                        currentScene: currentSceneName,
-                        scenes: sceneNames,
-                        pointer,
-                        entities
-                    }
-                });
-            }, pollingInterval);
-        }
+function stopClock() {
+    if (!window.___EXCALIBUR_DEVTOOL) {
+        console.log("no excalibur!!!");
+        return;
     }
+    const game = window.___EXCALIBUR_DEVTOOL;
+    game.clock.stop();
 }
 
-function startProfiler(time) {
-    if ((window).___EXCALIBUR_DEVTOOL && window.ex) {
-        console.log('Starting excalibur profiler');
-        ex.Profiler.init();
-        // Only allow 1 second for now
-        setTimeout(() => {
-            console.log('Collecting excalibur profiler');
-            const data = ex.Profiler.collect();
-            window.postMessage({
-                source: 'excalibur-dev-tools',
-                name: 'collect-profiler',
-                data
-            });
-        }, time ?? 100);
+function startClock() {
+    if (!window.___EXCALIBUR_DEVTOOL) {
+        console.log("no excalibur!!!");
+        return;
     }
-}
-
-function collectProfiler() {
-    if ((window).___EXCALIBUR_DEVTOOL && window.ex) {
-        const data = ex.Profiler.collect();
-        console.log('Collecting excalibur profiler');
-        window.postMessage({
-            source: 'excalibur-dev-tools',
-            name: 'collect-profiler',
-            data
-        });
-    }
-}
-
-function updateDebug(debug) {
-    if ((window).___EXCALIBUR_DEVTOOL) {
-        const game = window.___EXCALIBUR_DEVTOOL;
-        const { filter, entity, transform, graphics, collider } = debug;
-        game.debug = { ...game.debug, filter, entity, transform, graphics, collider };
-    }
-}
-
-function kill(actorId) {
-    if ((window).___EXCALIBUR_DEVTOOL) {
-        const game = window.___EXCALIBUR_DEVTOOL;
-        const actor = game.currentScene.world.entityManager.getById(actorId);
-        actor.kill();
-    }
-}
-
-async function goto(scene) {
-    if ((window).___EXCALIBUR_DEVTOOL) {
-        const game = window.___EXCALIBUR_DEVTOOL;
-        return await game.director.swapScene(scene);
-    }
+    const game = window.___EXCALIBUR_DEVTOOL;
+    game.clock.start();
 }
 
 function toggleTestClock() {
     if ((window).___EXCALIBUR_DEVTOOL) {
-
         const game = window.___EXCALIBUR_DEVTOOL;
         if (!(window).___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK) {
             (window).___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK = true;
@@ -135,202 +43,230 @@ function toggleTestClock() {
             (window).___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK = false;
             game.debug.useStandardClock();
         }
-
     }
 }
 
-function startClock() {
-    if ((window).___EXCALIBUR_DEVTOOL) {
-        const game = window.___EXCALIBUR_DEVTOOL;
-        game.clock.start();
+function kill(actorId) {
+    if (!window.___EXCALIBUR_DEVTOOL) {
+        console.log("no excalibur!!!");
+        return;
     }
-}
-function stopClock() {
-    if ((window).___EXCALIBUR_DEVTOOL) {
-        const game = window.___EXCALIBUR_DEVTOOL;
-        game.clock.stop();
-    }
-}
-function stepClock(stepMs) {
-    if ((window).___EXCALIBUR_DEVTOOL) {
-        const game = window.___EXCALIBUR_DEVTOOL;
-        try {
-            game.clock.step(stepMs)
-        } catch {} // only works on test clock
-    }
+    const game = window.___EXCALIBUR_DEVTOOL;
+    const actor = game.currentScene.world.entityManager.getById(actorId);
+    actor.kill();
 }
 
-function echo() {
-    console.log('echo()');
-    window.postMessage({
-        source: 'excalibur-dev-tools',
-        name: 'echo'
+function inject(settings) {
+    if (!window.___EXCALIBUR_DEVTOOL) {
+        console.log("no excalibur!!!");
+        return;
+    }
+
+    const game = window.___EXCALIBUR_DEVTOOL;
+
+    // Toggle debug
+    if (settings.toggleDebug === true) {
+        if (game.toggleDebug() === false) {
+            game.toggleDebug();
+        }
+    } else if (settings.toggleDebug === false) {
+        if (game.toggleDebug() === true) {
+            game.toggleDebug();
+        }
+    }
+    game.debug.entity.showName = settings.showNames;
+    game.debug.entity.showId = settings.showIds;
+    game.debug.transform.showPosition = settings.showPos;
+    game.debug.transform.showPositionLabel = settings.showPosLabel;
+    game.debug.transform.positionColor = settings.posColor;
+    game.debug.graphics.showBounds = settings.showGraphicsBounds;
+    game.debug.graphics.boundsColor = settings.graphicsBoundsColor;
+    game.debug.collider.showBounds = settings.showColliderBounds;
+    game.debug.collider.boundsColor = settings.colliderBoundsColor;
+    game.debug.collider.showGeometry = settings.showGeometryBounds;
+    game.debug.collider.geometryColor = settings.geometryBoundsColor;
+
+    // Send game state to dev tools
+    let currentScene = "root";
+    const sceneNames = [];
+    for (key of Object.keys(game.scenes)) {
+        if (game.currentSceneName === key) {
+            currentScene = key;
+        }
+        sceneNames.push(key);
+    }
+
+    let entities = [];
+    for (let entity of game.currentScene.entities) {
+        const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
+        const tags = Array.from(entity.tags);
+        entities.push({
+            id: entity.id,
+            name: entity.name,
+            ctor: entity.constructor.name,
+            pos: pos ?? 'none',
+            tags
+        });
+    }
+
+    // Game data is stringyfied to ensure get properties are called.
+    return JSON.stringify({
+        version: game.version,
+        currentScene: currentScene,
+        scenes: sceneNames,
+        pointer: {
+            worldPos: game.input.pointers.primary.lastWorldPos,
+            screenPos: game.input.pointers.primary.lastScreenPos,
+            pagePos: game.input.pointers.primary.lastPagePos,
+        },
+        entities: entities,
+        stats: game.debug.stats
+    })
+}
+
+const debugSettings = {
+  toggleDebug: false,
+  showNames: false,
+  showIds: false,
+  showPos: false,
+  showPosLabel: false,
+  posColor: { r: 255, g: 255, b: 0, a: 1 },
+  showGraphicsBounds: false,
+  graphicsBoundsColor: { r: 255, g: 255, b: 0, a: 1 },
+  showColliderBounds: false,
+  colliderBoundsColor: { r: 0, g: 0, b: 255, a: 1 },
+  showGeometryBounds: true,
+  geometryBoundsColor: { r: 0, g: 255, b: 0, a: 1 },
+};
+
+let ports = {};
+let intervalId = null;
+
+async function getActiveTab() {
+    let queryOptions = { active: true, lastFocusedWindow: true };
+    let [tab] = await browser.tabs.query(queryOptions);
+    return tab;
+}
+
+function hasNoConnectedPorts() {
+  return Object.keys(ports).length === 0
+}
+
+browser.runtime.onConnect.addListener(async (port) => {
+    console.log("Connected:", port.name);
+    ports[port.name] = port;
+
+    port.onDisconnect.addListener(() => {
+      console.log("Disconnected:", port.name);
+      delete ports[port.name];
+
+      if (hasNoConnectedPorts() && intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
     });
-}
 
+    const tab = await getActiveTab();
 
-var connections = {};
+    port.onMessage.addListener((message) => {
+        console.log("Received message:", message);
 
-var popup = null;
-
-browser.runtime.onConnect.addListener(function (port) {
-
-    var extensionListener = function (message, sender, sendResponse) {
+        // https://parceljs.org/recipes/web-extension/#unexpected-messages
         if (message.__parcel_hmr_reload__) {
-            return;
+          return;
         }
-
-        if (message.name === 'init-popup') {
-            popup = sender;
-            popup.postMessage({name: 'test'});
-            return;
-        }
-
-        // The original connection event doesn't include the tab ID of the
-        // DevTools page, so we need to send it explicitly.
-        if (message.name === 'init') {
-            connections[message.tabId] = port;
-            return;
-        }
-
-        // other message handling
-        if (message.name === 'command') {
+        
+        if (message.name === "command") {
             switch (message.dispatch) {
-                case 'toggle-debug': {
-                    // send command to excalibur on the page via a executed script
-                    // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: toggleDebug
-                    });
-                    break;
-                }
-                case 'install-heartbeat': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: installHeartBeat
-                    });
-                    break;
-                }
-                case 'echo': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: echo
-                    });
-                    break;
-                }
-                case 'update-debug': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: updateDebug,
-                        args: [message.debug]
-                    });
-                    break;
-                }
-                case 'kill': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: kill,
-                        args: [message.actorId]
-                    });
-                    break;
-                }
-                case 'goto': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: goto,
-                        injectImmediately: true,
-                        args: [message.scene]
-                    });
-                }
-                case 'toggle-test-clock': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: toggleTestClock
-                    });
-                    break;
-                }
-                case 'start-clock': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: startClock
-                    });
-                    break;
-                }
-                case 'stop-clock': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: stopClock
-                    });
-                    break;
-                }
-                case 'step-clock': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: stepClock,
-                        args: [message.stepMs]
-                    });
-                    break;
-                }
-                case 'start-profiler': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: startProfiler,
-                        args: [message.time]
-                    });
-                    break;
-                }
-                case 'collect-profiler': {
-                    browser.scripting.executeScript({
-                        target: { tabId: message.tabId },
-                        world: 'MAIN',
-                        func: collectProfiler
-                    });
-                    break;
-                }
-            }
-        }
-    }
-
-    // Listen to messages sent from the DevTools page
-    port.onMessage.addListener(extensionListener);
-
-    port.onDisconnect.addListener(function (port) {
-        port.onMessage.removeListener(extensionListener);
-
-        var tabs = Object.keys(connections);
-        for (var i = 0, len = tabs.length; i < len; i++) {
-            if (connections[tabs[i]] == port) {
-                delete connections[tabs[i]]
-                break;
+              case "toggle-test-clock": {
+                  browser.scripting.executeScript({
+                      target: { tabId: message.tabId },
+                      world: 'MAIN',
+                      func: toggleTestClock,
+                  });
+              }
+              break;
+              case "step-clock": {
+                  browser.scripting.executeScript({
+                      target: { tabId: message.tabId },
+                      world: 'MAIN',
+                      func: stepClock,
+                      args: [message.stepMs],
+                  });
+              }
+              break;
+              case "start-clock": {
+                  browser.scripting.executeScript({
+                      target: { tabId: message.tabId },
+                      world: 'MAIN',
+                      func: startClock,
+                  });
+              }
+              break;
+              case "stop-clock": {
+                  browser.scripting.executeScript({
+                      target: { tabId: message.tabId },
+                      world: 'MAIN',
+                      func: stopClock,
+                  });
+              }
+              case "kill": {
+                  browser.scripting.executeScript({
+                      target: { tabId: message.tabId },
+                      world: 'MAIN',
+                      func: kill,
+                      args: [message.actorId]
+                  });
+              }
+              break;
+              case "toggle-debug":{
+                  debugSettings.toggleDebug = !debugSettings.toggleDebug;
+              }
+              break;
+              case "update-debug": {
+                  const { debug } = message;
+                  debugSettings.showNames = debug.showNames;
+                  debugSettings.showIds = debug.showIds;
+                  debugSettings.showPos = debug.showPos;
+                  debugSettings.showPosLabel = debug.showPosLabel;
+                  debugSettings.posColor = debug.posColor;
+                  debugSettings.showGraphicsBounds = debug.showGraphicsBounds;
+                  debugSettings.graphicsBoundsColor = debug.graphicsBoundsColor;
+                  debugSettings.showColliderBounds = debug.showColliderBounds;
+                  debugSettings.colliderBoundsColor = debug.colliderBoundsColor;
+                  debugSettings.showGeometryBounds = debug.showGeometryBounds;
+                  debugSettings.geometryBoundsColor = debug.geometryBoundsColor;
+              }
+              break;
+              default:
+                  console.warn("Unhandled dispatch:", message.dispatch);
+                  break;
             }
         }
     });
-});
 
-// Receive message from content script and relay to the devTools page for the
-// current tab
-browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    // Messages from content scripts should have sender.tab set
-    if (sender.tab) {
-        var tabId = sender.tab.id;
-        if (tabId in connections) {
-            connections[tabId].postMessage(request);
-        } else {
-            console.log("Tab not found in connection list.");
-        }
-    } else {
-        console.log("sender.tab not defined.");
+    await ports[port.name].postMessage({
+      name: "init",
+      data: {
+        settings: debugSettings,
+      },
+    });
+
+    // Start sending messages every 200ms if not already running
+    if (!intervalId) {
+        intervalId = setInterval(async () => {
+            const gameState = await browser.scripting.executeScript({
+                target: {
+                    tabId: tab.id,
+                },
+                world: "MAIN",
+                func: inject,
+                args: [debugSettings],
+            });
+            ports[port.name].postMessage({
+              name: "heartbeat",
+              data: gameState[0].result
+            })
+        }, 200);
     }
 });
