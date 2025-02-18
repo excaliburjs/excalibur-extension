@@ -63,7 +63,7 @@ PR's welcome
 * [ ] Show "no excalibur detected" if something isn't in the extension
 * [ ] Make sure lite mode looks okay
 * [ ] List active event listeners on stuff for debugging!
-* [ ] Remember debug settings across refreshes/closing
+* [x] Remember debug settings across refreshes/closing
 * [ ] Show entities as a tree view so child/parent relationships are clear
 * [ ] Screen settings
   * [ ] Override camera with a click an drag
