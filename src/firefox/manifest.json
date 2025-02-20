@@ -1,47 +1,40 @@
 {
-    "name": "Excalibur Dev Tools",
-    "author": "Erik Onarheim & contributors",
-    "version": "1.0.2",
-    "description": "Excalibur.js browser plugin for debugging your games",
-    "manifest_version": 3,
-    "devtools_page": "../devtools.html",
-    "browser_specific_settings": {
+  "name": "Excalibur Dev Tools",
+  "author": "Erik Onarheim & contributors",
+  "version": "1.0.2",
+  "description": "Excalibur.js browser plugin for debugging your games",
+  "manifest_version": 3,
+  "devtools_page": "../devtools.html",
+  "browser_specific_settings": {
     "gecko": {
-        "id": "excalibur-dev-tools@caliburn.games",
-            "strict_min_version": "109.0"
-        }
-    },
-    "permissions": [
-        "tabs",
-        "scripting"
-    ],
-    "background": {
-        "scripts": ["../background.js"]
-    },
-    "host_permissions": [
-        "http://localhost/*",
-        "http://*/*",
-        "https://*/*",
-        "file://*/*"
-    ],
-    "content_security_policy": {
-        "extension_pages": "script-src 'self';style-src 'self' 'unsafe-inline';"
-    },
-    "web_accessible_resources": [
-        {
-            "resources": [
-                "../excalibur-panel.html"
-            ],
-            "matches": [
-                "<all_urls>"
-            ]
-        }
-    ],
-    "icons": {
-        "16": "../../res/icon-16.png",
-        "32": "../../res/icon-32.png",
-        "48": "../../res/icon-48.png",
-        "64": "../../res/icon-64.png",
-        "128": "../../res/icon-128.png"
+      "id": "excalibur-dev-tools@caliburn.games",
+      "strict_min_version": "109.0"
     }
+  },
+  "permissions": ["tabs", "scripting"],
+  "background": {
+    "scripts": ["../background.js"]
+  },
+  "host_permissions": [
+    "http://localhost/*",
+    "http://*/*",
+    "https://*/*",
+    "file://*/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self';style-src 'self' 'unsafe-inline';"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["../excalibur-panel.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "icons": {
+    "16": "../../res/icon-16.png",
+    "32": "../../res/icon-32.png",
+    "48": "../../res/icon-48.png",
+    "64": "../../res/icon-64.png",
+    "128": "../../res/icon-128.png"
+  }
 }
