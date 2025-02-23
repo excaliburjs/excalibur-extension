@@ -1,5 +1,8 @@
 {
   "scripts": {
+    "format": "prettier . --check",
+    "format:fix": "npm run format -- --write",
+    "lint": "eslint ./src/",
     "start:chrome": "parcel watch src/chrome/manifest.json --host localhost --no-source-maps --dist-dir dist-chrome",
     "build:chrome": "parcel build src/chrome/manifest.json --no-source-maps --no-optimize --dist-dir dist-chrome",
     "start:firefox": "parcel watch src/firefox/manifest.json --host localhost --no-source-maps --dist-dir dist-firefox",
@@ -15,11 +18,17 @@
     "lit": "3.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.20.0",
     "@parcel/config-webextension": "2.12.0",
     "@types/chrome": "0.0.277",
     "@types/d3": "7.4.3",
+    "eslint": "^9.20.1",
+    "eslint-plugin-jsdoc": "^50.6.3",
+    "globals": "^15.15.0",
     "parcel": "2.12.0",
     "parcel-reporter-static-files-copy": "1.5.3",
-    "process": "^0.11.10"
+    "prettier": "3.5.2",
+    "process": "^0.11.10",
+    "typescript-eslint": "^8.24.1"
   }
 }
