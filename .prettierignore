@@ -1,0 +1,4 @@
+lib/*
+src/chrome/manifest.json
+src/firefox/manifest.json
+tsconfig.json
