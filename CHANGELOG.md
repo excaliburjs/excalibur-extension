@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
--
+- Added support for physics settings.
 
 ### Fixed
 
