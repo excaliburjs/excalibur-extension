@@ -111,8 +111,8 @@ export class PhysicsSettings extends LitElement {
           <div class="row section">
             <div class="widget">
               <div>Max FPS: <span id="max-fps">${this.settings.maxFps || Number.POSITIVE_INFINITY}</span></div>
-              <div>Fixed Update FPS: <span id="fixed-update-fps">${this.settings.fixedUpdateFps || 'null'}</span></div>
-              <div>Fixed Update TimeStep: <span id="fixed-update-timestep">${this.settings.fixedUpdateTimestep || 'null'}</span></div>
+              <div>Fixed Update FPS: <span id="fixed-update-fps">${this.settings.fixedUpdateFps || 'Not Set'}</span></div>
+              <div>Fixed Update TimeStep: <span id="fixed-update-timestep">${this.settings.fixedUpdateTimestep || 'Not Set'}</span></div>
               <div>Gravity X: <span id="gravity-x">${this.settings.gravity._x}</span></div>
               <div>Gravity Y: <span id="gravity-y">${this.settings.gravity._y}</span></div>
             </div>

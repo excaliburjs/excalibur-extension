@@ -150,12 +150,12 @@ function inject(settings) {
     entities: entities,
     stats: game.debug.stats,
     physics: {
-      enabled: game.physics.enabled,
+      enabled: !!game.physics?.enabled,
       maxFps: game.maxFps,
       fixedUpdateFps: game.fixedUpdateFps,
       fixedUpdateTimestep: game.fixedUpdateTimestep,
-      gravity: game.currentScene.physics.config.gravity,
-      solverStrategy: game.currentScene.physics.config.solver
+      gravity: game.currentScene.physics.config?.gravity ?? { _x: 0, _y : 0},
+      solverStrategy: game.currentScene.physics.config?.solver ?? 'arcade'
     }
   });
 }
