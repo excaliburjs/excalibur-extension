@@ -9,6 +9,7 @@ import './frame-time-graph';
 import './flame-chart';
 import './stats-list';
 import './scene-list';
+import './physics-settings';
 import { colors } from '../colors';
 import { common } from '../common';
 import { DefaultSettings, Settings } from './debug-settings';
@@ -18,6 +19,7 @@ import { Stats } from './stats-list';
 import { FlameChart } from './flame-chart';
 import { SlChangeEvent, SlInput } from '@shoelace-style/shoelace';
 import { Entity } from './entity-list';
+import { DefaultPhysicsSettings, Physics } from './physics-settings';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -147,6 +149,11 @@ export class App extends LitElement {
     numActors: 0
   };
 
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  physics: Physics = DefaultPhysicsSettings;
+
   @state()
   worldPos: string = '???';
   @state()
@@ -193,13 +200,13 @@ export class App extends LitElement {
         break;
       }
       case 'heartbeat': {
-        const { version, currentScene, scenes, pointer, entities, stats } = JSON.parse(message.data);
+        const { version, currentScene, scenes, pointer, entities, stats, physics } = JSON.parse(message.data);
         this.engine = {
           version: version,
           currentScene: currentScene,
           scenes: scenes,
           entities: entities,
-          pointer: pointer
+          pointer: pointer,
         };
 
         const currentPointer = this.engine.pointer;
@@ -229,10 +236,30 @@ export class App extends LitElement {
           stats.currFrame._durationStats.update,
           stats.currFrame._durationStats.draw
         );
+
+        this.physics = {
+          enabled: physics.enabled,
+          maxFps: physics.maxFps,
+          fixedUpdateFps: physics.fixedUpdateFps,
+          fixedUpdateTimestep: physics.fixedUpdateTimestep,
+          gravity: {...physics.gravity},
+          solverStrategy: physics.solverStrategy,
+        };
         break;
       }
     }
   };
+
+  updatePhysicsSetting(evt: CustomEvent<Physics>) {
+    const settings = evt.detail;
+
+    this.backgroundConnection.postMessage({
+      name: 'command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'update-physics',
+      physics: settings
+    });
+  }
 
   updateDebugSetting(evt: CustomEvent<Settings>) {
     const settings = evt.detail;
@@ -338,6 +365,7 @@ export class App extends LitElement {
         <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
         <sl-tab slot="nav" panel="perf">Performance</sl-tab>
         <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
+        <sl-tab slot="nav" panel="physics">Physics</sl-tab>
 
         <sl-tab-panel name="inspector">
           <!-- <sl-split-panel position="75"> -->
@@ -445,6 +473,18 @@ export class App extends LitElement {
                 .settings=${this.settings}
               >
               </debug-settings>
+            </div>
+          </div>
+        </sl-tab-panel>
+        <sl-tab-panel name="physics">
+          <div class="row">
+            <div class="widget">
+              <h2>Physics Settings</h2>
+              <physics-settings
+                @physics-settings-change=${this.updatePhysicsSetting}
+                .settings=${this.physics}
+              >
+              </physics-settings>
             </div>
           </div>
         </sl-tab-panel>

@@ -70,7 +70,19 @@ function kill(actorId) {
 }
 
 /**
- * Injects settings defined by the devtool into the game. Information abount
+ * Updates physics related settings.
+ */
+function updatePhysics(settings) {
+  if (!window.___EXCALIBUR_DEVTOOL) {
+    throw new Error('no excalibur!!!');
+  }
+  const game = window.___EXCALIBUR_DEVTOOL;
+  game.physics.enabled = settings.enabled;
+  game.physics.solver = settings.solverStrategy;
+}
+
+/**
+ * Injects settings defined by the devtool into the game. Information about
  * the game state is then returned from this function.
  */
 function inject(settings) {
@@ -125,7 +137,7 @@ function inject(settings) {
     });
   }
 
-  // Game data is stringyfied to ensure get properties are called.
+  // Game data is stringified to ensure get properties are called.
   return JSON.stringify({
     version: game.version,
     currentScene: currentScene,
@@ -136,7 +148,15 @@ function inject(settings) {
       pagePos: game.input.pointers.primary.lastPagePos
     },
     entities: entities,
-    stats: game.debug.stats
+    stats: game.debug.stats,
+    physics: {
+      enabled: game.physics.enabled,
+      maxFps: game.maxFps,
+      fixedUpdateFps: game.fixedUpdateFps,
+      fixedUpdateTimestep: game.fixedUpdateTimestep,
+      gravity: game.currentScene.physics.config.gravity,
+      solverStrategy: game.currentScene.physics.config.solver
+    }
   });
 }
 
@@ -266,6 +286,16 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             debugSettings.colliderBoundsColor = debug.colliderBoundsColor;
             debugSettings.showGeometryBounds = debug.showGeometryBounds;
             debugSettings.geometryBoundsColor = debug.geometryBoundsColor;
+          }
+          break;
+        case 'update-physics':
+          {
+            globalThis.browser.scripting.executeScript({
+              target: { tabId: message.tabId },
+              world: 'MAIN',
+              func: updatePhysics,
+              args: [message.physics]
+            });
           }
           break;
         default:
