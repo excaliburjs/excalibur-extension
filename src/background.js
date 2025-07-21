@@ -70,6 +70,22 @@ function kill(actorId) {
 }
 
 /**
+ * Identifies an actor.
+ */
+function identifyActor(actorId) {
+  if (!window.___EXCALIBUR_DEVTOOL) {
+    throw new Error("no excalibur!!!");
+  }
+
+  const game = window.___EXCALIBUR_DEVTOOL;
+  const actor = game.currentScene.world.entityManager.getById(actorId);
+  actor.actions.repeat((context) => {
+    context.fade(0, 200);
+    context.fade(1, 200);
+  }, 3);
+}
+
+/**
  * Updates physics related settings.
  */
 function updatePhysics(settings) {
@@ -264,6 +280,16 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
               world: 'MAIN',
               func: kill,
               args: [message.actorId]
+            });
+          }
+          break;
+        case "identify-actor":
+          {
+            globalThis.browser.scripting.executeScript({
+              target: { tabId: message.tabId },
+              world: "MAIN",
+              func: identifyActor,
+              args: [message.actorId],
             });
           }
           break;

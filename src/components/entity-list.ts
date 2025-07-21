@@ -41,10 +41,19 @@ export class EntityList extends LitElement {
         width: 270px;
         padding-bottom: 10px;
       }
+
       sl-card [slot='header'] {
         display: flex;
         align-items: center;
         justify-content: space-between;
+      }
+
+      sl-card [slot='header'] .entity-name {
+        word-break: break-word;
+      }
+
+      sl-card [slot='header'] .actions {
+        display: flex;
       }
 
       sl-tag {
@@ -99,6 +108,16 @@ export class EntityList extends LitElement {
     };
   }
 
+  private _identifyEntity(id: number) {
+    return () => {
+      this.dispatchEvent(
+        new CustomEvent('identify-actor', {
+          detail: id,
+        }),
+      );
+    };
+  }
+
   render() {
     let entities = this.entities.slice();
     if (!this.showOffscreen) {
@@ -123,8 +142,11 @@ export class EntityList extends LitElement {
               <li>
                 <sl-card>
                   <div slot="header">
-                    ${entity.name} | ${entity.ctor}
-                    <sl-icon-button name="trash" label="kill" @click=${this.handleKill(entity.id)}></sl-icon-button>
+                    <span class="entity-name">${entity.name} | ${entity.ctor}</span>
+                    <div class="actions">
+                      <sl-icon-button name="search" label="Identify entity ${entity.id}" @click="${this._identifyEntity(entity.id)}"></sl-icon-button>
+                      <sl-icon-button name="trash" label="kill" @click=${this.handleKill(entity.id)}></sl-icon-button>
+                    </div>
                   </div>
                   <sl-tag variant="primary">id:${entity.id}</sl-tag>
                   <sl-tag variant="neutral">pos:${entity.pos}</sl-tag>
