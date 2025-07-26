@@ -84,7 +84,6 @@ PR's welcome
 - [ ] Show loaded resources
 - [ ] Entity inspector side panel with component value detials
 
-  - When you hover over an actor/entity in the dev tool it highlights in the game!
   - When you hover over an actor/entity in the game it highlights in the dev tools!
 
 - [ ] System JS info?
