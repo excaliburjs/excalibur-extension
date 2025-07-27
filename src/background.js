@@ -72,13 +72,16 @@ function kill(actorId) {
 /**
  * Identifies an actor.
  */
-function identifyActor(actorId) {
+function identifyEntity(entityId) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error("no excalibur!!!");
   }
 
   const game = window.___EXCALIBUR_DEVTOOL;
-  const actor = game.currentScene.world.entityManager.getById(actorId);
+  const actor = game.currentScene.world.entityManager.getById(entityId);
+  if (actor === undefined) {
+    throw new Error(`No entity found for id ${entityId}`)
+  }
   actor.actions.repeat((context) => {
     context.fade(0, 200);
     context.fade(1, 200);
@@ -288,7 +291,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
               world: "MAIN",
-              func: identifyActor,
+              func: identifyEntity,
               args: [message.actorId],
             });
           }
