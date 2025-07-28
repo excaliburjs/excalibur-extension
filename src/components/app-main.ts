@@ -345,6 +345,15 @@ export class App extends LitElement {
     });
   }
 
+  identifyActor(evt: CustomEvent<number>) {
+    this.backgroundConnection.postMessage({
+      name: 'command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'identify-actor',
+      actorId: evt.detail,
+    });
+  }
+
   goToScene(evt: CustomEvent<string>) {
     const scene = evt.detail;
     this.backgroundConnection.postMessage({
@@ -414,7 +423,7 @@ export class App extends LitElement {
           <div class="row">
             <div class="widget">
               <h2>Entities</h2>
-              <entity-list .entities=${this.engine.entities} @kill-actor=${this.killActor}></entity-list>
+              <entity-list .entities=${this.engine.entities} @kill-actor=${this.killActor} @identify-actor=${this.identifyActor}></entity-list>
             </div>
             <div class="widget">
               <h2>Scene</h2>
