@@ -2,7 +2,7 @@
 
 This [excalibur game](https://excaliburjs.com) developers to easily inspect their games while making them!
 
-v1.0.1 Now live in browsers!
+Now live in browsers!
 
 - [Install in Chrome](https://chromewebstore.google.com/detail/excalibur-dev-tools/dinddaeielhddflijbbcmpefamfffekc)
 - [Install in Firefox](https://addons.mozilla.org/en-US/firefox/addon/excalibur-dev-tools/)

@@ -19,7 +19,7 @@ export const DefaultPhysicsSettings: Physics = {
   enabled: false,
   fixedUpdateFps: 0,
   fixedUpdateTimestep: 0,
-  gravity: {_x: 0, _y: 0},
+  gravity: { _x: 0, _y: 0 },
   solverStrategy: 'arcade',
 };
 
@@ -48,7 +48,7 @@ export class PhysicsSettings extends LitElement {
     enabled: false,
     fixedUpdateFps: 0,
     fixedUpdateTimestep: 0,
-    gravity: {_x: 0, _y: 0},
+    gravity: { _x: 0, _y: 0 },
     solverStrategy: 'arcade',
   };
 
@@ -100,11 +100,69 @@ export class PhysicsSettings extends LitElement {
 
           <div class="row section">
             <div class="widget">
+              <label for="substep">Simulation Sub Steps: ${1}</label>
+							<sl-range 
+                id="substep" 
+                help-text="Splits each physics process into steps, helps with tunneling and collision quality"  
+                min="1"
+                max="10"
+                step="1"
+                value="1"
+              ></sl-range>
+
               <label for="physics-solver">Physics Solver</label>
               <sl-select id="physics-solver" value=${this.settings.solverStrategy} @sl-change=${this.physicsSolverInputHandler()}>
                 <sl-option id="arcade" value="arcade">Arcade</sl-option>
                 <sl-option id="realistic" value="realistic">Realistic</sl-option>
               </sl-select>
+
+							<!-- if realistic -->
+              <sl-checkbox>Warm Start (improves stacks)</sl-checkbox><br>
+              <label for="realistic-position-interations">Position Iterations ${3}</label>
+							<sl-range 
+                id="realistic-position-interations" 
+                help-text="Solves geometry overlap, increase if things are still overlapping"  
+                min="1" 
+                max="30" 
+                step="1"
+                value="3"
+              ></sl-range>
+
+              <label for="realistic-velocity-interations">Velocity Iterations ${8}</label>
+							<sl-range 
+                id="realistic-velocity-interations" 
+                help-text="Solves friction and bouncing, increase for higher quality bounces/sliding" 
+                min="1" 
+                max="30" 
+                step="1"
+                value="8"
+              ></sl-range>
+              <!-- if either -->
+
+              <label for="arcade-bias">Contact Solve Bias</label>
+              <sl-select id="arcade-bias" value="none">
+                <sl-option id="none" value="none">None</sl-option>
+                <sl-option id="vertical-first" value="vertical-first">Vertical First</sl-option>
+                <sl-option id="horizontal-first" value="horizontal-first">Horizontal First</sl-option>
+              </sl-select>
+
+
+              <label for="spatial-partition">Sparse Hash Grid</label>
+              <sl-select id="spatial-partition" value="sparse-hash-grid">
+                <sl-option id="sparse-hash-grid" value="sparse-hash-grid">Sparse Has Grid</sl-option>
+                <sl-option id="dynamic-tree" value="dynamic-tree">Dynamic Tree (deprecated)</sl-option>
+              </sl-select>
+
+              <label for="hash-grid-size">Hash Grid Size</label>
+							<sl-range 
+                id="hash-grid-size" 
+                help-text="Size of grid cells, a good size is the average dimension of colliders" 
+                min="10"
+                max="500"
+                step="10"
+                value="100"
+              ></sl-range>
+
             </div>
           </div>
 
