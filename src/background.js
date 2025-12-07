@@ -11,6 +11,11 @@ function stepClock(stepMs) {
     throw new Error('no excalibur!!!');
   }
 
+
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
   const game = window.___EXCALIBUR_DEVTOOL;
   try {
     game.clock.step(stepMs);
@@ -27,6 +32,11 @@ function stopClock() {
     throw new Error('no excalibur!!!');
   }
   const game = window.___EXCALIBUR_DEVTOOL;
+
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
   game.clock.stop();
 }
 
@@ -37,6 +47,11 @@ function startClock() {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
+
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
   const game = window.___EXCALIBUR_DEVTOOL;
   game.clock.start();
 }
@@ -46,6 +61,11 @@ function startClock() {
  */
 function toggleTestClock() {
   if (window.___EXCALIBUR_DEVTOOL) {
+
+    /**
+     * @typedef {import('./@types/excalibur').Engine} Engine
+     * @type {Engine}
+     */
     const game = window.___EXCALIBUR_DEVTOOL;
     if (!window.___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK) {
       window.___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK = true;
@@ -64,6 +84,11 @@ function kill(actorId) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
+
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
   const game = window.___EXCALIBUR_DEVTOOL;
   const actor = game.currentScene.world.entityManager.getById(actorId);
   actor.kill();
@@ -77,6 +102,10 @@ function identifyEntity(entityId) {
     throw new Error("no excalibur!!!");
   }
 
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
   const game = window.___EXCALIBUR_DEVTOOL;
   const actor = game.currentScene.world.entityManager.getById(entityId);
   if (actor === undefined) {
@@ -88,6 +117,28 @@ function identifyEntity(entityId) {
   }, 3);
 }
 
+
+/**
+ * Set Color Blind Mode
+ */
+function setColorBlind(colorBlindMode) {
+  if (!window.___EXCALIBUR_DEVTOOL) {
+    throw new Error("no excalibur!!!");
+  }
+
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
+  const game = window.___EXCALIBUR_DEVTOOL;
+  if (colorBlindMode === 'Normal') {
+    game.debug.colorBlindMode.clear();
+  } else {
+    game.debug.colorBlindMode.simulate(colorBlindMode);
+  }
+}
+
+
 /**
  * Updates physics related settings.
  */
@@ -95,6 +146,11 @@ function updatePhysics(settings) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
+
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
   const game = window.___EXCALIBUR_DEVTOOL;
   game.physics.enabled = settings.enabled;
   game.physics.solver = settings.solverStrategy;
@@ -103,13 +159,40 @@ function updatePhysics(settings) {
 /**
  * Injects settings defined by the devtool into the game. Information about
  * the game state is then returned from this function.
+ *
+ *  @typedef {import('./components/debug-settings').Settings} DebugSettings
+ *  @param {DebugSettings} settings 
  */
 function inject(settings) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
 
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
   const game = window.___EXCALIBUR_DEVTOOL;
+
+
+  // Micro re-implementation of ex-color
+  class ColorLike {
+    constructor({ r, g, b, a }) {
+      this.r = r;
+      this.g = g;
+      this.b = b;
+      this.a = a != null && a != undefined ? a : 1;
+    }
+    clone(dest) {
+      const result = dest || new ColorLike({ r: this.r, g: this.g, b: this.b, a: this.a });
+      result.r = this.r;
+      result.g = this.g;
+      result.b = this.b;
+      result.a = this.a;
+      return result;
+    }
+  }
+
 
   // Toggle debug
   if (settings.toggleDebug === true) {
@@ -121,17 +204,43 @@ function inject(settings) {
       game.toggleDebug();
     }
   }
+
+  // Debug text color
+  game.debug.settings.text.foreground = new ColorLike(settings.debugTextForegroundColor);
+  game.debug.settings.text.background = new ColorLike(settings.debugTextBackgroundColor);
+  game.debug.settings.text.border = new ColorLike(settings.debugTextBorderColor);
+
+  // Entity
   game.debug.entity.showName = settings.showNames;
   game.debug.entity.showId = settings.showIds;
+
+  // Transform
   game.debug.transform.showPosition = settings.showPos;
   game.debug.transform.showPositionLabel = settings.showPosLabel;
   game.debug.transform.positionColor = settings.posColor;
+
+  game.debug.transform.showRotation = settings.showRotation;
+  game.debug.transform.rotationColor = settings.rotationColor;
+
+  game.debug.transform.showScale = settings.showScale;
+  game.debug.transform.scaleColor = settings.scaleColor;
+
+  game.debug.transform.showZIndex = settings.showZIndex;
+
+  // Components
   game.debug.graphics.showBounds = settings.showGraphicsBounds;
   game.debug.graphics.boundsColor = settings.graphicsBoundsColor;
   game.debug.collider.showBounds = settings.showColliderBounds;
   game.debug.collider.boundsColor = settings.colliderBoundsColor;
   game.debug.collider.showGeometry = settings.showGeometryBounds;
   game.debug.collider.geometryColor = settings.geometryBoundsColor;
+
+  // Physics
+  game.debug.physics.showCollisionContacts = settings.showContact;
+  game.debug.physics.collisionContactColor = settings.contactColor;
+  game.debug.physics.showCollisionNormals = settings.showContactNormal;
+  game.debug.physics.collisionNormalColor = settings.contactNormalColor;
+  game.debug.physics.showBroadphaseSpacePartitionDebug = settings.showSpacePartition;
 
   // Send game state to dev tools
   let currentScene = 'root';
@@ -173,25 +282,46 @@ function inject(settings) {
       maxFps: game.maxFps,
       fixedUpdateFps: game.fixedUpdateFps,
       fixedUpdateTimestep: game.fixedUpdateTimestep,
-      gravity: game.currentScene.physics.config?.gravity ?? { _x: 0, _y : 0},
+      gravity: game.currentScene.physics.config?.gravity ?? { _x: 0, _y: 0 },
       solverStrategy: game.currentScene.physics.config?.solver ?? 'arcade'
     }
   });
 }
 
+/**
+ *  Sets the actual defaults
+ *  @typedef {import('./components/debug-settings').Settings DebugSettings
+ *  @type DebugSettings
+ */
 const debugSettings = {
   toggleDebug: false,
+  debugTextForegroundColor: { r: 0, g: 0, b: 0, a: 1 },
+  debugTextBackgroundColor: { r: 0, g: 0, b: 0, a: 0 },
+  debugTextBorderColor: { r: 0, g: 0, b: 0, a: 0 },
   showNames: false,
   showIds: false,
   showPos: false,
   showPosLabel: false,
   posColor: { r: 255, g: 255, b: 0, a: 1 },
+
+  showScale: false,
+  scaleColor: { r: 0, g: 0, b: 0, a: 1 },
+
+  showRotation: false,
+  rotationColor: { r: 0, g: 0, b: 0, a: 1 },
+
   showGraphicsBounds: false,
   graphicsBoundsColor: { r: 255, g: 255, b: 0, a: 1 },
   showColliderBounds: false,
   colliderBoundsColor: { r: 0, g: 0, b: 255, a: 1 },
   showGeometryBounds: true,
-  geometryBoundsColor: { r: 0, g: 255, b: 0, a: 1 }
+  geometryBoundsColor: { r: 0, g: 255, b: 0, a: 1 },
+
+  showContact: false,
+  contactColor: { r: 255, g: 0, b: 0, a: 1 },
+  showContactNormal: false,
+  contactNormalColor: { r: 255, g: 0, b: 0, a: 1 },
+  showSpacePartition: false
 };
 
 const ports = {};
@@ -286,6 +416,16 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
+        case "color-blind":
+          {
+            globalThis.browser.scripting.executeScript({
+              target: { tabId: message.tabId },
+              world: 'MAIN',
+              func: setColorBlind,
+              args: [message.colorBlindMode]
+            });
+          }
+          break;
         case "identify-actor":
           {
             globalThis.browser.scripting.executeScript({
@@ -303,18 +443,40 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
           break;
         case 'update-debug':
           {
-            const { debug } = message;
+            /**
+             *  @typedef {import('./components/debug-settings').Settings DebugSettings
+             *  @type {DebugSettings}
+             */
+            const debug = message.debug;
+            debugSettings.debugTextForegroundColor = debug.debugTextForegroundColor;
+            debugSettings.debugTextBackgroundColor = debug.debugTextBackgroundColor;
+            debugSettings.debugTextBorderColor = debug.debugTextBorderColor;
             debugSettings.showNames = debug.showNames;
             debugSettings.showIds = debug.showIds;
             debugSettings.showPos = debug.showPos;
             debugSettings.showPosLabel = debug.showPosLabel;
             debugSettings.posColor = debug.posColor;
+
+            debugSettings.showRotation = debug.showRotation;
+            debugSettings.rotationColor = debug.rotationColor;
+
+            debugSettings.showScale = debug.showScale;
+            debugSettings.scaleColor = debug.scaleColor;
+
+            debugSettings.showZIndex = debug.showZIndex;
+
             debugSettings.showGraphicsBounds = debug.showGraphicsBounds;
             debugSettings.graphicsBoundsColor = debug.graphicsBoundsColor;
             debugSettings.showColliderBounds = debug.showColliderBounds;
             debugSettings.colliderBoundsColor = debug.colliderBoundsColor;
             debugSettings.showGeometryBounds = debug.showGeometryBounds;
             debugSettings.geometryBoundsColor = debug.geometryBoundsColor;
+
+            debugSettings.showContact = debug.showContact;
+            debugSettings.contactColor = debug.contactColor;
+            debugSettings.showContactNormal = debug.showContactNormal;
+            debugSettings.contactNormalColor = debug.contactNormalColor;
+            debugSettings.showSpacePartition = debug.showSpacePartition;
           }
           break;
         case 'update-physics':

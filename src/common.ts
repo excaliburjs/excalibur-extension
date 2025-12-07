@@ -1,6 +1,31 @@
 import { css } from 'lit';
 
 export const common = css`
+
+  h2 {
+    position: relative;
+    background-color: var(--panel-color);
+    padding: 10px;
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+
+  h2::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 0;
+    height: 100%;
+    border-left: 5px solid var(--ex-blue-accent);
+  }
+
+  h3 {
+    position: relative;
+    padding: 0;
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+
   .section {
     position: relative;
     padding: 10px;

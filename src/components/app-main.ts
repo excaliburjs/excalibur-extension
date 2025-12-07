@@ -17,7 +17,7 @@ import { FpsGraph } from './fps-graph';
 import { FrameTimeGraph } from './frame-time-graph';
 import { Stats } from './stats-list';
 import { FlameChart } from './flame-chart';
-import { SlChangeEvent, SlInput } from '@shoelace-style/shoelace';
+import { SlChangeEvent, SlInput, SlRadioGroup } from '@shoelace-style/shoelace';
 import { Entity } from './entity-list';
 import { DefaultPhysicsSettings, Physics } from './physics-settings';
 
@@ -110,6 +110,11 @@ export class App extends LitElement {
       .version {
         margin-left: 10px;
       }
+      sl-radio {
+        margin-bottom: 5px;
+      }
+
+
     `
   ];
   @query('fps-graph')
@@ -146,7 +151,8 @@ export class App extends LitElement {
     drawTime: 0,
     frameBudget: 0,
     drawCalls: 0,
-    numActors: 0
+    numActors: 0,
+    rendererSwaps: 0,
   };
 
   @state({
@@ -184,19 +190,7 @@ export class App extends LitElement {
     switch (message.name) {
       case 'init': {
         const { settings } = message.data;
-        this.settings = {
-          showNames: settings.showNames,
-          showIds: settings.showIds,
-          showPos: settings.showPos,
-          showPosLabel: settings.showPosLabel,
-          posColor: settings.posColor,
-          showGraphicsBounds: settings.showGraphicsBounds,
-          graphicsBoundsColor: settings.graphicsBoundsColor,
-          showColliderBounds: settings.showColliderBounds,
-          colliderBoundsColor: settings.colliderBoundsColor,
-          showGeometryBounds: settings.showGeometryBounds,
-          geometryBoundsColor: settings.geometryBoundsColor
-        };
+        this.settings = { ...settings };
         break;
       }
       case 'heartbeat': {
@@ -227,7 +221,8 @@ export class App extends LitElement {
           updateTime: stats.currFrame._durationStats.update,
           drawTime: stats.currFrame._durationStats.draw,
           drawCalls: stats.currFrame._graphicsStats.drawCalls,
-          numActors: stats.currFrame._actorStats.total
+          numActors: stats.currFrame._actorStats.total,
+          rendererSwaps: stats.currFrame._graphicsStats.rendererSwaps
         };
 
         this.fpsGraph.draw(fps);
@@ -345,6 +340,17 @@ export class App extends LitElement {
     });
   }
 
+  setColorBlind() {
+    const colorBlindRadioGroup = this.shadowRoot?.querySelector('#color-blind') as SlRadioGroup;
+    const colorBlindMode = (colorBlindRadioGroup?.value) ?? 'Normal';
+    this.backgroundConnection.postMessage({
+      name: 'command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'color-blind',
+      colorBlindMode: colorBlindMode
+    });
+  }
+
   identifyActor(evt: CustomEvent<number>) {
     this.backgroundConnection.postMessage({
       name: 'command',
@@ -372,6 +378,8 @@ export class App extends LitElement {
 
       <sl-tab-group>
         <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
+        <sl-tab slot="nav" panel="screencamera">Screen & Camera</sl-tab>
+        <sl-tab slot="nav" panel="input">Input</sl-tab> <!-- Input Handlers, Input Mapping, etc -->
         <sl-tab slot="nav" panel="perf">Performance</sl-tab>
         <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
         <sl-tab slot="nav" panel="physics">Physics</sl-tab>
@@ -394,9 +402,7 @@ export class App extends LitElement {
                     type="number"
                     .value=${this.clockStepMs.toString()}
                     step="1"
-                    ,
                     min="1"
-                    ,
                     max="100"
                     @sl-change=${this.handleStepChange}
                   ></sl-input>
@@ -419,6 +425,26 @@ export class App extends LitElement {
                 <div>Page Pos: <span id="page-pos">${this.pagePos}</span></div>
               </div>
             </div>
+
+            <div class="widget">
+              <h2>Accessibility</h2>
+              <div class="section">
+                <h3>Simulate Color Blindness</h3>
+                <sl-radio-group
+                  id="color-blind"
+                  @sl-change=${this.setColorBlind}
+                  label="Select an option"
+                  name="color-blindness"
+                  value="Normal">
+                  <sl-radio value="Normal">Fully Sighted</sl-radio>
+                  <sl-radio value="Protanope">Protanope</sl-radio>
+                  <sl-radio value="Deuteranope">Deuteranope</sl-radio>
+                  <sl-radio value="Tritanope">Tritanope</sl-radio>
+                  <!-- <sl-radio value="Grayscale">Grayscale</sl-radio> -->
+                  <!-- <sl-radio value="Contrast">High Contast</sl-radio> -->
+                </sl-radio-group>
+              </div>
+            </div>
           </div>
           <div class="row">
             <div class="widget">
@@ -435,6 +461,7 @@ export class App extends LitElement {
                 </div>
               </div>
             </div>
+
           </div>
           <!-- </div> -->
           <!-- <div slot="end">
@@ -456,6 +483,7 @@ export class App extends LitElement {
               </div>
             </div>
           </div>
+
           <!-- <div class="row">
                     <div class="widget">
                         <h2>Profiling</h2>
@@ -473,17 +501,12 @@ export class App extends LitElement {
                 </div> -->
         </sl-tab-panel>
         <sl-tab-panel name="debugdraw">
-          <div class="row">
-            <div class="widget">
-              <h2>Debug Draw Settings</h2>
-              <debug-settings
-                @toggle-debug-draw=${this.toggleDebugDraw}
-                @debug-settings-change=${this.updateDebugSetting}
-                .settings=${this.settings}
-              >
-              </debug-settings>
-            </div>
-          </div>
+          <debug-settings
+            @toggle-debug-draw=${this.toggleDebugDraw}
+            @debug-settings-change=${this.updateDebugSetting}
+            .settings=${this.settings}
+          >
+          </debug-settings>
         </sl-tab-panel>
         <sl-tab-panel name="physics">
           <div class="row">

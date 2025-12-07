@@ -4,122 +4,6 @@ import { colors } from '../colors';
 import { common } from '../common';
 import { SlChangeEvent, SlColorPicker, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
 
-export interface DebugStats {
-  currFrame: {
-    _fps: number;
-    _elapsedMs: number;
-    _delta?: number;
-    _durationStats: {
-      total: number;
-      update: number;
-      draw: number;
-    };
-    _graphicsStats: {
-      drawCalls: number;
-    };
-    _actorStats: {
-      total: number;
-    };
-  };
-}
-
-export interface Debug {
-  /**
-   * Performance statistics
-   */
-  stats: DebugStats;
-  /**
-   * Filter debug context to named entities or entity ids
-   */
-  filter: {
-    useFilter: boolean;
-    nameQuery: string;
-    ids: number[];
-  };
-  /**
-   * Entity debug settings
-   */
-  entity: {
-    showAll: boolean;
-    showId: boolean;
-    showName: boolean;
-  };
-  /**
-   * Transform component debug settings
-   */
-  transform: {
-    showAll: boolean;
-    showPosition: boolean;
-    showPositionLabel: boolean;
-    positionColor: Color;
-    showZIndex: boolean;
-    showScale: boolean;
-    scaleColor: Color;
-    showRotation: boolean;
-    rotationColor: Color;
-  };
-  /**
-   * Graphics component debug settings
-   */
-  graphics: {
-    showAll: boolean;
-    showBounds: boolean;
-    boundsColor: Color;
-  };
-  /**
-   * Collider component debug settings
-   */
-  collider: {
-    showAll: boolean;
-    showBounds: boolean;
-    boundsColor: Color;
-    showOwner: boolean;
-    showGeometry: boolean;
-    geometryColor: Color;
-  };
-  /**
-   * Physics simulation debug settings
-   */
-  physics: {
-    showAll: boolean;
-    showBroadphaseSpacePartitionDebug: boolean;
-    showCollisionNormals: boolean;
-    collisionNormalColor: Color;
-    showCollisionContacts: boolean;
-    collisionContactColor: Color;
-  };
-  /**
-   * Motion component debug settings
-   */
-  motion: {
-    showAll: boolean;
-    showVelocity: boolean;
-    velocityColor: Color;
-    showAcceleration: boolean;
-    accelerationColor: Color;
-  };
-  /**
-   * Body component debug settings
-   */
-  body: {
-    showAll: boolean;
-    showCollisionGroup: boolean;
-    showCollisionType: boolean;
-    showSleeping: boolean;
-    showMotion: boolean;
-    showMass: boolean;
-  };
-  /**
-   * Camera debug settings
-   */
-  camera: {
-    showAll: boolean;
-    showFocus: boolean;
-    focusColor: Color;
-    showZoom: boolean;
-  };
-}
-
 interface Color {
   r: number;
   g: number;
@@ -134,47 +18,103 @@ const black: Color = {
   a: 1.0
 };
 
+
+const transparent: Color = {
+  r: 0,
+  g: 0,
+  b: 0,
+  a: 0.0
+};
+
 const hexToColor = (hex: string) => {
   hex = hex.substring(1);
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
-  return { r, g, b, a: 1.0 } satisfies Color;
+  let a = 1.0;
+  if (hex.length > 6) {
+    a = parseInt(hex.substring(6, 8), 16) / 255;
+  }
+  return { r, g, b, a } satisfies Color;
 };
 
 const colorToHex = (color: Color) => {
   const r = color.r.toString(16).padStart(2, '0');
   const g = color.g.toString(16).padStart(2, '0');
   const b = color.b.toString(16).padStart(2, '0');
-  return `#${r}${g}${b}`;
+  const a = Math.floor(color.a * 255).toString(16).padStart(2, '0');
+  return `#${r}${g}${b}${a}`;
 };
 
 export interface Settings {
+  debugTextForegroundColor: Color;
+  debugTextBackgroundColor: Color;
+  debugTextBorderColor: Color;
+
   showNames: boolean;
   showIds: boolean;
+
   showPos: boolean;
   showPosLabel: boolean;
   posColor: Color;
+  showRotation: boolean;
+  rotationColor: Color;
+  showScale: boolean;
+  scaleColor: Color;
+  showZIndex: boolean;
+
   showGraphicsBounds: boolean;
   graphicsBoundsColor: Color;
+
   showColliderBounds: boolean;
   colliderBoundsColor: Color;
+
   showGeometryBounds: boolean;
   geometryBoundsColor: Color;
+
+
+  showContact: boolean;
+  contactColor: Color;
+  showContactNormal: boolean;
+  contactNormalColor: Color;
+
+  showSpacePartition: boolean;
 }
 
 export const DefaultSettings: Settings = {
+  debugTextForegroundColor: { r: 0, g: 0, b: 0, a: 1 },
+  debugTextBackgroundColor: { r: 0, g: 0, b: 0, a: 0 },
+  debugTextBorderColor: { r: 0, g: 0, b: 0, a: 0 },
+
   showNames: false,
   showIds: false,
+
   showPos: false,
   showPosLabel: false,
   posColor: { r: 0, g: 0, b: 0, a: 1 },
+
+  showRotation: false,
+  rotationColor: { r: 0, g: 0, b: 0, a: 1 },
+
+  showScale: false,
+  scaleColor: { r: 0, g: 0, b: 0, a: 1 },
+  showZIndex: false,
+
   showGraphicsBounds: false,
   graphicsBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
+
   showColliderBounds: false,
   colliderBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
+
   showGeometryBounds: false,
-  geometryBoundsColor: { r: 0, g: 0, b: 0, a: 1 }
+  geometryBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
+
+  showContact: false,
+  contactColor: { r: 255, g: 0, b: 0, a: 1 },
+  showContactNormal: false,
+  contactNormalColor: { r: 255, g: 0, b: 0, a: 1 },
+  showSpacePartition: false
+
 };
 
 /**
@@ -191,6 +131,11 @@ export class DebugSettings extends LitElement {
         display: block;
       }
 
+      .flex {
+        display: flex;
+        align-items: center;
+      }
+
       sl-button {
         padding-bottom: 10px;
       }
@@ -203,17 +148,34 @@ export class DebugSettings extends LitElement {
 
   @property({ type: Object })
   settings: Settings | null = {
+    debugTextForegroundColor: { r: 0, g: 0, b: 0, a: 1 },
+    debugTextBackgroundColor: { r: 0, g: 0, b: 0, a: 0 },
+    debugTextBorderColor: { r: 0, g: 0, b: 0, a: 0 },
+
     showNames: false,
     showIds: false,
     showPos: false,
     showPosLabel: false,
     posColor: { r: 0, g: 0, b: 0, a: 1 },
+    showRotation: false,
+    rotationColor: { r: 0, g: 0, b: 0, a: 1 },
+    showScale: false,
+    scaleColor: { r: 0, g: 0, b: 0, a: 1 },
+    showZIndex: false,
+
     showGraphicsBounds: false,
     graphicsBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
     showColliderBounds: false,
     colliderBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
     showGeometryBounds: false,
-    geometryBoundsColor: { r: 0, g: 0, b: 0, a: 1 }
+    geometryBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
+
+    showContact: false,
+    contactColor: { r: 0, g: 0, b: 0, a: 1 },
+    showContactNormal: false,
+    contactNormalColor: { r: 0, g: 0, b: 0, a: 1 },
+    showSpacePartition: false
+
   };
 
   updateSettings(settings: Settings) {
@@ -260,58 +222,114 @@ export class DebugSettings extends LitElement {
 
   render() {
     return html`
-      <div class="debug-settings section">
-        <form>
+<div class="row">
+  <div class="widget">
+    <h2>Debug Draw Settings</h2>
+    <div class="section">
+      <form>
+        <div>
+          <sl-button id="toggle-debug" @click="${this.dispatchToggleDebugDraw}">Toggle Debug Draw</sl-button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="widget">
+    <h2>Transform</h2>
+    <div class="section">
+      <form>
+        <div class="form-row">
           <div>
-            <sl-button id="toggle-debug" @click="${this.dispatchToggleDebugDraw}">Toggle Debug Draw</sl-button>
+            <sl-switch
+              id="show-pos"
+              .checked=${this.settings?.showPos ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showPos')}
+            ></sl-switch>
+            <label for="show-pos">Show Position</label>
+          </div>
+          <div>
+            <sl-switch
+              id="show-pos-label"
+              .checked=${this.settings?.showPosLabel ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showPosLabel')}
+            ></sl-switch>
+            <label for="show-pos-label">Show Coordinates</label>
+          </div>
+          <div>
+            <sl-color-picker
+              id="show-pos-color"
+              format="hex"
+              .noFormatToggle=${true}
+              .hoist=${true}
+              .value=${colorToHex(this.settings?.posColor ?? black)}
+              opacity
+              @sl-input=${this.settingsColorInputHandler('posColor')}>Color</sl-color-picker>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-rotation"
+              .checked=${this.settings?.showRotation ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showRotation')}
+            ></sl-switch>
+            <label for="show-rotation">Show Rotation</label>
           </div>
 
           <div>
-            <sl-switch
-              id="show-names"
-              .checked=${this.settings?.showNames ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showNames')}
-            ></sl-switch>
-            <label for="show-names">Show Names</label>
+            <sl-color-picker
+              id="show-rotation-color"
+              format="hex"
+              .noFormatToggle=${true}
+              .hoist=${true}
+              .value=${colorToHex(this.settings?.rotationColor ?? black)}
+              opacity
+              @sl-input=${this.settingsColorInputHandler('rotationColor')}>Color</sl-color-picker>
           </div>
+        </div>
+
+        <div class="form-row">
           <div>
             <sl-switch
-              id="show-ids"
-              .checked=${this.settings?.showIds ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showIds')}
+              id="show-scale"
+              .checked=${this.settings?.showScale ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showScale')}
             ></sl-switch>
-            <label for="show-ids">Show Ids</label>
+            <label for="show-scale">Show Scale</label>
           </div>
-          <div class="form-row">
-            <div>
-              <sl-switch
-                id="show-pos"
-                .checked=${this.settings?.showPos ?? false}
-                @sl-change=${this.settingSwitchChangeHandler('showPos')}
-              ></sl-switch>
-              <label for="show-pos">Show Position</label>
-            </div>
-            <div>
-              <sl-switch
-                id="show-pos-label"
-                .checked=${this.settings?.showPosLabel ?? false}
-                @sl-change=${this.settingSwitchChangeHandler('showPosLabel')}
-              ></sl-switch>
-              <label for="show-pos-label">Show Label</label>
-            </div>
-            <div>
-              <sl-color-picker
-                id="show-pos-color"
-                .format=${'hex'}
-                .noFormatToggle=${true}
-                .hoist=${true}
-                .value=${colorToHex(this.settings?.posColor ?? black)}
-                @sl-input=${this.settingsColorInputHandler('posColor')}
-                >Color</sl-color-picker
-              >
-            </div>
+          <div>
+            <sl-color-picker
+              id="show-scale-color"
+              format="hex"
+              .noFormatToggle=${true}
+              .hoist=${true}
+              .value=${colorToHex(this.settings?.scaleColor ?? black)}
+              opacity
+              @sl-input=${this.settingsColorInputHandler('scaleColor')}>Color</sl-color-picker>
           </div>
+        </div>
 
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-zindex"
+              .checked=${this.settings?.showZIndex ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showZIndex')}
+            ></sl-switch>
+            <label for="show-rotation">Show Z Index</label>
+          </div>
+          <div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <h2>Components</h2>
+    <div class="section">
+      <form>
           <div class="form-row">
             <div>
               <sl-switch
@@ -327,6 +345,7 @@ export class DebugSettings extends LitElement {
                 id="graphics-bounds-colors"
                 .hoist=${true}
                 .value=${colorToHex(this.settings?.graphicsBoundsColor ?? black)}
+                opacity
                 @sl-input=${this.settingsColorInputHandler('graphicsBoundsColor')}
                 >Color</sl-color-picker
               >
@@ -348,6 +367,7 @@ export class DebugSettings extends LitElement {
                 id="collider-bounds-colors"
                 .hoist=${true}
                 .value=${colorToHex(this.settings?.colliderBoundsColor ?? black)}
+                opacity
                 @sl-input=${this.settingsColorInputHandler('colliderBoundsColor')}
                 >Color</sl-color-picker
               >
@@ -369,13 +389,142 @@ export class DebugSettings extends LitElement {
                 id="collider-geometry-colors"
                 .hoist=${true}
                 .value=${colorToHex(this.settings?.geometryBoundsColor ?? black)}
+                opacity
                 @sl-input=${this.settingsColorInputHandler('geometryBoundsColor')}
-                >Color</sl-color-picker
-              >
+                >Color</sl-color-picker>
             </div>
           </div>
         </form>
       </div>
+    </div>
+
+  <div class="widget">
+    <h2>Entity</h2>
+    <div class="section">
+      <form>
+        <div>
+          <sl-switch
+            id="show-names"
+            .checked=${this.settings?.showNames ?? false}
+            @sl-change=${this.settingSwitchChangeHandler('showNames')}
+          ></sl-switch>
+          <label for="show-names">Show Names</label>
+        </div>
+        <div>
+          <sl-switch
+            id="show-ids"
+            .checked=${this.settings?.showIds ?? false}
+            @sl-change=${this.settingSwitchChangeHandler('showIds')}
+          ></sl-switch>
+          <label for="show-ids">Show Ids</label>
+        </div>
+      </form>
+    </div>
+
+    <h2>Debug Text Color</h2>
+    <div class="section">
+      <form>
+        <div class="form-row">
+          <sl-label for="debug-text-foreground-color">Foreground</sl-label>
+          <sl-color-picker
+            id="debug-text-foreground-color"
+            .hoist=${true}
+            .value=${colorToHex(this.settings?.debugTextForegroundColor ?? black)}
+            opacity
+            @sl-input=${this.settingsColorInputHandler('debugTextForegroundColor')}>Foreground Color
+          </sl-color-picker>
+       </div>
+
+        <div class="form-row">
+          <sl-label for="debug-text-background-color">Background</sl-label>
+          <sl-color-picker
+            id="debug-text-background-color"
+            .hoist=${true}
+            .value=${colorToHex(this.settings?.debugTextBackgroundColor ?? transparent)}
+            opacity
+            @sl-input=${this.settingsColorInputHandler('debugTextBackgroundColor')}>Background Color
+          </sl-color-picker>
+        </div>
+
+        <div class="form-row">
+          <sl-label for="debug-text-border-color">Border</sl-label>
+          <sl-color-picker
+            id="debug-text-border-color"
+            .hoist=${true}
+            .value=${colorToHex(this.settings?.debugTextBorderColor ?? transparent)}
+            opacity
+            @sl-input=${this.settingsColorInputHandler('debugTextBorderColor')}>Background Color
+          </sl-color-picker>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<div class="row">
+  <div class="widget">
+    <h2>Physics</h2>
+
+    <div class="section">
+      <form>
+        <div class="form-row">
+
+          <div>
+            <sl-switch
+              id="show-contact-normal"
+              .checked=${this.settings?.showContactNormal ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showContactNormal')}
+            ></sl-switch>
+            <label for="show-contact-normal">Show Contact Normal</label>
+          </div>
+          <sl-color-picker
+            id="debug-contact-normal-color"
+            .hoist=${true}
+            .value=${colorToHex(this.settings?.contactNormalColor?? black)}
+            opacity
+            @sl-input=${this.settingsColorInputHandler('contactNormalColor')}>Contact Normal Color
+          </sl-color-picker>
+       </div>
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-contact"
+              .checked=${this.settings?.showContact ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showContact')}
+            ></sl-switch>
+            <label for="show-contact-normal">Show Contact</label>
+          </div>
+          <sl-color-picker
+            id="debug-contact-color"
+            .hoist=${true}
+            .value=${colorToHex(this.settings?.contactColor?? black)}
+            opacity
+            @sl-input=${this.settingsColorInputHandler('contactColor')}>Contact Color
+          </sl-color-picker>
+        </div>
+
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-space-partitioning"
+              .checked=${this.settings?.showSpacePartition ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showSpacePartition')}
+            ></sl-switch>
+            <label for="show-contact-normal">Show Space Partitioning</label>
+          </div>
+          <div>
+          </div>
+        </div>
+
+
+
+      </form>
+    </div>
+  </div>
+</div>
     `;
   }
 }

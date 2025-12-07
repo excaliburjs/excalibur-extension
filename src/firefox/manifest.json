@@ -1,7 +1,7 @@
 {
   "name": "Excalibur Dev Tools",
   "author": "Erik Onarheim & contributors",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Excalibur.js browser plugin for debugging your games",
   "manifest_version": 3,
   "devtools_page": "../devtools.html",

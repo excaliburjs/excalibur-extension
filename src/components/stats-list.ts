@@ -12,6 +12,7 @@ export interface Stats {
   frameBudget: number;
   drawCalls: number;
   numActors: number;
+  rendererSwaps: number;
 }
 
 @customElement('stats-list')
@@ -44,7 +45,8 @@ export class StatsList extends LitElement {
     drawTime: 0,
     frameBudget: 0,
     drawCalls: 0,
-    numActors: 0
+    numActors: 0,
+    rendererSwaps: 0
   };
 
   updateStats(stats: Stats) {
@@ -53,7 +55,7 @@ export class StatsList extends LitElement {
   }
 
   override render() {
-    const { fps, frameTime, delta, frameBudget, drawTime, updateTime, drawCalls, numActors } = this.stats;
+    const { fps, frameTime, delta, frameBudget, drawTime, updateTime, drawCalls, numActors, rendererSwaps } = this.stats;
     const frameTime$ = `${frameTime.toFixed(2)}ms (${((frameTime / delta) * 100).toFixed(2)}%)`;
     const drawTime$ = drawTime.toFixed(2);
     const updateTime$ = updateTime.toFixed(2);
@@ -68,6 +70,7 @@ export class StatsList extends LitElement {
         <div>Draw Time: <span id="draw-time">${drawTime$}</span></div>
         <div>Draw Calls: <span id="draw-calls">${drawCalls}</span></div>
         <div>Actors: <span id="num-actors">${numActors}</span></div>
+        <div>Renderer Swaps: <span id="renderer-swaps">${rendererSwaps}</span></div>
       </div>
     `;
   }
