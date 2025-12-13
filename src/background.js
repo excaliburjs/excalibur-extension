@@ -259,6 +259,12 @@ function inject(settings) {
   game.debug.physics.collisionNormalColor = settings.contactNormalColor;
   game.debug.physics.showBroadphaseSpacePartitionDebug = settings.showSpacePartition;
 
+  // Tilemap & Isometric
+  game.debug.tilemap.showGrid = settings.showTileMapGrid;
+  game.debug.tilemap.gridColor = settings.tileMapGridColor;
+  game.debug.isometric.showGrid = settings.showIsometricGrid;
+  game.debug.isometric.gridColor = settings.isometricGridColor;
+
   // Send game state to dev tools
   let currentScene = 'root';
   const sceneNames = [];
@@ -358,7 +364,13 @@ const debugSettings = {
   contactColor: { r: 255, g: 0, b: 0, a: 1 },
   showContactNormal: false,
   contactNormalColor: { r: 255, g: 0, b: 0, a: 1 },
-  showSpacePartition: false
+
+  showSpacePartition: false,
+
+  showTileMapGrid: false,
+  tileMapGridColor: { r: 0, g: 0, b: 0, a: 1 },
+  showIsometricGrid: false,
+  isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
 };
 
 const ports = {};
@@ -523,7 +535,14 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             debugSettings.contactColor = debug.contactColor;
             debugSettings.showContactNormal = debug.showContactNormal;
             debugSettings.contactNormalColor = debug.contactNormalColor;
+
             debugSettings.showSpacePartition = debug.showSpacePartition;
+
+            debugSettings.showTileMapGrid = debug.showTileMapGrid;
+            debugSettings.tileMapGridColor = debug.tileMapGridColor;
+            debugSettings.showIsometricGrid = debug.showIsometricGrid;
+            debugSettings.isometricGridColor = debug.isometricGridColor;
+
           }
           break;
         case 'update-physics':

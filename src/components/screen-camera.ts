@@ -5,6 +5,7 @@ import { common } from "../common";
 import { BoundingBox, Color, DisplayMode, EngineOptions, Resolution, ViewportDimension } from "../@types/excalibur";
 
 const colorToHex = (color: Color) => {
+  if (!color) return "#FFFFFFFF";
   const r = color.r.toString(16).padStart(2, '0');
   const g = color.g.toString(16).padStart(2, '0');
   const b = color.b.toString(16).padStart(2, '0');
@@ -45,11 +46,11 @@ export class ScreenAndCamera extends LitElement {
     <h2>Screen</h2>
     <div class="section">
       <div class="form-row"><label>Display Mode:</label> <span>${this.config.displayMode}</span></div>
-      <div class="form-row"><label>Pixel Ratio (HiDPI > 1.0):</label> <span> ${this.screen.pixelRatio.toFixed(1)}</span></div>
+      <div class="form-row"><label>Pixel Ratio (HiDPI > 1.0):</label> <span> ${this.screen.pixelRatio?.toFixed(1)}</span></div>
       <div class="form-row"><label>Resolution (Game Pixels):</label> <span> dim[${Math.ceil(this.screen.resolution?.width)}x ${Math.ceil(this.screen.resolution?.height)}]</span> </div>
       <div class="form-row"><label>Viewport (CSS Pixels):</label> <span> dim[${Math.ceil(this.screen.viewport?.width)} x ${Math.ceil(this.screen.viewport?.height)}]</span> </div>
-      <div class="form-row"><label>Unsafe Area (Screen Space):</label> <span> pos(${this.screen.unsafeArea.left.toFixed(2)}, dim[${Math.ceil(this.screen.unsafeArea.right - this.screen.unsafeArea.left)} x ${Math.ceil(this.screen.unsafeArea.bottom - this.screen.unsafeArea.top)}]</span> </div>
-      <div class="form-row"><label>Content Area (Screen Space):</label> <span> pos(${this.screen.contentArea.left.toFixed(2)}, ${this.screen.contentArea.top.toFixed(2)}) dim[${Math.ceil(this.screen.contentArea.right - this.screen.contentArea.left)} x ${Math.ceil(this.screen.contentArea.bottom - this.screen.contentArea.top)}]</span> </div>
+      <div class="form-row"><label>Unsafe Area (Screen Space):</label> <span> pos(${this.screen.unsafeArea?.left?.toFixed(2)}, dim[${Math.ceil(this.screen.unsafeArea?.right - this.screen.unsafeArea?.left)} x ${Math.ceil(this.screen.unsafeArea?.bottom - this.screen.unsafeArea?.top)}]</span> </div>
+      <div class="form-row"><label>Content Area (Screen Space):</label> <span> pos(${this.screen.contentArea?.left?.toFixed(2)}, ${this.screen.contentArea?.top?.toFixed(2)}) dim[${Math.ceil(this.screen.contentArea?.right - this.screen.contentArea?.left)} x ${Math.ceil(this.screen.contentArea?.bottom - this.screen.contentArea?.top)}]</span> </div>
       <div class="form-row">
         <div>Background Color:</div>
         <div class="form-row">${colorToHex(this.config.backgroundColor!)}<sl-color-picker format="hexa" .value=${colorToHex(this.config.backgroundColor!)} disabled></sl-color-picker></div>

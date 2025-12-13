@@ -79,6 +79,12 @@ export interface Settings {
   contactNormalColor: Color;
 
   showSpacePartition: boolean;
+
+
+  showTileMapGrid: boolean;
+  tileMapGridColor: Color;
+  showIsometricGrid: boolean;
+  isometricGridColor: Color;
 }
 
 export const DefaultSettings: Settings = {
@@ -113,7 +119,14 @@ export const DefaultSettings: Settings = {
   contactColor: { r: 255, g: 0, b: 0, a: 1 },
   showContactNormal: false,
   contactNormalColor: { r: 255, g: 0, b: 0, a: 1 },
-  showSpacePartition: false
+
+  showSpacePartition: false,
+
+
+  showTileMapGrid: false,
+  tileMapGridColor: { r: 0, g: 0, b: 0, a: 1 },
+  showIsometricGrid: false,
+  isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
 
 };
 
@@ -174,7 +187,14 @@ export class DebugSettings extends LitElement {
     contactColor: { r: 0, g: 0, b: 0, a: 1 },
     showContactNormal: false,
     contactNormalColor: { r: 0, g: 0, b: 0, a: 1 },
-    showSpacePartition: false
+
+    showSpacePartition: false,
+
+    showTileMapGrid: false,
+    tileMapGridColor: { r: 0, g: 0, b: 0, a: 1 },
+    showIsometricGrid: false,
+    isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
+
 
   };
 
@@ -534,52 +554,38 @@ export class DebugSettings extends LitElement {
 
           <div>
             <sl-switch
-              id="show-contact-normal"
-              .checked=${this.settings?.showContactNormal ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showContactNormal')}
+              id="show-grid-tilemap"
+              .checked=${this.settings?.showTileMapGrid ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showTileMapGrid')}
             ></sl-switch>
-            <label for="show-contact-normal">Show Contact Normal</label>
+            <label for="show-grid-tilemap">Show Grid Tilemap</label>
           </div>
           <sl-color-picker
-            id="debug-contact-normal-color"
+            id="debug-grid-tilemap-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.contactNormalColor?? black)}
+            .value=${colorToHex(this.settings?.tileMapGridColor ?? black)}
             opacity
-            @sl-input=${this.settingsColorInputHandler('contactNormalColor')}>Contact Normal Color
+            @sl-input=${this.settingsColorInputHandler('tileMapGridColor')}>Grid Tilemap Color
           </sl-color-picker>
        </div>
 
         <div class="form-row">
           <div>
             <sl-switch
-              id="show-contact"
-              .checked=${this.settings?.showContact ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showContact')}
+              id="show-grid-isometric"
+              .checked=${this.settings?.showIsometricGrid ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showIsometricGrid')}
             ></sl-switch>
-            <label for="show-contact-normal">Show Contact</label>
+            <label for="show-grid-isometric">Show Grid Isometric</label>
           </div>
           <sl-color-picker
-            id="debug-contact-color"
+            id="debug-grid-isometric-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.contactColor?? black)}
+            .value=${colorToHex(this.settings?.isometricGridColor ?? black)}
             opacity
-            @sl-input=${this.settingsColorInputHandler('contactColor')}>Contact Color
+            @sl-input=${this.settingsColorInputHandler('isometricGridColor')}>Grid Isometric Color
           </sl-color-picker>
         </div>
-
-        <div class="form-row">
-          <div>
-            <sl-switch
-              id="show-space-partitioning"
-              .checked=${this.settings?.showSpacePartition ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showSpacePartition')}
-            ></sl-switch>
-            <label for="show-contact-normal">Show Space Partitioning</label>
-          </div>
-          <div>
-          </div>
-        </div>
-
       </form>
     </div>
 
