@@ -1,3 +1,4 @@
+
 if (typeof browser == 'undefined') {
   // Chrome does not support the browser namespace yet.
   globalThis.browser = globalThis.chrome;
@@ -138,6 +139,22 @@ function setColorBlind(colorBlindMode) {
   }
 }
 
+/**
+ * Go to scene
+ */
+function goToScene(sceneName) {
+  if (!window.___EXCALIBUR_DEVTOOL) {
+    throw new Error("no excalibur!!!");
+  }
+
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
+  const game = window.___EXCALIBUR_DEVTOOL;
+  game.goToScene(sceneName);
+}
+
 
 /**
  * Updates physics related settings.
@@ -268,6 +285,25 @@ function inject(settings) {
   // Game data is stringified to ensure get properties are called.
   return JSON.stringify({
     version: game.version,
+    /**
+     * @typedef {import('./@types/excalibur.d.ts').EngineOptions} EngineOptions
+     * @type {EngineOptions}
+     */
+    config: { ...game._originalOptions },
+    screen: {
+      viewport: game.screen.viewport,
+      resolution: game.screen.resolution,
+      displayMode: game.screen.displayMode,
+      pixelRatio: game.screen.pixelRatio,
+      unsafeArea: game.screen.unsafeArea,
+      contentArea: game.screen.contentArea
+    },
+    camera: {
+      pos: game.currentScene.camera.pos,
+      vel: game.currentScene.camera.vel,
+      acc: game.currentScene.camera.acc,
+      strategies: game.currentScene.camera.strategies.map(s => ({name: s.constructor.name}))
+    },
     currentScene: currentScene,
     scenes: sceneNames,
     pointer: {
@@ -283,7 +319,8 @@ function inject(settings) {
       fixedUpdateFps: game.fixedUpdateFps,
       fixedUpdateTimestep: game.fixedUpdateTimestep,
       gravity: game.currentScene.physics.config?.gravity ?? { _x: 0, _y: 0 },
-      solverStrategy: game.currentScene.physics.config?.solver ?? 'arcade'
+      solverStrategy: game.currentScene.physics.config?.solver ?? 'arcade',
+      config: { ...game.currentScene.physics.config }
     }
   });
 }
@@ -423,6 +460,16 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
               world: 'MAIN',
               func: setColorBlind,
               args: [message.colorBlindMode]
+            });
+          }
+          break;
+        case "goto-scene":
+          {
+            globalThis.browser.scripting.executeScript({
+              target: { tabId: message.tabId },
+              world: 'MAIN',
+              func: goToScene,
+              args: [message.sceneName]
             });
           }
           break;

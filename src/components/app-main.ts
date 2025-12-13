@@ -10,6 +10,7 @@ import './flame-chart';
 import './stats-list';
 import './scene-list';
 import './physics-settings';
+import './screen-camera';
 import { colors } from '../colors';
 import { common } from '../common';
 import { DefaultSettings, Settings } from './debug-settings';
@@ -20,6 +21,7 @@ import { FlameChart } from './flame-chart';
 import { SlChangeEvent, SlInput, SlRadioGroup } from '@shoelace-style/shoelace';
 import { Entity } from './entity-list';
 import { DefaultPhysicsSettings, Physics } from './physics-settings';
+import { BoundingBox, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -40,6 +42,13 @@ interface Engine {
   scenes: string[];
   entities: Entity[];
   pointer: Pointer | null;
+}
+
+interface Camera {
+  pos: Point;
+  vel: Point;
+  acc: Point;
+  strategies: { name: string }[];
 }
 
 interface InitEvent {
@@ -168,6 +177,22 @@ export class App extends LitElement {
   pagePos: string = '???';
 
   backgroundConnection!: browser.runtime.Port;
+  camera: Camera = {
+    pos: { _x: 0, _y: 0 },
+    vel: { _x: 0, _y: 0 },
+    acc: { _x: 0, _y: 0 },
+    strategies: []
+  };
+
+  config: EngineOptions = {};
+  screen: {
+      viewport: ViewportDimension,
+      resolution: Resolution,
+      displayMode: DisplayMode,
+      pixelRatio: number,
+      unsafeArea: BoundingBox,
+      contentArea: BoundingBox
+    } = {} as any;
 
   override firstUpdated(): void {
     this.connectToExtension();
@@ -194,7 +219,24 @@ export class App extends LitElement {
         break;
       }
       case 'heartbeat': {
-        const { version, currentScene, scenes, pointer, entities, stats, physics } = JSON.parse(message.data);
+        const data = JSON.parse(message.data);
+        const {
+          version,
+          config,
+          screen,
+          camera,
+          currentScene,
+          scenes,
+          pointer,
+          entities,
+          stats,
+          physics
+        } = data;
+
+        this.config = config;
+        this.screen = screen;
+        this.camera = camera;
+
         this.engine = {
           version: version,
           currentScene: currentScene,
@@ -237,8 +279,9 @@ export class App extends LitElement {
           maxFps: physics.maxFps,
           fixedUpdateFps: physics.fixedUpdateFps,
           fixedUpdateTimestep: physics.fixedUpdateTimestep,
-          gravity: {...physics.gravity},
+          gravity: { ...physics.gravity },
           solverStrategy: physics.solverStrategy,
+          config: physics.config
         };
         break;
       }
@@ -365,8 +408,8 @@ export class App extends LitElement {
     this.backgroundConnection.postMessage({
       name: 'command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'goto',
-      scene
+      dispatch: 'goto-scene',
+      sceneName: scene
     });
   }
 
@@ -378,8 +421,7 @@ export class App extends LitElement {
 
       <sl-tab-group>
         <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
-        <sl-tab slot="nav" panel="screencamera">Screen & Camera</sl-tab>
-        <sl-tab slot="nav" panel="input">Input</sl-tab> <!-- Input Handlers, Input Mapping, etc -->
+        <sl-tab slot="nav" panel="screen-camera">Screen & Camera</sl-tab>
         <sl-tab slot="nav" panel="perf">Performance</sl-tab>
         <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
         <sl-tab slot="nav" panel="physics">Physics</sl-tab>
@@ -467,6 +509,10 @@ export class App extends LitElement {
           <!-- <div slot="end">
                     </div> -->
           <!-- </sl-split-panel> -->
+        </sl-tab-panel>
+
+        <sl-tab-panel name="screen-camera">
+          <screen-camera .config=${this.config} .screen=${this.screen} .camera=${this.camera}></screen-camera>
         </sl-tab-panel>
         <sl-tab-panel name="perf">
           <div class="row">

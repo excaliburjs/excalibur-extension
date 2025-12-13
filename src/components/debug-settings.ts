@@ -463,6 +463,7 @@ export class DebugSettings extends LitElement {
 
 
 <div class="row">
+  
   <div class="widget">
     <h2>Physics</h2>
 
@@ -505,6 +506,66 @@ export class DebugSettings extends LitElement {
           </sl-color-picker>
         </div>
 
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-space-partitioning"
+              .checked=${this.settings?.showSpacePartition ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showSpacePartition')}
+            ></sl-switch>
+            <label for="show-contact-normal">Show Space Partitioning</label>
+          </div>
+          <div>
+          </div>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+
+
+  <div class="widget">
+    <h2>Tilemap</h2>
+
+    <div class="section">
+      <form>
+        <div class="form-row">
+
+          <div>
+            <sl-switch
+              id="show-contact-normal"
+              .checked=${this.settings?.showContactNormal ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showContactNormal')}
+            ></sl-switch>
+            <label for="show-contact-normal">Show Contact Normal</label>
+          </div>
+          <sl-color-picker
+            id="debug-contact-normal-color"
+            .hoist=${true}
+            .value=${colorToHex(this.settings?.contactNormalColor?? black)}
+            opacity
+            @sl-input=${this.settingsColorInputHandler('contactNormalColor')}>Contact Normal Color
+          </sl-color-picker>
+       </div>
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-contact"
+              .checked=${this.settings?.showContact ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showContact')}
+            ></sl-switch>
+            <label for="show-contact-normal">Show Contact</label>
+          </div>
+          <sl-color-picker
+            id="debug-contact-color"
+            .hoist=${true}
+            .value=${colorToHex(this.settings?.contactColor?? black)}
+            opacity
+            @sl-input=${this.settingsColorInputHandler('contactColor')}>Contact Color
+          </sl-color-picker>
+        </div>
 
         <div class="form-row">
           <div>
@@ -519,11 +580,11 @@ export class DebugSettings extends LitElement {
           </div>
         </div>
 
-
-
       </form>
     </div>
+
   </div>
+
 </div>
     `;
   }
