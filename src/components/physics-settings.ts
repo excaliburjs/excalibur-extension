@@ -298,6 +298,10 @@ export class PhysicsSettings extends LitElement {
 
   render() {
     return html`
+
+<div class="row">
+  <div class="widget">
+    <h2>Physics Simulation Settings</h2>
     <div class="physics-settings">
       <form>
         <div class="row section">
@@ -318,6 +322,8 @@ export class PhysicsSettings extends LitElement {
         }
       </form>
     </div>
+  </div>
+</div>
     `;
   }
 }
