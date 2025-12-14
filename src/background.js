@@ -158,19 +158,49 @@ function goToScene(sceneName) {
 
 /**
  * Updates physics related settings.
+ * @typedef {import('./components/physics-settings').Physics} Physics
+ * @param {Physics} settings
  */
 function updatePhysics(settings) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
 
+
+  /**
+  * Performs a deep merge of objects and returns mutated first object. 
+  *
+  * @param {...object} objects - Objects to merge
+  * @returns {object} New object with merged key/values
+  */
+  function mergeDeep(...objects) {
+    const isObject = obj => obj && typeof obj === 'object';
+
+    return objects.reduce((prev, obj) => {
+      Object.keys(obj).forEach(key => {
+        const pVal = prev[key];
+        const oVal = obj[key];
+        if (Array.isArray(pVal) && Array.isArray(oVal)) {
+          prev[key] = pVal.concat(...oVal);
+        }
+        else if (isObject(pVal) && isObject(oVal)) {
+          prev[key] = mergeDeep(pVal, oVal);
+        }
+        else {
+          prev[key] = oVal;
+        }
+      });
+      return prev;
+    }, objects[0]); // keep first object reference
+  }
+
+
   /**
    * @typedef {import('./@types/excalibur').Engine} Engine
    * @type {Engine}
    */
   const game = window.___EXCALIBUR_DEVTOOL;
-  game.physics.enabled = settings.enabled;
-  game.physics.solver = settings.solverStrategy;
+  game.physics = mergeDeep(game.physics, settings.config);
 }
 
 /**

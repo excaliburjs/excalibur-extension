@@ -280,7 +280,6 @@ export class App extends LitElement {
           fixedUpdateFps: physics.fixedUpdateFps,
           fixedUpdateTimestep: physics.fixedUpdateTimestep,
           gravity: { ...physics.gravity },
-          solverStrategy: physics.solverStrategy,
           config: physics.config
         };
         break;
@@ -427,9 +426,6 @@ export class App extends LitElement {
         <sl-tab slot="nav" panel="physics">Physics</sl-tab>
 
         <sl-tab-panel name="inspector">
-          <!-- <sl-split-panel position="75"> -->
-          <!-- <div slot="start"> -->
-
           <div class="row">
             <div class="widget">
               <h2>Clock</h2>
@@ -503,12 +499,7 @@ export class App extends LitElement {
                 </div>
               </div>
             </div>
-
           </div>
-          <!-- </div> -->
-          <!-- <div slot="end">
-                    </div> -->
-          <!-- </sl-split-panel> -->
         </sl-tab-panel>
 
         <sl-tab-panel name="screen-camera">
@@ -545,6 +536,7 @@ export class App extends LitElement {
                         </div>
                     </div>
                 </div> -->
+
         </sl-tab-panel>
         <sl-tab-panel name="debugdraw">
           <debug-settings
@@ -555,16 +547,11 @@ export class App extends LitElement {
           </debug-settings>
         </sl-tab-panel>
         <sl-tab-panel name="physics">
-          <div class="row">
-            <div class="widget">
-              <h2>Physics Settings</h2>
-              <physics-settings
-                @physics-settings-change=${this.updatePhysicsSetting}
-                .settings=${this.physics}
-              >
-              </physics-settings>
-            </div>
-          </div>
+          <physics-settings
+            @physics-settings-change=${this.updatePhysicsSetting}
+            .settings=${this.physics}
+          >
+          </physics-settings>
         </sl-tab-panel>
       </sl-tab-group>
     `;
