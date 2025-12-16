@@ -43,10 +43,9 @@ export class PhysicsSettings extends LitElement {
         display: block;
       }
 
-      sl-select, sl-range, sl-checkbox {
+      sl-switch, sl-select, sl-range, sl-checkbox {
         margin-top: 15px;
         margin-bottom: 15px;
-
       }
     `
   ];
@@ -102,22 +101,23 @@ export class PhysicsSettings extends LitElement {
     return html`
     <div class="row section">
       <div class="widget">
-        <sl-switch
-          id="enable-physics"
-          .checked=${this.settings.config.enabled ?? false}
-          @sl-change=${this.settingChangeHandler(this.settings.config, 'enabled')}
-        ></sl-switch>
-        <label for="enable-physics">Enable Physics</label>
-      </div>
+        <div>
+          <sl-switch
+            id="enable-physics"
+            .checked=${this.settings.config.enabled ?? false}
+            @sl-change=${this.settingChangeHandler(this.settings.config, 'enabled')}
+          ></sl-switch>
+          <label for="enable-physics">Enable Physics</label>
+        </div>
 
-
-      <div class="widget">
-        <sl-switch
-          id="integration"
-          .checked=${this.settings.config.integration!.onScreenOnly ?? false}
-          @sl-change=${this.settingChangeHandler(this.settings.config.integration!, 'onScreenOnly')}
-        ></sl-switch>
-        <label for="integration">On Screen Integration Only</label>
+        <div>
+          <sl-switch
+            id="integration"
+            .checked=${this.settings.config.integration!.onScreenOnly ?? false}
+            @sl-change=${this.settingChangeHandler(this.settings.config.integration!, 'onScreenOnly')}
+          ></sl-switch>
+          <label for="integration">On Screen Integration Only</label>
+        </div>
       </div>
     </div>
 
@@ -136,7 +136,7 @@ export class PhysicsSettings extends LitElement {
         ></sl-range>
 
         <label for="spatial-partition">Sparse Hash Grid</label>
-        <sl-select id="spatial-partition" 
+        <sl-select id="spatial-partition"
           .value=${this.settings.config.spatialPartition} 
           @sl-change=${this.settingChangeHandler(this.settings.config, 'spatialPartition')}>
           <sl-option id="sparse-hash-grid" value="sparse-hash-grid">Sparse Hash Grid</sl-option>
@@ -306,11 +306,11 @@ export class PhysicsSettings extends LitElement {
       <form>
         <div class="row section">
           <div class="widget">
-            <div>Max FPS: <span id="max-fps">${this.settings.maxFps || Number.POSITIVE_INFINITY}</span></div>
-            <div>Fixed Update FPS: <span id="fixed-update-fps">${this.settings.fixedUpdateFps?.toFixed(2) || 'Not Set'}</span></div>
-            <div>Fixed Update TimeStep: <span id="fixed-update-timestep">${this.settings.fixedUpdateTimestep?.toFixed(2) || 'Not Set'}</span></div>
-            <div>Gravity X: <span id="gravity-x">${this.settings.gravity._x}</span></div>
-            <div>Gravity Y: <span id="gravity-y">${this.settings.gravity._y}</span></div>
+            <div class="form-row"><label>Max FPS: </label><span id="max-fps">${this.settings.maxFps || Number.POSITIVE_INFINITY}</span></div>
+            <div class="form-row"><label>Fixed Update FPS: </label><span id="fixed-update-fps">${this.settings.fixedUpdateFps?.toFixed(2) || 'Not Set'}</span></div>
+            <div class="form-row"><label>Fixed Update TimeStep: </label><span id="fixed-update-timestep">${this.settings.fixedUpdateTimestep?.toFixed(2) || 'Not Set'}</span></div>
+            <div class="form-row"><label>Gravity X: </label><span id="gravity-x">${this.settings.gravity._x}</span></div>
+            <div class="form-row"><label>Gravity Y: </label><span id="gravity-y">${this.settings.gravity._y}</span></div>
           </div>
         </div>
 
