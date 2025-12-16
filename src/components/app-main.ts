@@ -264,7 +264,9 @@ export class App extends LitElement {
           drawTime: stats.currFrame._durationStats.draw,
           drawCalls: stats.currFrame._graphicsStats.drawCalls,
           numActors: stats.currFrame._actorStats.total,
-          rendererSwaps: stats.currFrame._graphicsStats.rendererSwaps
+          rendererSwaps: this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.31.') ? 
+            stats.currFrame._graphicsStats.rendererSwaps :
+            'Upgrade to v0.31+'
         };
 
         this.fpsGraph.draw(fps);
