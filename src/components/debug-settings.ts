@@ -72,6 +72,11 @@ export interface Settings {
   showGeometryBounds: boolean;
   geometryBoundsColor: Color;
 
+  showCollisionGroup: boolean;
+  showCollisionType: boolean;
+  showMass: boolean;
+  showMotion: boolean;
+  showSleeping: boolean;
 
   showContact: boolean;
   contactColor: Color;
@@ -114,6 +119,12 @@ export const DefaultSettings: Settings = {
 
   showGeometryBounds: false,
   geometryBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
+
+  showCollisionGroup: false,
+  showCollisionType: false,
+  showMotion: false,
+  showSleeping: false,
+  showMass: false,
 
   showContact: false,
   contactColor: { r: 255, g: 0, b: 0, a: 1 },
@@ -182,6 +193,11 @@ export class DebugSettings extends LitElement {
     colliderBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
     showGeometryBounds: false,
     geometryBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
+    showCollisionGroup: false,
+    showCollisionType: false,
+    showMass: false,
+    showSleeping: false,
+    showMotion: false,
 
     showContact: false,
     contactColor: { r: 0, g: 0, b: 0, a: 1 },
@@ -240,23 +256,9 @@ export class DebugSettings extends LitElement {
     };
   }
 
-  render() {
-    return html`
-<div class="row">
-  <div class="widget">
-    <h2>Debug Draw Settings</h2>
-    <div class="section">
-      <form>
-        <div>
-          <sl-button id="toggle-debug" @click="${this.dispatchToggleDebugDraw}">Toggle Debug Draw</sl-button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
 
-<div class="row">
-  <div class="widget">
+  transformHtml() {
+    return html`
     <h2>Transform</h2>
     <div class="section">
       <form>
@@ -346,79 +348,112 @@ export class DebugSettings extends LitElement {
         </div>
       </form>
     </div>
+    `
+  }
 
+  componentsHtml() {
+    return html`
     <h2>Components</h2>
     <div class="section">
       <form>
-          <div class="form-row">
-            <div>
-              <sl-switch
-                id="show-graphics-bounds"
-                .checked=${this.settings?.showGraphicsBounds ?? false}
-                @sl-change=${this.settingSwitchChangeHandler('showGraphicsBounds')}
-              ></sl-switch>
-              <label for="show-graphics-bounds">Show Graphics Bounds</label>
-            </div>
-
-            <div>
-              <sl-color-picker
-                id="graphics-bounds-colors"
-                .hoist=${true}
-                .value=${colorToHex(this.settings?.graphicsBoundsColor ?? black)}
-                opacity
-                @sl-input=${this.settingsColorInputHandler('graphicsBoundsColor')}
-                >Color</sl-color-picker
-              >
-            </div>
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-graphics-bounds"
+              .checked=${this.settings?.showGraphicsBounds ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showGraphicsBounds')}
+            ></sl-switch>
+            <label for="show-graphics-bounds">Show Graphics Bounds</label>
           </div>
 
-          <div class="form-row">
-            <div>
-              <sl-switch
-                id="show-collider-bounds"
-                .checked=${this.settings?.showColliderBounds ?? false}
-                @sl-change=${this.settingSwitchChangeHandler('showColliderBounds')}
-              ></sl-switch>
-              <label for="show-collider-bounds">Show Collider Bounds</label>
-            </div>
+          <div>
+            <sl-color-picker
+              id="graphics-bounds-colors"
+              .hoist=${true}
+              .value=${colorToHex(this.settings?.graphicsBoundsColor ?? black)}
+              opacity
+              @sl-input=${this.settingsColorInputHandler('graphicsBoundsColor')}
+              >Color</sl-color-picker
+            >
+          </div>
+        </div>
 
-            <div>
-              <sl-color-picker
-                id="collider-bounds-colors"
-                .hoist=${true}
-                .value=${colorToHex(this.settings?.colliderBoundsColor ?? black)}
-                opacity
-                @sl-input=${this.settingsColorInputHandler('colliderBoundsColor')}
-                >Color</sl-color-picker
-              >
-            </div>
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-collider-bounds"
+              .checked=${this.settings?.showColliderBounds ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showColliderBounds')}
+            ></sl-switch>
+            <label for="show-collider-bounds">Show Collider Bounds</label>
           </div>
 
-          <div class="form-row">
-            <div>
-              <sl-switch
-                id="show-geometry-bounds"
-                .checked=${this.settings?.showGeometryBounds ?? false}
-                @sl-change=${this.settingSwitchChangeHandler('showGeometryBounds')}
-              ></sl-switch>
-              <label for="show-geometry-bounds">Show Geometry</label>
-            </div>
-
-            <div>
-              <sl-color-picker
-                id="collider-geometry-colors"
-                .hoist=${true}
-                .value=${colorToHex(this.settings?.geometryBoundsColor ?? black)}
-                opacity
-                @sl-input=${this.settingsColorInputHandler('geometryBoundsColor')}
-                >Color</sl-color-picker>
-            </div>
+          <div>
+            <sl-color-picker
+              id="collider-bounds-colors"
+              .hoist=${true}
+              .value=${colorToHex(this.settings?.colliderBoundsColor ?? black)}
+              opacity
+              @sl-input=${this.settingsColorInputHandler('colliderBoundsColor')}
+              >Color</sl-color-picker
+            >
           </div>
-        </form>
-      </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-geometry-bounds"
+              .checked=${this.settings?.showGeometryBounds ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showGeometryBounds')}
+            ></sl-switch>
+            <label for="show-geometry-bounds">Show Geometry</label>
+          </div>
+
+          <div>
+            <sl-color-picker
+              id="collider-geometry-colors"
+              .hoist=${true}
+              .value=${colorToHex(this.settings?.geometryBoundsColor ?? black)}
+              opacity
+              @sl-input=${this.settingsColorInputHandler('geometryBoundsColor')}
+              >Color</sl-color-picker>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-collision-type"
+              .checked=${this.settings?.showCollisionType ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showCollisionType')}
+            ></sl-switch>
+            <label for="show-collision-type">Show Collision Type</label>
+          </div>
+          <div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-collision-group"
+              .checked=${this.settings?.showCollisionGroup ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showCollisionGroup')}
+            ></sl-switch>
+            <label for="show-collision-group">Show Collision Group</label>
+          </div>
+          <div>
+          </div>
+        </div>
+      </form>
     </div>
+    `
+  }
 
-  <div class="widget">
+
+  entityHtml() {
+    return html`
     <h2>Entity</h2>
     <div class="section">
       <form>
@@ -440,7 +475,11 @@ export class DebugSettings extends LitElement {
         </div>
       </form>
     </div>
+    `
+  }
 
+  debugTextHtml() {
+    return html`
     <h2>Debug Text Color</h2>
     <div class="section">
       <form>
@@ -478,15 +517,13 @@ export class DebugSettings extends LitElement {
         </div>
       </form>
     </div>
-  </div>
-</div>
+    `
 
+  }
 
-<div class="row">
-  
-  <div class="widget">
+  physicsHtml() {
+    return html`
     <h2>Physics</h2>
-
     <div class="section">
       <form>
         <div class="form-row">
@@ -502,7 +539,7 @@ export class DebugSettings extends LitElement {
           <sl-color-picker
             id="debug-contact-normal-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.contactNormalColor?? black)}
+            .value=${colorToHex(this.settings?.contactNormalColor ?? black)}
             opacity
             @sl-input=${this.settingsColorInputHandler('contactNormalColor')}>Contact Normal Color
           </sl-color-picker>
@@ -520,7 +557,7 @@ export class DebugSettings extends LitElement {
           <sl-color-picker
             id="debug-contact-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.contactColor?? black)}
+            .value=${colorToHex(this.settings?.contactColor ?? black)}
             opacity
             @sl-input=${this.settingsColorInputHandler('contactColor')}>Contact Color
           </sl-color-picker>
@@ -539,19 +576,56 @@ export class DebugSettings extends LitElement {
           </div>
         </div>
 
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-body-mass"
+              .checked=${this.settings?.showMass ?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showMass')}
+            ></sl-switch>
+            <label for="show-body-mass">Show Body Mass</label>
+          </div>
+          <div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-body-motion"
+              .checked=${this.settings?.showMotion?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showMotion')}
+            ></sl-switch>
+            <label for="show-body-motion">Show Body Motion</label>
+          </div>
+          <div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <sl-switch
+              id="show-body-sleeping"
+              .checked=${this.settings?.showSleeping?? false}
+              @sl-change=${this.settingSwitchChangeHandler('showSleeping')}
+            ></sl-switch>
+            <label for="show-body-sleeping">Show Body Sleeping</label>
+          </div>
+          <div>
+          </div>
+        </div>
       </form>
     </div>
+    `
 
-  </div>
+  }
 
-
-  <div class="widget">
+  tilemapHtml() {
+    return html`
     <h2>Tilemap</h2>
-
     <div class="section">
       <form>
         <div class="form-row">
-
           <div>
             <sl-switch
               id="show-grid-tilemap"
@@ -588,9 +662,45 @@ export class DebugSettings extends LitElement {
         </div>
       </form>
     </div>
+    `
 
+  }
+
+  render() {
+    return html`
+<div class="row">
+  <div class="widget">
+    <h2>Debug Draw Settings</h2>
+    <div class="section">
+      <form>
+        <div>
+          <sl-button id="toggle-debug" @click="${this.dispatchToggleDebugDraw}">Toggle Debug Draw</sl-button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="widget">
+    ${ this.transformHtml() }
+    ${ this.componentsHtml() }
   </div>
 
+  <div class="widget">
+    ${ this.entityHtml() }
+    ${ this.debugTextHtml() }
+  </div>
+</div>
+
+<div class="row">
+  <div class="widget">
+    ${ this.physicsHtml() }
+  </div>
+
+  <div class="widget">
+    ${ this.tilemapHtml() }
+  </div>
 </div>
     `;
   }

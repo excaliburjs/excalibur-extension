@@ -96,6 +96,21 @@ export class PhysicsSettings extends LitElement {
     };
   }
 
+  getGeneralPhysics() {
+    return html`
+    <div class="row section">
+      <div class="widget">
+        <div class="form-row"><label>Max FPS: </label><span id="max-fps">${this.settings.maxFps || Number.POSITIVE_INFINITY}</span></div>
+        <div class="form-row"><label>Fixed Update FPS*: </label><span id="fixed-update-fps">${this.settings.fixedUpdateFps?.toFixed(2) || 'Not Set'}</span></div>
+        <div class="form-row"><label>Fixed Update TimeStep*: </label><span id="fixed-update-timestep">${this.settings.fixedUpdateTimestep?.toFixed(2) || 'Not Set'}</span></div>
+        <div class="form-row"><label>Gravity X: </label><span id="gravity-x">${this.settings.gravity._x}</span></div>
+        <div class="form-row"><label>Gravity Y: </label><span id="gravity-y">${this.settings.gravity._y}</span></div>
+        <br>
+        <label>* Fixed update helps with stable physics simulations</label>
+      </div>
+    </div>
+    `
+  }
 
   getCommonSettings() {
     return html`
@@ -107,7 +122,7 @@ export class PhysicsSettings extends LitElement {
             .checked=${this.settings.config.enabled ?? false}
             @sl-change=${this.settingChangeHandler(this.settings.config, 'enabled')}
           ></sl-switch>
-          <label for="enable-physics">Enable Physics</label>
+          <label for="enable-physics">Enable Physics*</label>
         </div>
 
         <div>
@@ -116,8 +131,12 @@ export class PhysicsSettings extends LitElement {
             .checked=${this.settings.config.integration!.onScreenOnly ?? false}
             @sl-change=${this.settingChangeHandler(this.settings.config.integration!, 'onScreenOnly')}
           ></sl-switch>
-          <label for="integration">On Screen Integration Only</label>
+          <label for="integration">On Screen Integration Only**</label>
         </div>
+
+        <label>* For perf, disable on games that don't need physics</label>
+        <br>
+        <label>** For perf, will only integration actors onscreen</label>
       </div>
     </div>
 
@@ -304,15 +323,7 @@ export class PhysicsSettings extends LitElement {
     <h2>Physics Simulation Settings</h2>
     <div class="physics-settings">
       <form>
-        <div class="row section">
-          <div class="widget">
-            <div class="form-row"><label>Max FPS: </label><span id="max-fps">${this.settings.maxFps || Number.POSITIVE_INFINITY}</span></div>
-            <div class="form-row"><label>Fixed Update FPS: </label><span id="fixed-update-fps">${this.settings.fixedUpdateFps?.toFixed(2) || 'Not Set'}</span></div>
-            <div class="form-row"><label>Fixed Update TimeStep: </label><span id="fixed-update-timestep">${this.settings.fixedUpdateTimestep?.toFixed(2) || 'Not Set'}</span></div>
-            <div class="form-row"><label>Gravity X: </label><span id="gravity-x">${this.settings.gravity._x}</span></div>
-            <div class="form-row"><label>Gravity Y: </label><span id="gravity-y">${this.settings.gravity._y}</span></div>
-          </div>
-        </div>
+        ${ this.getGeneralPhysics() }
 
         ${ this.getCommonSettings() }
         ${

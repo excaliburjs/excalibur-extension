@@ -282,6 +282,13 @@ function inject(settings) {
   game.debug.collider.showGeometry = settings.showGeometryBounds;
   game.debug.collider.geometryColor = settings.geometryBoundsColor;
 
+  game.debug.body.showCollisionGroup = settings.showCollisionGroup;
+  game.debug.body.showCollisionType = settings.showCollisionType;
+  game.debug.body.showMass = settings.showMass;
+  game.debug.body.showSleeping = settings.showSleeping;
+  game.debug.body.showMotion = settings.showMotion;
+  
+
   // Physics
   game.debug.physics.showCollisionContacts = settings.showContact;
   game.debug.physics.collisionContactColor = settings.contactColor;
@@ -389,6 +396,11 @@ const debugSettings = {
   colliderBoundsColor: { r: 0, g: 0, b: 255, a: 1 },
   showGeometryBounds: true,
   geometryBoundsColor: { r: 0, g: 255, b: 0, a: 1 },
+  showCollisionGroup: false,
+  showCollisionType: false,
+  showMotion: false,
+  showSleeping: false,
+  showMass: false,
 
   showContact: false,
   contactColor: { r: 255, g: 0, b: 0, a: 1 },
@@ -537,11 +549,17 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
              *  @type {DebugSettings}
              */
             const debug = message.debug;
+
+            // Debug Text
             debugSettings.debugTextForegroundColor = debug.debugTextForegroundColor;
             debugSettings.debugTextBackgroundColor = debug.debugTextBackgroundColor;
             debugSettings.debugTextBorderColor = debug.debugTextBorderColor;
+
+            // Entity
             debugSettings.showNames = debug.showNames;
             debugSettings.showIds = debug.showIds;
+
+            // Transform
             debugSettings.showPos = debug.showPos;
             debugSettings.showPosLabel = debug.showPosLabel;
             debugSettings.posColor = debug.posColor;
@@ -554,13 +572,20 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
 
             debugSettings.showZIndex = debug.showZIndex;
 
+            // Components
             debugSettings.showGraphicsBounds = debug.showGraphicsBounds;
             debugSettings.graphicsBoundsColor = debug.graphicsBoundsColor;
             debugSettings.showColliderBounds = debug.showColliderBounds;
             debugSettings.colliderBoundsColor = debug.colliderBoundsColor;
             debugSettings.showGeometryBounds = debug.showGeometryBounds;
             debugSettings.geometryBoundsColor = debug.geometryBoundsColor;
+            debugSettings.showCollisionGroup = debug.showCollisionGroup;
+            debugSettings.showCollisionType = debug.showCollisionType;
+            debugSettings.showMass = debug.showMass;
+            debugSettings.showMotion = debug.showMotion;
+            debugSettings.showSleeping = debug.showSleeping;
 
+            // Physics
             debugSettings.showContact = debug.showContact;
             debugSettings.contactColor = debug.contactColor;
             debugSettings.showContactNormal = debug.showContactNormal;
@@ -568,6 +593,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
 
             debugSettings.showSpacePartition = debug.showSpacePartition;
 
+            // Tilemap
             debugSettings.showTileMapGrid = debug.showTileMapGrid;
             debugSettings.tileMapGridColor = debug.tileMapGridColor;
             debugSettings.showIsometricGrid = debug.showIsometricGrid;
