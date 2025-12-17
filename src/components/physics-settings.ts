@@ -277,7 +277,7 @@ export class PhysicsSettings extends LitElement {
         <label for="sleep-bias">Sleep Bias ${this.settings.config.bodies?.sleepBias}</label>
         <sl-range 
           id="sleep-bias" 
-          help-text="TODO Sleep Bias Explaination" 
+          help-text="Weighted average to apply to motion previousEnergy * bias + currentEnergy * (1-bias)" 
           min=".1" 
           max="1" 
           step=".05"
@@ -289,7 +289,7 @@ export class PhysicsSettings extends LitElement {
         <label for="sleep-epsilon">Sleep Epsilon ${this.settings.config.bodies?.sleepEpsilon}</label>
         <sl-range 
           id="sleep-epsilon" 
-          help-text="TODO Sleep EpsilonExplaination" 
+          help-text="Small value of kinetic energy to go to sleep" 
           min=".01" 
           max=".1" 
           step=".01"
@@ -301,7 +301,7 @@ export class PhysicsSettings extends LitElement {
         <label for="wake-threshold">Wake Threshold ${this.settings.config.bodies?.wakeThreshold}</label>
         <sl-range 
           id="wake-threshold" 
-          help-text="TODO Wake Threshhold Explaination" 
+          help-text="The amount of kinetic energy a body needs to awaken" 
           min=".1" 
           max=".5" 
           step=".01"
