@@ -6,6 +6,7 @@ import './debug-settings';
 import './entity-list';
 import './fps-graph';
 import './frame-time-graph';
+import './system-time-graph';
 import './flame-chart';
 import './stats-list';
 import './scene-list';
@@ -22,6 +23,7 @@ import { SlChangeEvent, SlInput, SlRadioGroup } from '@shoelace-style/shoelace';
 import { Entity } from './entity-list';
 import { DefaultPhysicsSettings, Physics } from './physics-settings';
 import { BoundingBox, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';
+import { SystemTimeGraph } from './system-time-graph';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -128,8 +130,13 @@ export class App extends LitElement {
   ];
   @query('fps-graph')
   fpsGraph!: FpsGraph;
+
+  @query('system-time-graph')
+  systemTimeGraph!: SystemTimeGraph;
+
   @query('frame-time-graph')
   frameTimeGraph!: FrameTimeGraph;
+
   @query('flame-chart')
   flameChart!: FlameChart;
 
@@ -162,6 +169,7 @@ export class App extends LitElement {
     drawCalls: 0,
     numActors: 0,
     rendererSwaps: 0,
+    systemDuration: {}
   };
 
   @state({
@@ -271,11 +279,14 @@ export class App extends LitElement {
         };
 
         this.fpsGraph.draw(fps);
+
         this.frameTimeGraph.draw(
           stats.currFrame._durationStats.total,
           stats.currFrame._durationStats.update,
           stats.currFrame._durationStats.draw
         );
+
+        this.systemTimeGraph.draw(this.stats.systemDuration);
 
         this.physics = {
           enabled: physics.enabled,
@@ -520,6 +531,11 @@ export class App extends LitElement {
                   <frame-time-graph class="chart"></frame-time-graph>
                 </div>
                 <stats-list .stats=${this.stats}></stats-list>
+              </div>
+              <div class="row">
+                <div class="widget">
+                  <system-time-graph class="chart"></system-time-graph>
+                </div>
               </div>
             </div>
           </div>
