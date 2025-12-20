@@ -2,6 +2,7 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
+import { repeat } from 'lit/directives/repeat';
 
 export interface Stats {
   fps: number;
@@ -9,6 +10,7 @@ export interface Stats {
   frameTime: number;
   updateTime: number;
   drawTime: number;
+  systemDuration: Record<string, number>;
   frameBudget: number;
   drawCalls: number;
   numActors: number;
@@ -43,6 +45,7 @@ export class StatsList extends LitElement {
     frameTime: 0,
     updateTime: 0,
     drawTime: 0,
+    systemDuration: {},
     frameBudget: 0,
     drawCalls: 0,
     numActors: 0,
@@ -55,11 +58,11 @@ export class StatsList extends LitElement {
   }
 
   override render() {
-    const { fps, frameTime, delta, frameBudget, drawTime, updateTime, drawCalls, numActors, rendererSwaps } = this.stats;
+    const { fps, frameTime, delta, frameBudget, drawTime, updateTime, systemDuration, drawCalls, numActors, rendererSwaps } = this.stats;
     const frameTime$ = `${frameTime.toFixed(2)}ms (${((frameTime / delta) * 100).toFixed(2)}%)`;
-    const drawTime$ = drawTime.toFixed(2);
-    const updateTime$ = updateTime.toFixed(2);
-    const frameBudget$ = `${frameBudget.toFixed(2)}ms (${((frameBudget / delta) * 100).toFixed(2)}%)`;
+    const drawTime$ = drawTime?.toFixed(2);
+    const updateTime$ = updateTime?.toFixed(2);
+    const frameBudget$ = `${frameBudget?.toFixed(2)}ms (${((frameBudget / delta) * 100).toFixed(2)}%)`;
 
     return html`
       <div class="section">
@@ -71,6 +74,15 @@ export class StatsList extends LitElement {
         <div>Draw Calls: <span id="draw-calls">${drawCalls}</span></div>
         <div>Actors: <span id="num-actors">${numActors}</span></div>
         <div>Renderer Swaps: <span id="renderer-swaps">${rendererSwaps}</span></div>
+
+
+        ${repeat(
+            Object.entries(systemDuration ?? {}),
+            item => item[0],
+            (item) => {
+              return html`<div>${item[0]}<span>${item[1].toFixed(2)}</span></div>`
+            })
+        }
       </div>
     `;
   }

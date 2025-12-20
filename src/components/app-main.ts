@@ -261,6 +261,7 @@ export class App extends LitElement {
           frameBudget: elapsedMs - stats.currFrame._durationStats.total,
           frameTime: stats.currFrame._durationStats.total,
           updateTime: stats.currFrame._durationStats.update,
+          systemDuration: this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.31.') ? stats.currFrame.systemDuration: {},
           drawTime: stats.currFrame._durationStats.draw,
           drawCalls: stats.currFrame._graphicsStats.drawCalls,
           numActors: stats.currFrame._actorStats.total,
