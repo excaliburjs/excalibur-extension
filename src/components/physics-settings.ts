@@ -128,7 +128,7 @@ export class PhysicsSettings extends LitElement {
         <div>
           <sl-switch
             id="integration"
-            .checked=${this.settings.config.integration!.onScreenOnly ?? false}
+            .checked=${this.settings.config?.integration?.onScreenOnly ?? false}
             @sl-change=${this.settingChangeHandler(this.settings.config.integration!, 'onScreenOnly')}
           ></sl-switch>
           <label for="integration">On Screen Integration Only**</label>
