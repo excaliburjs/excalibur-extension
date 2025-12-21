@@ -202,6 +202,8 @@ export class App extends LitElement {
       contentArea: BoundingBox
     } = {} as any;
 
+  isV31OrLater: boolean = false;
+
   override firstUpdated(): void {
     this.connectToExtension();
 
@@ -263,19 +265,22 @@ export class App extends LitElement {
 
         const fps = stats.currFrame._fps;
         const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
+
+        this.isV31OrLater = this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.31.');
+
         this.stats = {
           fps,
           delta: elapsedMs,
           frameBudget: elapsedMs - stats.currFrame._durationStats.total,
           frameTime: stats.currFrame._durationStats.total,
           updateTime: stats.currFrame._durationStats.update,
-          systemDuration: this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.31.') ? stats.currFrame.systemDuration: {},
+          systemDuration: this.isV31OrLater ? stats.currFrame.systemDuration: {},
           drawTime: stats.currFrame._durationStats.draw,
           drawCalls: stats.currFrame._graphicsStats.drawCalls,
           numActors: stats.currFrame._actorStats.total,
-          rendererSwaps: this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.31.') ? 
+          rendererSwaps: this.isV31OrLater ? 
             stats.currFrame._graphicsStats.rendererSwaps :
-            'Upgrade to v0.31+'
+            'Upgrade to v0.31+ to see'
         };
 
         this.fpsGraph.draw(fps);
@@ -286,7 +291,9 @@ export class App extends LitElement {
           stats.currFrame._durationStats.draw
         );
 
-        this.systemTimeGraph.draw(this.stats.systemDuration);
+        if (this.isV31OrLater) {
+          this.systemTimeGraph.draw(this.stats.systemDuration);
+        }
 
         this.physics = {
           enabled: physics.enabled,
@@ -532,11 +539,14 @@ export class App extends LitElement {
                 </div>
                 <stats-list .stats=${this.stats}></stats-list>
               </div>
-              <div class="row">
-                <div class="widget">
-                  <system-time-graph class="chart"></system-time-graph>
-                </div>
-              </div>
+              ${ this.isV31OrLater ? html`
+                <div class="row">
+                  <div class="widget">
+                    <system-time-graph class="chart"></system-time-graph>
+                  </div>
+                </div>`
+                : ''
+              }
             </div>
           </div>
 
