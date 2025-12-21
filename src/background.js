@@ -221,83 +221,6 @@ function inject(settings) {
    */
   const game = window.___EXCALIBUR_DEVTOOL;
 
-  function stringifyWithCycles(obj, space = 0) {
-    const seen = new WeakSet();
-
-    function stringify(value, indent = '') {
-      // Handle primitives
-      if (value === null) return 'null';
-      if (value === undefined) return undefined;
-      if (typeof value === 'boolean') return value.toString();
-      if (typeof value === 'number') return isFinite(value) ? value.toString() : 'null';
-      if (typeof value === 'string') return JSON.stringify(value);
-      if (typeof value === 'function') return undefined;
-      if (typeof value === 'symbol') return undefined;
-
-      // Handle objects and arrays
-      if (typeof value === 'object') {
-        // Check for cycles
-        if (seen.has(value)) {
-          return '"[Circular]"';
-        }
-
-        seen.add(value);
-
-        const nextIndent = space ? indent + ' '.repeat(space) : '';
-        const newline = space ? '\n' : '';
-        const separator = space ? ' ' : '';
-
-        // Handle arrays
-        if (Array.isArray(value)) {
-          const items = value.map(item => {
-            const stringified = stringify(item, nextIndent);
-            return stringified === undefined ? 'null' : stringified;
-          });
-
-          if (items.length === 0) {
-            seen.delete(value);
-            return '[]';
-          }
-
-          const result = space
-            ? `[${newline}${nextIndent}${items.join(`,${newline}${nextIndent}`)}${newline}${indent}]`
-            : `[${items.join(',')}]`;
-
-          seen.delete(value);
-          return result;
-        }
-
-        // Handle regular objects
-        const keys = Object.keys(value);
-        const pairs = [];
-
-        for (const key of keys) {
-          const stringified = stringify(value[key], nextIndent);
-          if (stringified !== undefined) {
-            pairs.push(`${JSON.stringify(key)}:${separator}${stringified}`);
-          }
-        }
-
-        if (pairs.length === 0) {
-          seen.delete(value);
-          return '{}';
-        }
-
-        const result = space
-          ? `{${newline}${nextIndent}${pairs.join(`,${newline}${nextIndent}`)}${newline}${indent}}`
-          : `{${pairs.join(',')}}`;
-
-        seen.delete(value);
-        return result;
-      }
-
-      return undefined;
-    }
-
-    return stringify(obj);
-  }
-
-
   // Micro re-implementation of ex-color
   class ColorLike {
     constructor({ r, g, b, a }) {
@@ -393,6 +316,7 @@ function inject(settings) {
   const entities = [];
   for (const entity of game.currentScene.entities) {
     const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
+
     const tags = Array.from(entity.tags);
     entities.push({
       id: entity.id,
@@ -403,14 +327,16 @@ function inject(settings) {
     });
   }
 
+  const {scenes: _, ...config } = game._originalOptions;
+
   // Game data is stringified to ensure get properties are called.
-  return stringifyWithCycles({
+  return JSON.stringify({
     version: game.version,
     /**
      * @typedef {import('./@types/excalibur.d.ts').EngineOptions} EngineOptions
      * @type {EngineOptions}
      */
-    config: { ...game._originalOptions },
+    config: { ...config },
     screen: {
       viewport: game.screen?.viewport,
       resolution: game.screen?.resolution,
