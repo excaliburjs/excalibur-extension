@@ -6,10 +6,13 @@ import './debug-settings';
 import './entity-list';
 import './fps-graph';
 import './frame-time-graph';
+import './system-time-graph';
 import './flame-chart';
 import './stats-list';
+import './system-stats-list';
 import './scene-list';
 import './physics-settings';
+import './screen-camera';
 import { colors } from '../colors';
 import { common } from '../common';
 import { DefaultSettings, Settings } from './debug-settings';
@@ -17,9 +20,12 @@ import { FpsGraph } from './fps-graph';
 import { FrameTimeGraph } from './frame-time-graph';
 import { Stats } from './stats-list';
 import { FlameChart } from './flame-chart';
-import { SlChangeEvent, SlInput } from '@shoelace-style/shoelace';
+import { SlChangeEvent, SlInput, SlRadioGroup } from '@shoelace-style/shoelace';
 import { Entity } from './entity-list';
 import { DefaultPhysicsSettings, Physics } from './physics-settings';
+import { BoundingBox, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';
+import { SystemTimeGraph } from './system-time-graph';
+import { SystemStatsList } from './system-stats-list';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -40,6 +46,13 @@ interface Engine {
   scenes: string[];
   entities: Entity[];
   pointer: Pointer | null;
+}
+
+interface Camera {
+  pos: Point;
+  vel: Point;
+  acc: Point;
+  strategies: { name: string }[];
 }
 
 interface InitEvent {
@@ -110,12 +123,25 @@ export class App extends LitElement {
       .version {
         margin-left: 10px;
       }
+      sl-radio {
+        margin-bottom: 5px;
+      }
+
+
     `
   ];
   @query('fps-graph')
   fpsGraph!: FpsGraph;
+
+  @query('system-time-graph')
+  systemTimeGraph!: SystemTimeGraph;
+
+  @query('system-stats-list')
+  systemStatsList!: SystemStatsList;
+
   @query('frame-time-graph')
   frameTimeGraph!: FrameTimeGraph;
+
   @query('flame-chart')
   flameChart!: FlameChart;
 
@@ -146,7 +172,9 @@ export class App extends LitElement {
     drawTime: 0,
     frameBudget: 0,
     drawCalls: 0,
-    numActors: 0
+    numActors: 0,
+    rendererSwaps: 0,
+    systemDuration: {}
   };
 
   @state({
@@ -162,6 +190,24 @@ export class App extends LitElement {
   pagePos: string = '???';
 
   backgroundConnection!: browser.runtime.Port;
+  camera: Camera = {
+    pos: { _x: 0, _y: 0 },
+    vel: { _x: 0, _y: 0 },
+    acc: { _x: 0, _y: 0 },
+    strategies: []
+  };
+
+  config: EngineOptions = {};
+  screen: {
+      viewport: ViewportDimension,
+      resolution: Resolution,
+      displayMode: DisplayMode,
+      pixelRatio: number,
+      unsafeArea: BoundingBox,
+      contentArea: BoundingBox
+    } = {} as any;
+
+  isV31OrLater: boolean = false;
 
   override firstUpdated(): void {
     this.connectToExtension();
@@ -184,23 +230,28 @@ export class App extends LitElement {
     switch (message.name) {
       case 'init': {
         const { settings } = message.data;
-        this.settings = {
-          showNames: settings.showNames,
-          showIds: settings.showIds,
-          showPos: settings.showPos,
-          showPosLabel: settings.showPosLabel,
-          posColor: settings.posColor,
-          showGraphicsBounds: settings.showGraphicsBounds,
-          graphicsBoundsColor: settings.graphicsBoundsColor,
-          showColliderBounds: settings.showColliderBounds,
-          colliderBoundsColor: settings.colliderBoundsColor,
-          showGeometryBounds: settings.showGeometryBounds,
-          geometryBoundsColor: settings.geometryBoundsColor
-        };
+        this.settings = { ...settings };
         break;
       }
       case 'heartbeat': {
-        const { version, currentScene, scenes, pointer, entities, stats, physics } = JSON.parse(message.data);
+        const data = JSON.parse(message.data);
+        const {
+          version,
+          config,
+          screen,
+          camera,
+          currentScene,
+          scenes,
+          pointer,
+          entities,
+          stats,
+          physics
+        } = data;
+
+        this.config = config;
+        this.screen = screen;
+        this.camera = camera;
+
         this.engine = {
           version: version,
           currentScene: currentScene,
@@ -219,31 +270,44 @@ export class App extends LitElement {
 
         const fps = stats.currFrame._fps;
         const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
+
+        this.isV31OrLater = this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.31.');
+
         this.stats = {
           fps,
           delta: elapsedMs,
           frameBudget: elapsedMs - stats.currFrame._durationStats.total,
           frameTime: stats.currFrame._durationStats.total,
           updateTime: stats.currFrame._durationStats.update,
+          systemDuration: this.isV31OrLater ? stats.currFrame.systemDuration: {},
           drawTime: stats.currFrame._durationStats.draw,
           drawCalls: stats.currFrame._graphicsStats.drawCalls,
-          numActors: stats.currFrame._actorStats.total
+          numActors: stats.currFrame._actorStats.total,
+          rendererSwaps: this.isV31OrLater ? 
+            stats.currFrame._graphicsStats.rendererSwaps :
+            'Upgrade to v0.31+ to see'
         };
 
         this.fpsGraph.draw(fps);
+
         this.frameTimeGraph.draw(
           stats.currFrame._durationStats.total,
           stats.currFrame._durationStats.update,
           stats.currFrame._durationStats.draw
         );
 
+        if (this.isV31OrLater) {
+          this.systemTimeGraph.draw(this.stats.systemDuration);
+          this.systemStatsList.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
+        }
+
         this.physics = {
           enabled: physics.enabled,
           maxFps: physics.maxFps,
           fixedUpdateFps: physics.fixedUpdateFps,
           fixedUpdateTimestep: physics.fixedUpdateTimestep,
-          gravity: {...physics.gravity},
-          solverStrategy: physics.solverStrategy,
+          gravity: { ...physics.gravity },
+          config: physics.config
         };
         break;
       }
@@ -345,6 +409,17 @@ export class App extends LitElement {
     });
   }
 
+  setColorBlind() {
+    const colorBlindRadioGroup = this.shadowRoot?.querySelector('#color-blind') as SlRadioGroup;
+    const colorBlindMode = (colorBlindRadioGroup?.value) ?? 'Normal';
+    this.backgroundConnection.postMessage({
+      name: 'command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'color-blind',
+      colorBlindMode: colorBlindMode
+    });
+  }
+
   identifyActor(evt: CustomEvent<number>) {
     this.backgroundConnection.postMessage({
       name: 'command',
@@ -359,8 +434,8 @@ export class App extends LitElement {
     this.backgroundConnection.postMessage({
       name: 'command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'goto',
-      scene
+      dispatch: 'goto-scene',
+      sceneName: scene
     });
   }
 
@@ -372,14 +447,12 @@ export class App extends LitElement {
 
       <sl-tab-group>
         <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
+        <sl-tab slot="nav" panel="screen-camera">Screen & Camera</sl-tab>
         <sl-tab slot="nav" panel="perf">Performance</sl-tab>
         <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
         <sl-tab slot="nav" panel="physics">Physics</sl-tab>
 
         <sl-tab-panel name="inspector">
-          <!-- <sl-split-panel position="75"> -->
-          <!-- <div slot="start"> -->
-
           <div class="row">
             <div class="widget">
               <h2>Clock</h2>
@@ -394,9 +467,7 @@ export class App extends LitElement {
                     type="number"
                     .value=${this.clockStepMs.toString()}
                     step="1"
-                    ,
                     min="1"
-                    ,
                     max="100"
                     @sl-change=${this.handleStepChange}
                   ></sl-input>
@@ -419,6 +490,26 @@ export class App extends LitElement {
                 <div>Page Pos: <span id="page-pos">${this.pagePos}</span></div>
               </div>
             </div>
+
+            <div class="widget">
+              <h2>Accessibility</h2>
+              <div class="section">
+                <h3>Simulate Color Blindness</h3>
+                <sl-radio-group
+                  id="color-blind"
+                  @sl-change=${this.setColorBlind}
+                  label="Select an option"
+                  name="color-blindness"
+                  value="Normal">
+                  <sl-radio value="Normal">Fully Sighted</sl-radio>
+                  <sl-radio value="Protanope">Protanope</sl-radio>
+                  <sl-radio value="Deuteranope">Deuteranope</sl-radio>
+                  <sl-radio value="Tritanope">Tritanope</sl-radio>
+                  <!-- <sl-radio value="Grayscale">Grayscale</sl-radio> -->
+                  <!-- <sl-radio value="Contrast">High Contast</sl-radio> -->
+                </sl-radio-group>
+              </div>
+            </div>
           </div>
           <div class="row">
             <div class="widget">
@@ -436,10 +527,10 @@ export class App extends LitElement {
               </div>
             </div>
           </div>
-          <!-- </div> -->
-          <!-- <div slot="end">
-                    </div> -->
-          <!-- </sl-split-panel> -->
+        </sl-tab-panel>
+
+        <sl-tab-panel name="screen-camera">
+          <screen-camera .config=${this.config} .screen=${this.screen} .camera=${this.camera}></screen-camera>
         </sl-tab-panel>
         <sl-tab-panel name="perf">
           <div class="row">
@@ -454,8 +545,24 @@ export class App extends LitElement {
                 </div>
                 <stats-list .stats=${this.stats}></stats-list>
               </div>
+              ${ this.isV31OrLater ? html`
+                <div class="row">
+                  <div class="widget">
+                    <system-time-graph class="chart"></system-time-graph>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="widget" style="width:100%">
+                    <system-stats-list></system-stats-list>
+                  </div
+                </div>
+                `
+                : ''
+              }
             </div>
           </div>
+
           <!-- <div class="row">
                     <div class="widget">
                         <h2>Profiling</h2>
@@ -471,31 +578,22 @@ export class App extends LitElement {
                         </div>
                     </div>
                 </div> -->
+
         </sl-tab-panel>
         <sl-tab-panel name="debugdraw">
-          <div class="row">
-            <div class="widget">
-              <h2>Debug Draw Settings</h2>
-              <debug-settings
-                @toggle-debug-draw=${this.toggleDebugDraw}
-                @debug-settings-change=${this.updateDebugSetting}
-                .settings=${this.settings}
-              >
-              </debug-settings>
-            </div>
-          </div>
+          <debug-settings
+            @toggle-debug-draw=${this.toggleDebugDraw}
+            @debug-settings-change=${this.updateDebugSetting}
+            .settings=${this.settings}
+          >
+          </debug-settings>
         </sl-tab-panel>
         <sl-tab-panel name="physics">
-          <div class="row">
-            <div class="widget">
-              <h2>Physics Settings</h2>
-              <physics-settings
-                @physics-settings-change=${this.updatePhysicsSetting}
-                .settings=${this.physics}
-              >
-              </physics-settings>
-            </div>
-          </div>
+          <physics-settings
+            @physics-settings-change=${this.updatePhysicsSetting}
+            .settings=${this.physics}
+          >
+          </physics-settings>
         </sl-tab-panel>
       </sl-tab-group>
     `;

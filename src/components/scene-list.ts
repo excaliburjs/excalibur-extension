@@ -9,7 +9,12 @@ export class SceneList extends LitElement {
       :host {
         display: block;
       }
+      ul {
+        margin: 0;
+        padding: 0;
+      }
       li {
+        list-style: none;
         margin: 10px;
       }
     `
@@ -24,14 +29,13 @@ export class SceneList extends LitElement {
   }
 
   render() {
-    return html`<div>
+    return html`<ul>
       ${repeat(
         this.scenes,
         (scene: string) => scene,
         (scene: string) => html`
           <li>
-            ${scene}
-            <!-- <sl-button @click=${this.handleGoto(scene)}>Go to ${scene}</sl-button> -->
+            <sl-button @click=${this.handleGoto(scene)}>Go to ${scene}</sl-button>
           </li>
         `
       )}

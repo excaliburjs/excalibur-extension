@@ -5,9 +5,6 @@ import { colors } from '../colors';
 import { common } from '../common';
 import { SlChangeEvent, SlInput, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
 
-// import '@shoelace-style/shoelace/dist/components/card';
-// import '@shoelace-style/shoelace/dist/components/tag';
-
 export interface Entity {
   id: number;
   name: string;

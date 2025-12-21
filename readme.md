@@ -2,7 +2,7 @@
 
 This [excalibur game](https://excaliburjs.com) developers to easily inspect their games while making them!
 
-v1.0.1 Now live in browsers!
+Now live in browsers!
 
 - [Install in Chrome](https://chromewebstore.google.com/detail/excalibur-dev-tools/dinddaeielhddflijbbcmpefamfffekc)
 - [Install in Firefox](https://addons.mozilla.org/en-US/firefox/addon/excalibur-dev-tools/)
@@ -60,7 +60,7 @@ PR's welcome
   - [ ] List sounds that are playing
   - [ ] Mute sounds
 - [ ] Excalibur Action Window Pop-up
-- [ ] Support firefox with manifest v3 https://extensionworkshop.com/documentation/develop/porting-a-google-chrome-extension/
+- [x] Support firefox with manifest v3 https://extensionworkshop.com/documentation/develop/porting-a-google-chrome-extension/
 - [ ] Show "no excalibur detected" if something isn't in the extension
 - [ ] Make sure lite mode looks okay
 - [ ] List active event listeners on stuff for debugging!
@@ -74,13 +74,13 @@ PR's welcome
   - [ ] Adjust antialiasing settings
   - [ ] Display Content Area
   - [ ] Expose Color Blind Testing Tools
-- [ ] Physics settings
-  - [ ] Switch between solvers Arcade/Realistic
-  - [ ] Max fps
-  - [ ] Fixed step fps
-  - [ ] Interpolation
-  - [ ] Gravity
-  - [ ] Iterations
+- [x] Physics settings
+  - [x] Switch between solvers Arcade/Realistic
+  - [x] Max fps
+  - [x] Fixed step fps
+  - [x] Interpolation
+  - [x] Gravity
+  - [x] Iterations
 - [ ] Show loaded resources
 - [ ] Entity inspector side panel with component value detials
 
