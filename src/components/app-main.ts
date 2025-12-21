@@ -9,6 +9,7 @@ import './frame-time-graph';
 import './system-time-graph';
 import './flame-chart';
 import './stats-list';
+import './system-stats-list';
 import './scene-list';
 import './physics-settings';
 import './screen-camera';
@@ -24,6 +25,7 @@ import { Entity } from './entity-list';
 import { DefaultPhysicsSettings, Physics } from './physics-settings';
 import { BoundingBox, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';
 import { SystemTimeGraph } from './system-time-graph';
+import { SystemStatsList } from './system-stats-list';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -133,6 +135,9 @@ export class App extends LitElement {
 
   @query('system-time-graph')
   systemTimeGraph!: SystemTimeGraph;
+
+  @query('system-stats-list')
+  systemStatsList!: SystemStatsList;
 
   @query('frame-time-graph')
   frameTimeGraph!: FrameTimeGraph;
@@ -293,6 +298,7 @@ export class App extends LitElement {
 
         if (this.isV31OrLater) {
           this.systemTimeGraph.draw(this.stats.systemDuration);
+          this.systemStatsList.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
         }
 
         this.physics = {
@@ -544,7 +550,14 @@ export class App extends LitElement {
                   <div class="widget">
                     <system-time-graph class="chart"></system-time-graph>
                   </div>
-                </div>`
+                </div>
+
+                <div class="row">
+                  <div class="widget" style="width:100%">
+                    <system-stats-list></system-stats-list>
+                  </div
+                </div>
+                `
                 : ''
               }
             </div>
