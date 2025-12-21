@@ -17,9 +17,7 @@ export class SystemStatsList extends LitElement {
       .section {
         flex-grow: 1;
         position: relative;
-        /* border: solid 2px; */
         padding: 10px;
-        /* border-radius: 5px; */
         background-color: var(--panel-color);
         margin-bottom: 10px;
       }
