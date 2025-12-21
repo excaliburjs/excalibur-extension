@@ -221,6 +221,82 @@ function inject(settings) {
    */
   const game = window.___EXCALIBUR_DEVTOOL;
 
+  function stringifyWithCycles(obj, space = 0) {
+    const seen = new WeakSet();
+
+    function stringify(value, indent = '') {
+      // Handle primitives
+      if (value === null) return 'null';
+      if (value === undefined) return undefined;
+      if (typeof value === 'boolean') return value.toString();
+      if (typeof value === 'number') return isFinite(value) ? value.toString() : 'null';
+      if (typeof value === 'string') return JSON.stringify(value);
+      if (typeof value === 'function') return undefined;
+      if (typeof value === 'symbol') return undefined;
+
+      // Handle objects and arrays
+      if (typeof value === 'object') {
+        // Check for cycles
+        if (seen.has(value)) {
+          return '"[Circular]"';
+        }
+
+        seen.add(value);
+
+        const nextIndent = space ? indent + ' '.repeat(space) : '';
+        const newline = space ? '\n' : '';
+        const separator = space ? ' ' : '';
+
+        // Handle arrays
+        if (Array.isArray(value)) {
+          const items = value.map(item => {
+            const stringified = stringify(item, nextIndent);
+            return stringified === undefined ? 'null' : stringified;
+          });
+
+          if (items.length === 0) {
+            seen.delete(value);
+            return '[]';
+          }
+
+          const result = space
+            ? `[${newline}${nextIndent}${items.join(`,${newline}${nextIndent}`)}${newline}${indent}]`
+            : `[${items.join(',')}]`;
+
+          seen.delete(value);
+          return result;
+        }
+
+        // Handle regular objects
+        const keys = Object.keys(value);
+        const pairs = [];
+
+        for (const key of keys) {
+          const stringified = stringify(value[key], nextIndent);
+          if (stringified !== undefined) {
+            pairs.push(`${JSON.stringify(key)}:${separator}${stringified}`);
+          }
+        }
+
+        if (pairs.length === 0) {
+          seen.delete(value);
+          return '{}';
+        }
+
+        const result = space
+          ? `{${newline}${nextIndent}${pairs.join(`,${newline}${nextIndent}`)}${newline}${indent}}`
+          : `{${pairs.join(',')}}`;
+
+        seen.delete(value);
+        return result;
+      }
+
+      return undefined;
+    }
+
+    return stringify(obj);
+  }
+
 
   // Micro re-implementation of ex-color
   class ColorLike {
@@ -252,10 +328,12 @@ function inject(settings) {
     }
   }
 
-  // Debug text color
-  game.debug.settings.text.foreground = new ColorLike(settings.debugTextForegroundColor);
-  game.debug.settings.text.background = new ColorLike(settings.debugTextBackgroundColor);
-  game.debug.settings.text.border = new ColorLike(settings.debugTextBorderColor);
+  // Debug text color (only available in v0.31+)
+  if (game.debug.settings?.text) {
+    game.debug.settings.text.foreground = new ColorLike(settings.debugTextForegroundColor);
+    game.debug.settings.text.background = new ColorLike(settings.debugTextBackgroundColor);
+    game.debug.settings.text.border = new ColorLike(settings.debugTextBorderColor);
+  }
 
   // Entity
   game.debug.entity.showName = settings.showNames;
@@ -287,7 +365,7 @@ function inject(settings) {
   game.debug.body.showMass = settings.showMass;
   game.debug.body.showSleeping = settings.showSleeping;
   game.debug.body.showMotion = settings.showMotion;
-  
+
 
   // Physics
   game.debug.physics.showCollisionContacts = settings.showContact;
@@ -326,7 +404,7 @@ function inject(settings) {
   }
 
   // Game data is stringified to ensure get properties are called.
-  return JSON.stringify({
+  return stringifyWithCycles({
     version: game.version,
     /**
      * @typedef {import('./@types/excalibur.d.ts').EngineOptions} EngineOptions
@@ -334,28 +412,28 @@ function inject(settings) {
      */
     config: { ...game._originalOptions },
     screen: {
-      viewport: game.screen.viewport,
-      resolution: game.screen.resolution,
-      displayMode: game.screen.displayMode,
-      pixelRatio: game.screen.pixelRatio,
-      unsafeArea: game.screen.unsafeArea,
-      contentArea: game.screen.contentArea
+      viewport: game.screen?.viewport,
+      resolution: game.screen?.resolution,
+      displayMode: game.screen?.displayMode,
+      pixelRatio: game.screen?.pixelRatio,
+      unsafeArea: game.screen?.unsafeArea,
+      contentArea: game.screen?.contentArea
     },
     camera: {
-      pos: game.currentScene.camera.pos,
-      vel: game.currentScene.camera.vel,
-      acc: game.currentScene.camera.acc,
-      strategies: game.currentScene.camera.strategies.map(s => ({name: s.constructor.name}))
+      pos: game.currentScene.camera?.pos?.clone(),
+      vel: game.currentScene.camera?.vel?.clone(),
+      acc: game.currentScene.camera?.acc?.clone(),
+      strategies: game.currentScene.camera?.strategies?.map(s => ({ name: s.constructor.name }))
     },
     currentScene: currentScene,
     scenes: sceneNames,
     pointer: {
-      worldPos: game.input.pointers.primary.lastWorldPos,
-      screenPos: game.input.pointers.primary.lastScreenPos,
-      pagePos: game.input.pointers.primary.lastPagePos
+      worldPos: game.input.pointers?.primary?.lastWorldPos,
+      screenPos: game.input.pointers?.primary?.lastScreenPos,
+      pagePos: game.input.pointers?.primary?.lastPagePos
     },
     entities: entities,
-    stats: game.debug.stats,
+    stats: game.debug?.stats,
     physics: {
       enabled: !!game.physics?.enabled,
       maxFps: game.maxFps,
