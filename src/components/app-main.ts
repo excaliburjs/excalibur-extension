@@ -271,7 +271,7 @@ export class App extends LitElement {
         const fps = stats.currFrame._fps;
         const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
 
-        this.isV31OrLater = this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.31.');
+        this.isV31OrLater = this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.32.');
 
         this.stats = {
           fps,
@@ -285,7 +285,7 @@ export class App extends LitElement {
           numActors: stats.currFrame._actorStats.total,
           rendererSwaps: this.isV31OrLater ? 
             stats.currFrame._graphicsStats.rendererSwaps :
-            'Upgrade to v0.31+ to see'
+            'Upgrade to v0.32+ to see'
         };
 
         this.fpsGraph.draw(fps);
