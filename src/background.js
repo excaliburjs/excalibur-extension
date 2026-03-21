@@ -427,7 +427,7 @@ let intervalId = null;
  */
 async function getActiveTab() {
   const queryOptions = { active: true, lastFocusedWindow: true };
-  const [tab] = await globalThis.browser.tabs.query(queryOptions);
+  let [tab] = await globalThis.browser.tabs.query(queryOptions);
   return tab;
 }
 
@@ -452,7 +452,10 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
     }
   });
 
-  const tab = await getActiveTab();
+  let tab = await getActiveTab();
+  if(tab === undefined){
+    console.error('No active tab found');
+  }
 
   port.onMessage.addListener((message) => {
     console.info('Received message:', message);
@@ -632,6 +635,15 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
   // Start sending messages every 200ms if not already running
   if (!intervalId) {
     intervalId = setInterval(async () => {
+      if(tab === undefined)
+      {
+        console.log('No active tab, querying again...');
+        tab = await getActiveTab();
+        if(tab === undefined){
+          console.error('No active tab found');
+          return;
+        }
+      }
       const gameState = await globalThis.browser.scripting.executeScript({
         target: {
           tabId: tab.id
