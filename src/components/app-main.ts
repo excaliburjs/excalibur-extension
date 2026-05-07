@@ -271,7 +271,10 @@ export class App extends LitElement {
         const fps = stats.currFrame._fps;
         const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
 
-        this.isV31OrLater = this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.32.');
+        const versionTuple = this.engine.version.split('.');
+        const majorVersion = +(versionTuple[0] || 0);
+        const minorVersion = +(versionTuple[1] || 0);
+        this.isV31OrLater = minorVersion >= 31 || majorVersion > 0;
 
         this.stats = {
           fps,
