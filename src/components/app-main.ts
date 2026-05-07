@@ -56,14 +56,14 @@ interface Camera {
 }
 
 interface InitEvent {
-  name: 'init';
+  name: 'ex-debug:init';
   data: {
     settings: Settings;
   };
 }
 
 interface HeartbeatEvent {
-  name: 'heartbeat';
+  name: 'ex-debug:heartbeat';
   data: string;
 }
 
@@ -228,12 +228,12 @@ export class App extends LitElement {
 
   backgroundMessageDispatch = (message: EventDispatchEvents) => {
     switch (message.name) {
-      case 'init': {
+      case 'ex-debug:init': {
         const { settings } = message.data;
         this.settings = { ...settings };
         break;
       }
-      case 'heartbeat': {
+      case 'ex-debug:heartbeat': {
         const data = JSON.parse(message.data);
         const {
           version,
@@ -271,7 +271,10 @@ export class App extends LitElement {
         const fps = stats.currFrame._fps;
         const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
 
-        this.isV31OrLater = this.engine.version.startsWith('0.32.0-alpha') || this.engine.version.startsWith('0.32.');
+        const versionTuple = this.engine.version.split('.');
+        const majorVersion = +(versionTuple[0] || 0);
+        const minorVersion = +(versionTuple[1] || 0);
+        this.isV31OrLater = minorVersion >= 31 || majorVersion > 0;
 
         this.stats = {
           fps,
@@ -318,9 +321,9 @@ export class App extends LitElement {
     const settings = evt.detail;
 
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'update-physics',
+      dispatch: 'ex-debug:update-physics',
       physics: settings
     });
   }
@@ -329,18 +332,18 @@ export class App extends LitElement {
     const settings = evt.detail;
 
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'update-debug',
+      dispatch: 'ex-debug:update-debug',
       debug: settings
     });
   }
 
   toggleDebugDraw() {
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'toggle-debug'
+      dispatch: 'ex-debug:toggle-debug'
     });
   }
 
@@ -351,60 +354,60 @@ export class App extends LitElement {
   }
   toggleTestClock() {
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'toggle-test-clock'
+      dispatch: 'ex-debug:toggle-test-clock'
     });
   }
 
   startClock() {
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'start-clock'
+      dispatch: 'ex-debug:start-clock'
     });
   }
 
   stopClock() {
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'stop-clock'
+      dispatch: 'ex-debug:stop-clock'
     });
   }
 
   stepClock() {
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'step-clock',
+      dispatch: 'ex-debug:step-clock',
       stepMs: this.clockStepMs
     });
   }
 
   startProfiler() {
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'start-profiler',
+      dispatch: 'ex-debug:start-profiler',
       time: 300
     });
   }
 
   collectProfile() {
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'collect-profiler'
+      dispatch: 'ex-debug:collect-profiler'
     });
   }
 
   killActor(evt: CustomEvent<number>) {
     const id = evt.detail;
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'kill',
+      dispatch: 'ex-debug:kill',
       actorId: id
     });
   }
@@ -413,18 +416,18 @@ export class App extends LitElement {
     const colorBlindRadioGroup = this.shadowRoot?.querySelector('#color-blind') as SlRadioGroup;
     const colorBlindMode = (colorBlindRadioGroup?.value) ?? 'Normal';
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'color-blind',
+      dispatch: 'ex-debug:color-blind',
       colorBlindMode: colorBlindMode
     });
   }
 
   identifyActor(evt: CustomEvent<number>) {
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'identify-actor',
+      dispatch: 'ex-debug:identify-actor',
       actorId: evt.detail,
     });
   }
@@ -432,9 +435,9 @@ export class App extends LitElement {
   goToScene(evt: CustomEvent<string>) {
     const scene = evt.detail;
     this.backgroundConnection.postMessage({
-      name: 'command',
+      name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'goto-scene',
+      dispatch: 'ex-debug:goto-scene',
       sceneName: scene
     });
   }

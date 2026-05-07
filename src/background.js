@@ -465,9 +465,9 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
       return;
     }
 
-    if (message.name === 'command') {
+    if (message.name === 'ex-debug:command') {
       switch (message.dispatch) {
-        case 'toggle-test-clock':
+        case 'ex-debug:toggle-test-clock':
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -476,7 +476,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
-        case 'step-clock':
+        case 'ex-debug:step-clock':
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -486,7 +486,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
-        case 'start-clock':
+        case 'ex-debug:start-clock':
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -495,7 +495,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
-        case 'stop-clock':
+        case 'ex-debug:stop-clock':
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -504,7 +504,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
-        case 'kill':
+        case 'ex-debug:kill':
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -514,7 +514,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
-        case "color-blind":
+        case "ex-debug:color-blind":
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -524,7 +524,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
-        case "goto-scene":
+        case "ex-debug:goto-scene":
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -534,7 +534,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
-        case "identify-actor":
+        case "ex-debug:identify-actor":
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -544,12 +544,12 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
             });
           }
           break;
-        case 'toggle-debug':
+        case 'ex-debug:toggle-debug':
           {
             debugSettings.toggleDebug = !debugSettings.toggleDebug;
           }
           break;
-        case 'update-debug':
+        case 'ex-debug:update-debug':
           {
             /**
              *  @typedef {import('./components/debug-settings').Settings DebugSettings
@@ -608,7 +608,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
 
           }
           break;
-        case 'update-physics':
+        case 'ex-debug:update-physics':
           {
             globalThis.browser.scripting.executeScript({
               target: { tabId: message.tabId },
@@ -626,7 +626,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
   });
 
   await ports[port.name].postMessage({
-    name: 'init',
+    name: 'ex-debug:init',
     data: {
       settings: debugSettings
     }
@@ -653,7 +653,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
         args: [debugSettings]
       });
       ports[port.name].postMessage({
-        name: 'heartbeat',
+        name: 'ex-debug:heartbeat',
         data: gameState[0].result
       });
     }, 200);
