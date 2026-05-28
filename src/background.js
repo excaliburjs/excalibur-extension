@@ -394,6 +394,8 @@ const debugSettings = {
   showRotation: false,
   rotationColor: { r: 0, g: 0, b: 0, a: 1 },
 
+  showZIndex: false,
+
   showGraphicsBounds: false,
   graphicsBoundsColor: { r: 255, g: 255, b: 0, a: 1 },
   showColliderBounds: false,
