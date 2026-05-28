@@ -315,7 +315,23 @@ function inject(settings) {
 
   const entities = [];
   for (const entity of game.currentScene.entities) {
-    const pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
+
+    let pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
+    let coordPlane = '';
+    let collisionType = '';
+    let collisionGroup = '';
+    let collisionMask = '';
+    for (const component of entity.getComponents()) {
+      if (component.pos && component.coordPlane) {
+        pos = `(${component?.pos?.x?.toFixed(2)}, ${component?.pos?.y?.toFixed(2)})`;
+        coordPlane = `${component?.coordPlane}`;
+      }
+      if (component.collisionType) {
+        collisionType = component.collisionType;
+        collisionGroup = component.group.category;
+        collisionMask = component.group.mask;
+      }
+    }
 
     const tags = Array.from(entity.tags);
     entities.push({
@@ -323,6 +339,10 @@ function inject(settings) {
       name: entity.name,
       ctor: entity.constructor.name,
       pos: pos ?? 'none',
+      coordPlane,
+      collisionType,
+      collisionGroup,
+      collisionMask,
       tags
     });
   }

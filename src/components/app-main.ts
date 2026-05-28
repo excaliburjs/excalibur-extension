@@ -300,8 +300,8 @@ export class App extends LitElement {
         );
 
         if (this.isV31OrLater) {
-          this.systemTimeGraph.draw(this.stats.systemDuration);
-          this.systemStatsList.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
+          this.systemTimeGraph?.draw(this.stats.systemDuration);
+          this.systemStatsList?.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
         }
 
         this.physics = {

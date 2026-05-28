@@ -1,4 +1,4 @@
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat';
 import { colors } from '../colors';
@@ -10,6 +10,12 @@ export interface Entity {
   name: string;
   ctor: string;
   pos: string;
+
+  coordPlane: string;
+  collisionType: string;
+  collisionGroup: number;
+  collisionMask: number;
+
   tags: string[];
 }
 
@@ -152,6 +158,10 @@ export class EntityList extends LitElement {
                     (tag) => tag,
                     (tag) => html` <sl-tag variant="success">${tag}</sl-tag> `
                   )}
+                  ${entity.coordPlane ? html`<sl-tag variant="warning">coordPlane:${entity.coordPlane}</sl-tag>` : nothing }
+                  ${entity.collisionType ? html`<sl-tag variant="danger">collision type:${entity.collisionType}</sl-tag>` : nothing }
+                  ${entity.collisionGroup && entity.collisionGroup !== -1 ? html`<sl-tag variant="neutral">collision group:0x${(entity.collisionGroup >>> 0).toString(16)}</sl-tag>` : nothing }
+                  ${entity.collisionMask && entity.collisionMask !== -1 ? html`<sl-tag variant="neutral">collision mask:0x${(entity.collisionMask >>> 0).toString(16)}</sl-tag>` : nothing }
                 </sl-card>
               </li>
             `
