@@ -232,7 +232,7 @@ export class App extends LitElement {
     switch (message.name) {
       case 'ex-debug:init': {
         const { settings } = message.data;
-        this.settings = { ...settings };
+        settingsStore.setAll(settings);
         break;
       }
       case 'ex-debug:heartbeat': {
