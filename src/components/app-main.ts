@@ -211,6 +211,10 @@ export class App extends LitElement {
 
   isV31OrLater: boolean = false;
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   override firstUpdated(): void {
     this.connectToExtension();
 
@@ -221,6 +225,16 @@ export class App extends LitElement {
     }
   }
 
+  override disconnectedCallback(): void {
+    // Disconnect background connection BEFORE Lit tears down the component tree
+    // This prevents race conditions where messages arrive during teardown
+    if (this.backgroundConnection) {
+      this.backgroundConnection.onMessage.removeListener(this.backgroundMessageDispatch);
+      this.backgroundConnection.disconnect();
+    }
+    super.disconnectedCallback();
+  }
+
   connectToExtension = () => {
     this.backgroundConnection = browser.runtime.connect({
       name: 'panel'
@@ -229,6 +243,18 @@ export class App extends LitElement {
   };
 
   backgroundMessageDispatch = (message: EventDispatchEvents) => {
+    if (!this.isConnected) return;
+    try {
+      this._handleMessage(message);
+    } catch (e) {
+      // Suppress errors from updates during component teardown
+      if (this.isConnected) {
+        console.error('Error handling message:', e);
+      }
+    }
+  };
+
+  private _handleMessage(message: EventDispatchEvents) {
     switch (message.name) {
       case 'ex-debug:init': {
         const { settings } = message.data;
@@ -317,7 +343,7 @@ export class App extends LitElement {
         break;
       }
     }
-  };
+  }
 
   updatePhysicsSetting(evt: CustomEvent<Physics>) {
     const settings = evt.detail;

@@ -32,10 +32,15 @@ export class SystemStatsList extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   @property({ type: Object })
   systemDuration: Record<string, number>= {};
 
   updateStats(stats: Record<string, number>) {
+    if (!this.isConnected) return;
     this.systemDuration= stats;
     this.requestUpdate();
   }

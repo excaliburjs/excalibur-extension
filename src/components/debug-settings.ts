@@ -45,11 +45,18 @@ export class DebugSettings extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   private _unsubscribe: (() => void) | null = null;
 
   connectedCallback() {
     super.connectedCallback();
-    const handler = () => this.requestUpdate();
+    const handler = () => {
+      if (!this.isConnected) return;
+      this.requestUpdate();
+    };
     settingsStore.addEventListener('change', handler);
     this._unsubscribe = () => settingsStore.removeEventListener('change', handler);
   }

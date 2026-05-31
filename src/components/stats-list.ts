@@ -37,6 +37,10 @@ export class StatsList extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   @property({ type: Object })
   stats: Stats = {
     fps: 0,
@@ -52,6 +56,7 @@ export class StatsList extends LitElement {
   };
 
   updateStats(stats: Stats) {
+    if (!this.isConnected) return;
     this.stats = stats;
     this.requestUpdate();
   }

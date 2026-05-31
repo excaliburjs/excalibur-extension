@@ -15,6 +15,10 @@ export class FrameTimeGraph extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   line!: d3.Line<number>;
   frameTimeRoot!: HTMLElement;
   svg!: SVGSVGElement;
@@ -147,6 +151,7 @@ export class FrameTimeGraph extends LitElement {
   }
 
   draw(frameTime: number, updateTime: number, drawTime: number) {
+    if (!this.isConnected) return;
     this.frameTimeData.push(frameTime);
     this.frameTimeData.shift();
     this.updateTimeData.push(updateTime);

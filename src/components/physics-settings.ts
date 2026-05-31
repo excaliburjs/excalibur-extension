@@ -50,6 +50,10 @@ export class PhysicsSettings extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   @property({ type: Object })
   settings: Physics = {
     maxFps: 0,
@@ -61,6 +65,7 @@ export class PhysicsSettings extends LitElement {
   };
 
   updateSettings(settings: Physics) {
+    if (!this.isConnected) return;
     this.settings = settings;
     this.requestUpdate();
   }
@@ -239,7 +244,7 @@ export class PhysicsSettings extends LitElement {
           min="1" 
           max="30" 
           step="1"
-          .value=${this.settings.config.realistic?.positionIterations}
+          .value=${this.settings.config.realistic?.positionIterations ?? 3}
           @sl-change=${this.settingChangeHandler(this.settings.config.realistic!, 'positionIterations')}
         ></sl-range>
 
@@ -250,7 +255,7 @@ export class PhysicsSettings extends LitElement {
           min="1" 
           max="30" 
           step="1"
-          .value=${this.settings.config.realistic?.velocityIterations}
+          .value=${this.settings.config.realistic?.velocityIterations ?? 8}
           @sl-change=${this.settingChangeHandler(this.settings.config.realistic!, 'velocityIterations')}
         ></sl-range>
       </div>
@@ -270,7 +275,7 @@ export class PhysicsSettings extends LitElement {
           min="1" 
           max="100" 
           step="1"
-          .value=${this.settings.config.bodies?.defaultMass}
+          .value=${this.settings.config.bodies?.defaultMass ?? 10}
           @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'defaultMass')}
         ></sl-range>
 
@@ -281,7 +286,7 @@ export class PhysicsSettings extends LitElement {
           min=".1" 
           max="1" 
           step=".05"
-          .value=${this.settings.config.bodies?.sleepBias}
+          .value=${this.settings.config.bodies?.sleepBias ?? 0.9}
           @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'sleepBias')}
         ></sl-range>
 
@@ -293,7 +298,7 @@ export class PhysicsSettings extends LitElement {
           min=".01" 
           max=".1" 
           step=".01"
-          .value=${this.settings.config.bodies?.sleepEpsilon}
+          .value=${this.settings.config.bodies?.sleepEpsilon ?? 0.07}
           @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'sleepEpsilon')}
         ></sl-range>
 
@@ -305,7 +310,7 @@ export class PhysicsSettings extends LitElement {
           min=".1" 
           max=".5" 
           step=".01"
-          .value=${this.settings.config.bodies?.wakeThreshold}
+          .value=${this.settings.config.bodies?.wakeThreshold ?? 0.3}
           @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'wakeThreshold')}
         ></sl-range>
       </div>

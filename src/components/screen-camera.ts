@@ -26,6 +26,10 @@ export class ScreenAndCamera extends LitElement {
   ];
 
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   @property({ type: Object }) screen: {
     viewport: ViewportDimension,
     resolution: Resolution,

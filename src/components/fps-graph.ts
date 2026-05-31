@@ -15,6 +15,10 @@ export class FpsGraph extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   data: number[] = [];
 
   line!: d3.Line<number>;
@@ -85,6 +89,7 @@ export class FpsGraph extends LitElement {
   }
 
   draw(fps: number) {
+    if (!this.isConnected) return;
     this.data.push(fps);
     this.data.shift();
 

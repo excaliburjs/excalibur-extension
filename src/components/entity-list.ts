@@ -88,6 +88,10 @@ export class EntityList extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   @property({ type: Array })
   entities: Entity[] = [];
 

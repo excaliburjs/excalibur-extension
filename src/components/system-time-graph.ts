@@ -32,6 +32,10 @@ export class SystemTimeGraph extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   line!: d3.Line<number>;
   systemTimeRoot!: HTMLElement;
   svg!: SVGSVGElement;
@@ -99,6 +103,7 @@ export class SystemTimeGraph extends LitElement {
   
   initLegend = false;
   draw(systemDuration: Record<string, number>) {
+    if (!this.isConnected) return;
     const legend = Object.keys(systemDuration);
 
     const color = d3.scaleOrdinal<string>().domain(legend).range([...d3.schemeDark2, ...d3.schemeAccent]);
