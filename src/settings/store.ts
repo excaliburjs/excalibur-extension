@@ -64,10 +64,16 @@ class SettingsStore extends EventTarget {
   }
 
   /**
-   * Update multiple settings at once
+   * Update multiple settings at once.
+   * Only sets properties that exist in the schema, ignoring any extra properties.
    */
   setAll(settings: Partial<Settings>): void {
-    this._state = { ...this._state, ...settings };
+    for (const key of Object.keys(settingsSchema) as SettingsKey[]) {
+      if (key in settings) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this._state[key] = (settings as any)[key];
+      }
+    }
     this._emitChange();
   }
 
