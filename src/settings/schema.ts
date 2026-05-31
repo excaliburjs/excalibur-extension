@@ -238,11 +238,23 @@ export const settingsSchema = {
 // Derive types from schema
 export type SettingsKey = keyof typeof settingsSchema;
 
-type InferSettingType<T extends SettingDefinition> = T['default'];
+// Widen literal types to their base types (false -> boolean)
+type WidenType<T> = T extends boolean ? boolean : T extends number ? number : T;
+
+type InferSettingType<T extends SettingDefinition> = WidenType<T['default']>;
 
 export type Settings = {
   [K in SettingsKey]: InferSettingType<(typeof settingsSchema)[K]>;
 };
+
+// Extract keys by setting type
+export type BooleanSettingsKey = {
+  [K in SettingsKey]: (typeof settingsSchema)[K]['type'] extends 'boolean' ? K : never;
+}[SettingsKey];
+
+export type ColorSettingsKey = {
+  [K in SettingsKey]: (typeof settingsSchema)[K]['type'] extends 'color' ? K : never;
+}[SettingsKey];
 
 // Generate default settings from schema
 export const DefaultSettings: Settings = Object.fromEntries(

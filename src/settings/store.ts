@@ -1,5 +1,5 @@
-import { settingsSchema, Settings, SettingsKey, DefaultSettings } from './schema';
-import { setByPath } from './utils';
+import { settingsSchema, Settings, SettingsKey, BooleanSettingsKey, ColorSettingsKey, DefaultSettings } from './schema';
+import { setByPath, Color } from './utils';
 
 export interface SettingsChangeEvent {
   settings: Settings;
@@ -33,14 +33,27 @@ class SettingsStore extends EventTarget {
   }
 
   /**
+   * Set a boolean setting value
+   */
+  setBoolean(key: BooleanSettingsKey, value: boolean): void {
+    this._state[key] = value;
+    this._emitChange();
+  }
+
+  /**
+   * Set a color setting value
+   */
+  setColor(key: ColorSettingsKey, value: Color): void {
+    this._state[key] = value;
+    this._emitChange();
+  }
+
+  /**
    * Toggle a boolean setting
    */
-  toggle(key: SettingsKey): void {
-    const def = settingsSchema[key];
-    if (def.type === 'boolean') {
-      (this._state[key] as boolean) = !this._state[key];
-      this._emitChange();
-    }
+  toggle(key: BooleanSettingsKey): void {
+    this._state[key] = !this._state[key];
+    this._emitChange();
   }
 
   /**

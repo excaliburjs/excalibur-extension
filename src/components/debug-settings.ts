@@ -9,7 +9,8 @@ import {
   hexToColor,
   colorToHex,
   Settings,
-  SettingsKey,
+  BooleanSettingsKey,
+  ColorSettingsKey,
 } from '../settings';
 
 // Re-export for backward compatibility
@@ -84,23 +85,17 @@ export class DebugSettings extends LitElement {
     );
   }
 
-  private _handleSwitchChange(key: SettingsKey) {
+  private _handleSwitchChange(key: BooleanSettingsKey) {
     return (evt: SlChangeEvent) => {
-      const def = settingsSchema[key];
-      if (def.type === 'boolean') {
-        settingsStore.set(key, (evt.target as SlSwitch).checked);
-        this._dispatchDebugSettingsChange();
-      }
+      settingsStore.setBoolean(key, (evt.target as SlSwitch).checked);
+      this._dispatchDebugSettingsChange();
     };
   }
 
-  private _handleColorInput(key: SettingsKey) {
+  private _handleColorInput(key: ColorSettingsKey) {
     return (evt: SlInputEvent) => {
-      const def = settingsSchema[key];
-      if (def.type === 'color') {
-        settingsStore.set(key, hexToColor((evt.target as SlColorPicker).value) as Settings[typeof key]);
-        this._dispatchDebugSettingsChange();
-      }
+      settingsStore.setColor(key, hexToColor((evt.target as SlColorPicker).value));
+      this._dispatchDebugSettingsChange();
     };
   }
 

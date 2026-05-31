@@ -3,10 +3,11 @@
     "format": "prettier . --check",
     "format:fix": "npm run format -- --write",
     "lint": "eslint ./src/",
+    "typecheck": "tsc --noEmit",
     "start:chrome": "parcel watch src/chrome/manifest.json --host localhost --no-source-maps --dist-dir dist-chrome",
-    "build:chrome": "parcel build src/chrome/manifest.json --no-source-maps --no-optimize --dist-dir dist-chrome",
+    "build:chrome": "npm run typecheck && parcel build src/chrome/manifest.json --no-source-maps --no-optimize --dist-dir dist-chrome",
     "start:firefox": "parcel watch src/firefox/manifest.json --host localhost --no-source-maps --dist-dir dist-firefox",
-    "build:firefox": "parcel build src/firefox/manifest.json --no-source-maps --no-optimize --dist-dir dist-firefox"
+    "build:firefox": "npm run typecheck && parcel build src/firefox/manifest.json --no-source-maps --no-optimize --dist-dir dist-firefox"
   },
   "staticFiles": {
     "staticPath": "static"
@@ -29,6 +30,7 @@
     "parcel-reporter-static-files-copy": "1.5.3",
     "prettier": "3.5.2",
     "process": "^0.11.10",
+    "typescript": "^5.7.3",
     "typescript-eslint": "^8.24.1"
   }
 }
