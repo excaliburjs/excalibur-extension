@@ -15,7 +15,8 @@ import './physics-settings';
 import './screen-camera';
 import { colors } from '../colors';
 import { common } from '../common';
-import { DefaultSettings, Settings } from './debug-settings';
+import { Settings } from './debug-settings';
+import { settingsStore } from '../settings';
 import { FpsGraph } from './fps-graph';
 import { FrameTimeGraph } from './frame-time-graph';
 import { Stats } from './stats-list';
@@ -156,10 +157,11 @@ export class App extends LitElement {
     pointer: null
   };
 
-  @state({
-    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
-  })
-  settings: Settings | null = DefaultSettings;
+  // Settings are now managed by settingsStore
+  // Kept for backward compatibility with the template binding
+  get settings(): Settings {
+    return settingsStore.getAll();
+  }
 
   @state({
     hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)

@@ -1,4 +1,62 @@
 
+/**
+ * Mapping from flat settings keys to game.debug.* paths.
+ * NOTE: This should mirror the gamePath values in settings/schema.ts.
+ * When adding a new setting, add it to both schema.ts and here.
+ */
+const settingsMappings = {
+  // Debug text (v0.31+)
+  debugTextForegroundColor: 'debug.settings.text.foreground',
+  debugTextBackgroundColor: 'debug.settings.text.background',
+  debugTextBorderColor: 'debug.settings.text.border',
+
+  // Entity
+  showNames: 'debug.entity.showName',
+  showIds: 'debug.entity.showId',
+
+  // Transform
+  showPos: 'debug.transform.showPosition',
+  showPosLabel: 'debug.transform.showPositionLabel',
+  posColor: 'debug.transform.positionColor',
+  showRotation: 'debug.transform.showRotation',
+  rotationColor: 'debug.transform.rotationColor',
+  showScale: 'debug.transform.showScale',
+  scaleColor: 'debug.transform.scaleColor',
+  showZIndex: 'debug.transform.showZIndex',
+
+  // Graphics
+  showGraphicsBounds: 'debug.graphics.showBounds',
+  graphicsBoundsColor: 'debug.graphics.boundsColor',
+
+  // Collider
+  showColliderBounds: 'debug.collider.showBounds',
+  colliderBoundsColor: 'debug.collider.boundsColor',
+  showGeometryBounds: 'debug.collider.showGeometry',
+  geometryBoundsColor: 'debug.collider.geometryColor',
+
+  // Body
+  showCollisionGroup: 'debug.body.showCollisionGroup',
+  showCollisionType: 'debug.body.showCollisionType',
+  showMass: 'debug.body.showMass',
+  showMotion: 'debug.body.showMotion',
+  showSleeping: 'debug.body.showSleeping',
+
+  // Physics
+  showContact: 'debug.physics.showCollisionContacts',
+  contactColor: 'debug.physics.collisionContactColor',
+  showContactNormal: 'debug.physics.showCollisionNormals',
+  contactNormalColor: 'debug.physics.collisionNormalColor',
+  showSpacePartition: 'debug.physics.showBroadphaseSpacePartitionDebug',
+
+  // Tilemap
+  showTileMapGrid: 'debug.tilemap.showGrid',
+  tileMapGridColor: 'debug.tilemap.gridColor',
+
+  // Isometric
+  showIsometricGrid: 'debug.isometric.showGrid',
+  isometricGridColor: 'debug.isometric.gridColor',
+};
+
 if (typeof browser == 'undefined') {
   // Chrome does not support the browser namespace yet.
   globalThis.browser = globalThis.chrome;
@@ -207,10 +265,10 @@ function updatePhysics(settings) {
  * Injects settings defined by the devtool into the game. Information about
  * the game state is then returned from this function.
  *
- *  @typedef {import('./components/debug-settings').Settings} DebugSettings
- *  @param {DebugSettings} settings 
+ * @param {Object} settings - Flat settings object
+ * @param {Object} mappings - Map of setting keys to game.debug.* paths
  */
-function inject(settings) {
+function inject(settings, mappings) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
@@ -239,6 +297,21 @@ function inject(settings) {
     }
   }
 
+  /**
+   * Set a value at a nested path in an object
+   */
+  function setPath(obj, path, value) {
+    const parts = path.split('.');
+    let target = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const key = parts[i];
+      if (target[key] === undefined || target[key] === null) {
+        return; // Path doesn't exist in game, skip
+      }
+      target = target[key];
+    }
+    target[parts[parts.length - 1]] = value;
+  }
 
   // Toggle debug
   if (settings.toggleDebug === true) {
@@ -251,57 +324,19 @@ function inject(settings) {
     }
   }
 
-  // Debug text color (only available in v0.31+)
-  if (game.debug.settings?.text) {
-    game.debug.settings.text.foreground = new ColorLike(settings.debugTextForegroundColor);
-    game.debug.settings.text.background = new ColorLike(settings.debugTextBackgroundColor);
-    game.debug.settings.text.border = new ColorLike(settings.debugTextBorderColor);
+  // Apply all settings using the mappings
+  for (const [key, path] of Object.entries(mappings)) {
+    if (settings[key] === undefined) continue;
+    
+    let value = settings[key];
+    
+    // Convert color objects to ColorLike instances
+    if (value && typeof value === 'object' && 'r' in value && 'g' in value && 'b' in value) {
+      value = new ColorLike(value);
+    }
+    
+    setPath(game, path, value);
   }
-
-  // Entity
-  game.debug.entity.showName = settings.showNames;
-  game.debug.entity.showId = settings.showIds;
-
-  // Transform
-  game.debug.transform.showPosition = settings.showPos;
-  game.debug.transform.showPositionLabel = settings.showPosLabel;
-  game.debug.transform.positionColor = settings.posColor;
-
-  game.debug.transform.showRotation = settings.showRotation;
-  game.debug.transform.rotationColor = settings.rotationColor;
-
-  game.debug.transform.showScale = settings.showScale;
-  game.debug.transform.scaleColor = settings.scaleColor;
-
-  game.debug.transform.showZIndex = settings.showZIndex;
-
-  // Components
-  game.debug.graphics.showBounds = settings.showGraphicsBounds;
-  game.debug.graphics.boundsColor = settings.graphicsBoundsColor;
-  game.debug.collider.showBounds = settings.showColliderBounds;
-  game.debug.collider.boundsColor = settings.colliderBoundsColor;
-  game.debug.collider.showGeometry = settings.showGeometryBounds;
-  game.debug.collider.geometryColor = settings.geometryBoundsColor;
-
-  game.debug.body.showCollisionGroup = settings.showCollisionGroup;
-  game.debug.body.showCollisionType = settings.showCollisionType;
-  game.debug.body.showMass = settings.showMass;
-  game.debug.body.showSleeping = settings.showSleeping;
-  game.debug.body.showMotion = settings.showMotion;
-
-
-  // Physics
-  game.debug.physics.showCollisionContacts = settings.showContact;
-  game.debug.physics.collisionContactColor = settings.contactColor;
-  game.debug.physics.showCollisionNormals = settings.showContactNormal;
-  game.debug.physics.collisionNormalColor = settings.contactNormalColor;
-  game.debug.physics.showBroadphaseSpacePartitionDebug = settings.showSpacePartition;
-
-  // Tilemap & Isometric
-  game.debug.tilemap.showGrid = settings.showTileMapGrid;
-  game.debug.tilemap.gridColor = settings.tileMapGridColor;
-  game.debug.isometric.showGrid = settings.showIsometricGrid;
-  game.debug.isometric.gridColor = settings.isometricGridColor;
 
   // Send game state to dev tools
   let currentScene = 'root';
@@ -573,61 +608,8 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
           break;
         case 'ex-debug:update-debug':
           {
-            /**
-             *  @typedef {import('./components/debug-settings').Settings DebugSettings
-             *  @type {DebugSettings}
-             */
-            const debug = message.debug;
-
-            // Debug Text
-            debugSettings.debugTextForegroundColor = debug.debugTextForegroundColor;
-            debugSettings.debugTextBackgroundColor = debug.debugTextBackgroundColor;
-            debugSettings.debugTextBorderColor = debug.debugTextBorderColor;
-
-            // Entity
-            debugSettings.showNames = debug.showNames;
-            debugSettings.showIds = debug.showIds;
-
-            // Transform
-            debugSettings.showPos = debug.showPos;
-            debugSettings.showPosLabel = debug.showPosLabel;
-            debugSettings.posColor = debug.posColor;
-
-            debugSettings.showRotation = debug.showRotation;
-            debugSettings.rotationColor = debug.rotationColor;
-
-            debugSettings.showScale = debug.showScale;
-            debugSettings.scaleColor = debug.scaleColor;
-
-            debugSettings.showZIndex = debug.showZIndex;
-
-            // Components
-            debugSettings.showGraphicsBounds = debug.showGraphicsBounds;
-            debugSettings.graphicsBoundsColor = debug.graphicsBoundsColor;
-            debugSettings.showColliderBounds = debug.showColliderBounds;
-            debugSettings.colliderBoundsColor = debug.colliderBoundsColor;
-            debugSettings.showGeometryBounds = debug.showGeometryBounds;
-            debugSettings.geometryBoundsColor = debug.geometryBoundsColor;
-            debugSettings.showCollisionGroup = debug.showCollisionGroup;
-            debugSettings.showCollisionType = debug.showCollisionType;
-            debugSettings.showMass = debug.showMass;
-            debugSettings.showMotion = debug.showMotion;
-            debugSettings.showSleeping = debug.showSleeping;
-
-            // Physics
-            debugSettings.showContact = debug.showContact;
-            debugSettings.contactColor = debug.contactColor;
-            debugSettings.showContactNormal = debug.showContactNormal;
-            debugSettings.contactNormalColor = debug.contactNormalColor;
-
-            debugSettings.showSpacePartition = debug.showSpacePartition;
-
-            // Tilemap
-            debugSettings.showTileMapGrid = debug.showTileMapGrid;
-            debugSettings.tileMapGridColor = debug.tileMapGridColor;
-            debugSettings.showIsometricGrid = debug.showIsometricGrid;
-            debugSettings.isometricGridColor = debug.isometricGridColor;
-
+            // Simply merge all settings from the message
+            Object.assign(debugSettings, message.debug);
           }
           break;
         case 'ex-debug:update-physics':
@@ -672,7 +654,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
         },
         world: 'MAIN',
         func: inject,
-        args: [debugSettings]
+        args: [debugSettings, settingsMappings]
       });
       ports[port.name].postMessage({
         name: 'ex-debug:heartbeat',

@@ -1,0 +1,250 @@
+import { black, transparent, red } from './utils';
+
+export type SettingType = 'boolean' | 'number' | 'color';
+
+export interface SettingDefinition<T = unknown> {
+  type: SettingType;
+  default: T;
+  label: string;
+  gamePath: string;
+}
+
+/**
+ * Schema defining all debug settings.
+ * This is the single source of truth for:
+ * - TypeScript types
+ * - Default values
+ * - Labels for UI
+ * - Mapping to game.debug.* paths
+ */
+export const settingsSchema = {
+  // Debug text settings (v0.31+)
+  debugTextForegroundColor: {
+    type: 'color',
+    default: black,
+    label: 'Text Foreground',
+    gamePath: 'debug.settings.text.foreground',
+  },
+  debugTextBackgroundColor: {
+    type: 'color',
+    default: transparent,
+    label: 'Text Background',
+    gamePath: 'debug.settings.text.background',
+  },
+  debugTextBorderColor: {
+    type: 'color',
+    default: transparent,
+    label: 'Text Border',
+    gamePath: 'debug.settings.text.border',
+  },
+
+  // Entity settings
+  showNames: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Names',
+    gamePath: 'debug.entity.showName',
+  },
+  showIds: {
+    type: 'boolean',
+    default: false,
+    label: 'Show IDs',
+    gamePath: 'debug.entity.showId',
+  },
+
+  // Transform settings
+  showPos: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Position',
+    gamePath: 'debug.transform.showPosition',
+  },
+  showPosLabel: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Position Label',
+    gamePath: 'debug.transform.showPositionLabel',
+  },
+  posColor: {
+    type: 'color',
+    default: black,
+    label: 'Position Color',
+    gamePath: 'debug.transform.positionColor',
+  },
+  showRotation: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Rotation',
+    gamePath: 'debug.transform.showRotation',
+  },
+  rotationColor: {
+    type: 'color',
+    default: black,
+    label: 'Rotation Color',
+    gamePath: 'debug.transform.rotationColor',
+  },
+  showScale: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Scale',
+    gamePath: 'debug.transform.showScale',
+  },
+  scaleColor: {
+    type: 'color',
+    default: black,
+    label: 'Scale Color',
+    gamePath: 'debug.transform.scaleColor',
+  },
+  showZIndex: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Z Index',
+    gamePath: 'debug.transform.showZIndex',
+  },
+
+  // Graphics settings
+  showGraphicsBounds: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Graphics Bounds',
+    gamePath: 'debug.graphics.showBounds',
+  },
+  graphicsBoundsColor: {
+    type: 'color',
+    default: black,
+    label: 'Graphics Bounds Color',
+    gamePath: 'debug.graphics.boundsColor',
+  },
+
+  // Collider settings
+  showColliderBounds: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Collider Bounds',
+    gamePath: 'debug.collider.showBounds',
+  },
+  colliderBoundsColor: {
+    type: 'color',
+    default: black,
+    label: 'Collider Bounds Color',
+    gamePath: 'debug.collider.boundsColor',
+  },
+  showGeometryBounds: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Geometry',
+    gamePath: 'debug.collider.showGeometry',
+  },
+  geometryBoundsColor: {
+    type: 'color',
+    default: black,
+    label: 'Geometry Color',
+    gamePath: 'debug.collider.geometryColor',
+  },
+
+  // Body settings
+  showCollisionGroup: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Collision Group',
+    gamePath: 'debug.body.showCollisionGroup',
+  },
+  showCollisionType: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Collision Type',
+    gamePath: 'debug.body.showCollisionType',
+  },
+  showMass: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Mass',
+    gamePath: 'debug.body.showMass',
+  },
+  showMotion: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Motion',
+    gamePath: 'debug.body.showMotion',
+  },
+  showSleeping: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Sleeping',
+    gamePath: 'debug.body.showSleeping',
+  },
+
+  // Physics settings
+  showContact: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Contacts',
+    gamePath: 'debug.physics.showCollisionContacts',
+  },
+  contactColor: {
+    type: 'color',
+    default: red,
+    label: 'Contact Color',
+    gamePath: 'debug.physics.collisionContactColor',
+  },
+  showContactNormal: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Contact Normals',
+    gamePath: 'debug.physics.showCollisionNormals',
+  },
+  contactNormalColor: {
+    type: 'color',
+    default: red,
+    label: 'Contact Normal Color',
+    gamePath: 'debug.physics.collisionNormalColor',
+  },
+  showSpacePartition: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Space Partition',
+    gamePath: 'debug.physics.showBroadphaseSpacePartitionDebug',
+  },
+
+  // Tilemap settings
+  showTileMapGrid: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Tilemap Grid',
+    gamePath: 'debug.tilemap.showGrid',
+  },
+  tileMapGridColor: {
+    type: 'color',
+    default: black,
+    label: 'Tilemap Grid Color',
+    gamePath: 'debug.tilemap.gridColor',
+  },
+
+  // Isometric settings
+  showIsometricGrid: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Isometric Grid',
+    gamePath: 'debug.isometric.showGrid',
+  },
+  isometricGridColor: {
+    type: 'color',
+    default: black,
+    label: 'Isometric Grid Color',
+    gamePath: 'debug.isometric.gridColor',
+  },
+} as const satisfies Record<string, SettingDefinition>;
+
+// Derive types from schema
+export type SettingsKey = keyof typeof settingsSchema;
+
+type InferSettingType<T extends SettingDefinition> = T['default'];
+
+export type Settings = {
+  [K in SettingsKey]: InferSettingType<(typeof settingsSchema)[K]>;
+};
+
+// Generate default settings from schema
+export const DefaultSettings: Settings = Object.fromEntries(
+  Object.entries(settingsSchema).map(([key, def]) => [key, def.default])
+) as Settings;
