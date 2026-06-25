@@ -1,5 +1,12 @@
-// @ts-nocheck - This file was originally JS; full type-checking deferred
 import { settingsMappings } from './settings';
+import type { Engine, TestClock } from './@types/excalibur';
+
+declare global {
+  interface Window {
+    ___EXCALIBUR_DEVTOOL?: Engine;
+    ___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK?: boolean;
+  }
+}
 
 if (typeof browser == 'undefined') {
   // Chrome does not support the browser namespace yet.
@@ -9,7 +16,7 @@ if (typeof browser == 'undefined') {
 /**
  * Steps the clock forwarding the amount of milliseconds passed.
  */
-function stepClock(stepMs) {
+function stepClock(stepMs: number) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
@@ -21,7 +28,7 @@ function stepClock(stepMs) {
    */
   const game = window.___EXCALIBUR_DEVTOOL;
   try {
-    game.clock.step(stepMs);
+    (game.clock as TestClock).step(stepMs);
   } catch {
     // only works on test clock
   }
@@ -83,7 +90,7 @@ function toggleTestClock() {
 /**
  * Kills an actor.
  */
-function kill(actorId) {
+function kill(actorId: number) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
@@ -93,14 +100,14 @@ function kill(actorId) {
    * @type {Engine}
    */
   const game = window.___EXCALIBUR_DEVTOOL;
-  const actor = game.currentScene.world.entityManager.getById(actorId);
-  actor.kill();
+  const actor = game.currentScene.world.entityManager.getById(actorId) as { kill(): void } | undefined;
+  actor?.kill();
 }
 
 /**
  * Identifies an actor.
  */
-function identifyEntity(entityId) {
+function identifyEntity(entityId: number) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error("no excalibur!!!");
   }
@@ -110,7 +117,7 @@ function identifyEntity(entityId) {
    * @type {Engine}
    */
   const game = window.___EXCALIBUR_DEVTOOL;
-  const actor = game.currentScene.world.entityManager.getById(entityId);
+  const actor = game.currentScene.world.entityManager.getById(entityId) as { actions: { repeat(fn: (ctx: { fade(opacity: number, duration: number): void }) => void, times: number): void } } | undefined;
   if (actor === undefined) {
     throw new Error(`No entity found for id ${entityId}`)
   }
@@ -124,7 +131,7 @@ function identifyEntity(entityId) {
 /**
  * Set Color Blind Mode
  */
-function setColorBlind(colorBlindMode) {
+function setColorBlind(colorBlindMode: string) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error("no excalibur!!!");
   }
@@ -137,14 +144,14 @@ function setColorBlind(colorBlindMode) {
   if (colorBlindMode === 'Normal') {
     game.debug.colorBlindMode.clear();
   } else {
-    game.debug.colorBlindMode.simulate(colorBlindMode);
+    game.debug.colorBlindMode.simulate(colorBlindMode as Parameters<typeof game.debug.colorBlindMode.simulate>[0]);
   }
 }
 
 /**
  * Go to scene
  */
-function goToScene(sceneName) {
+function goToScene(sceneName: string) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error("no excalibur!!!");
   }
@@ -163,7 +170,7 @@ function goToScene(sceneName) {
  * @typedef {import('./components/physics-settings').Physics} Physics
  * @param {Physics} settings
  */
-function updatePhysics(settings) {
+function updatePhysics(settings: { config: Record<string, unknown> }) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
@@ -175,8 +182,8 @@ function updatePhysics(settings) {
   * @param {...object} objects - Objects to merge
   * @returns {object} New object with merged key/values
   */
-  function mergeDeep(...objects) {
-    const isObject = obj => obj && typeof obj === 'object';
+  function mergeDeep(...objects: Record<string, unknown>[]) {
+    const isObject = (obj: unknown) => obj && typeof obj === 'object';
 
     return objects.reduce((prev, obj) => {
       Object.keys(obj).forEach(key => {
@@ -186,7 +193,7 @@ function updatePhysics(settings) {
           prev[key] = pVal.concat(...oVal);
         }
         else if (isObject(pVal) && isObject(oVal)) {
-          prev[key] = mergeDeep(pVal, oVal);
+          prev[key] = mergeDeep(pVal as Record<string, unknown>, oVal as Record<string, unknown>);
         }
         else {
           prev[key] = oVal;
@@ -202,7 +209,7 @@ function updatePhysics(settings) {
    * @type {Engine}
    */
   const game = window.___EXCALIBUR_DEVTOOL;
-  game.physics = mergeDeep(game.physics, settings.config);
+  (game as unknown as { physics: Record<string, unknown> }).physics = mergeDeep(game.physics as unknown as Record<string, unknown>, settings.config);
 }
 
 /**
@@ -212,7 +219,7 @@ function updatePhysics(settings) {
  * @param {Object} settings - Flat settings object
  * @param {Object} mappings - Map of setting keys to game.debug.* paths
  */
-function inject(settings, mappings) {
+function inject(settings: Record<string, unknown>, mappings: Record<string, string>) {
   if (!window.___EXCALIBUR_DEVTOOL) {
     throw new Error('no excalibur!!!');
   }
@@ -225,13 +232,17 @@ function inject(settings, mappings) {
 
   // Micro re-implementation of ex-color
   class ColorLike {
-    constructor({ r, g, b, a }) {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+    constructor({ r, g, b, a }: { r: number; g: number; b: number; a?: number }) {
       this.r = r;
       this.g = g;
       this.b = b;
       this.a = a != null && a != undefined ? a : 1;
     }
-    clone(dest) {
+    clone(dest?: ColorLike) {
       const result = dest || new ColorLike({ r: this.r, g: this.g, b: this.b, a: this.a });
       result.r = this.r;
       result.g = this.g;
@@ -245,7 +256,7 @@ function inject(settings, mappings) {
    * Patch a value at a nested path in an existing object.
    * Silently skips if the path doesn't exist (safe for older Excalibur versions).
    */
-  function patchByPath(obj, path, value) {
+  function patchByPath(obj: Record<string, unknown>, path: string, value: unknown) {
     const parts = path.split('.');
     let target = obj;
     for (let i = 0; i < parts.length - 1; i++) {
@@ -253,7 +264,7 @@ function inject(settings, mappings) {
       if (target[key] === undefined || target[key] === null) {
         return; // Path doesn't exist, skip
       }
-      target = target[key];
+      target = target[key] as Record<string, unknown>;
     }
     target[parts[parts.length - 1]] = value;
   }
@@ -277,10 +288,10 @@ function inject(settings, mappings) {
     
     // Convert color objects to ColorLike instances
     if (value && typeof value === 'object' && 'r' in value && 'g' in value && 'b' in value) {
-      value = new ColorLike(value);
+      value = new ColorLike(value as { r: number; g: number; b: number; a?: number });
     }
     
-    patchByPath(game, path, value);
+    patchByPath(game as unknown as Record<string, unknown>, path, value);
   }
 
   // Send game state to dev tools
@@ -293,23 +304,36 @@ function inject(settings, mappings) {
     sceneNames.push(key);
   }
 
-  const entities = [];
+  const entities: Array<{
+    id: number;
+    name: string;
+    ctor: string;
+    pos: string;
+    coordPlane: string;
+    collisionType: string;
+    collisionGroup: string;
+    collisionMask: string;
+    tags: string[];
+  }> = [];
   for (const entity of game.currentScene.entities) {
-
-    let pos = `(${entity?.pos?.x?.toFixed(2)}, ${entity?.pos?.y?.toFixed(2)})`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const e = entity as any;
+    let pos = `(${e?.pos?.x?.toFixed(2)}, ${e?.pos?.y?.toFixed(2)})`;
     let coordPlane = '';
     let collisionType = '';
     let collisionGroup = '';
     let collisionMask = '';
     for (const component of entity.getComponents()) {
-      if (component.pos && component.coordPlane) {
-        pos = `(${component?.pos?.x?.toFixed(2)}, ${component?.pos?.y?.toFixed(2)})`;
-        coordPlane = `${component?.coordPlane}`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const c = component as any;
+      if (c.pos && c.coordPlane) {
+        pos = `(${c?.pos?.x?.toFixed(2)}, ${c?.pos?.y?.toFixed(2)})`;
+        coordPlane = `${c?.coordPlane}`;
       }
-      if (component.collisionType) {
-        collisionType = component.collisionType;
-        collisionGroup = component.group.category;
-        collisionMask = component.group.mask;
+      if (c.collisionType) {
+        collisionType = c.collisionType;
+        collisionGroup = c.group.category;
+        collisionMask = c.group.mask;
       }
     }
 
@@ -327,7 +351,8 @@ function inject(settings, mappings) {
     });
   }
 
-  const {scenes: _, ...config } = game._originalOptions;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const {scenes: _, ...config } = (game as any)._originalOptions;
 
   // Game data is stringified to ensure get properties are called.
   return JSON.stringify({
@@ -349,7 +374,7 @@ function inject(settings, mappings) {
       pos: game.currentScene.camera?.pos?.clone(),
       vel: game.currentScene.camera?.vel?.clone(),
       acc: game.currentScene.camera?.acc?.clone(),
-      strategies: game.currentScene.camera?.strategies?.map(s => ({ name: s.constructor.name }))
+      strategies: game.currentScene.camera?.strategies?.map((s: { constructor: { name: string } }) => ({ name: s.constructor.name }))
     },
     currentScene: currentScene,
     scenes: sceneNames,
@@ -421,8 +446,8 @@ const debugSettings = {
   isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
 };
 
-const ports = {};
-let intervalId = null;
+const ports: Record<string, chrome.runtime.Port> = {};
+let intervalId: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Gets the active browser tab.
@@ -595,7 +620,7 @@ globalThis.browser.runtime.onConnect.addListener(async (port) => {
       }
       const gameState = await globalThis.browser.scripting.executeScript({
         target: {
-          tabId: tab.id
+          tabId: tab.id!
         },
         world: 'MAIN',
         func: inject,
