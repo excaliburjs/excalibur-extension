@@ -6,7 +6,8 @@
   "devtools_page": "../devtools.html",
   "permissions": ["tabs", "scripting"],
   "background": {
-    "service_worker": "../background.js"
+    "service_worker": "../background.ts",
+    "type": "module"
   },
   "host_permissions": [
     "http://localhost/*",

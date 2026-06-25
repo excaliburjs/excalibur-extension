@@ -1,61 +1,5 @@
-
-/**
- * Mapping from flat settings keys to game.debug.* paths.
- * NOTE: This should mirror the gamePath values in settings/schema.ts.
- * When adding a new setting, add it to both schema.ts and here.
- */
-const settingsMappings = {
-  // Debug text (v0.31+)
-  debugTextForegroundColor: 'debug.settings.text.foreground',
-  debugTextBackgroundColor: 'debug.settings.text.background',
-  debugTextBorderColor: 'debug.settings.text.border',
-
-  // Entity
-  showNames: 'debug.entity.showName',
-  showIds: 'debug.entity.showId',
-
-  // Transform
-  showPos: 'debug.transform.showPosition',
-  showPosLabel: 'debug.transform.showPositionLabel',
-  posColor: 'debug.transform.positionColor',
-  showRotation: 'debug.transform.showRotation',
-  rotationColor: 'debug.transform.rotationColor',
-  showScale: 'debug.transform.showScale',
-  scaleColor: 'debug.transform.scaleColor',
-  showZIndex: 'debug.transform.showZIndex',
-
-  // Graphics
-  showGraphicsBounds: 'debug.graphics.showBounds',
-  graphicsBoundsColor: 'debug.graphics.boundsColor',
-
-  // Collider
-  showColliderBounds: 'debug.collider.showBounds',
-  colliderBoundsColor: 'debug.collider.boundsColor',
-  showGeometryBounds: 'debug.collider.showGeometry',
-  geometryBoundsColor: 'debug.collider.geometryColor',
-
-  // Body
-  showCollisionGroup: 'debug.body.showCollisionGroup',
-  showCollisionType: 'debug.body.showCollisionType',
-  showMass: 'debug.body.showMass',
-  showMotion: 'debug.body.showMotion',
-  showSleeping: 'debug.body.showSleeping',
-
-  // Physics
-  showContact: 'debug.physics.showCollisionContacts',
-  contactColor: 'debug.physics.collisionContactColor',
-  showContactNormal: 'debug.physics.showCollisionNormals',
-  contactNormalColor: 'debug.physics.collisionNormalColor',
-  showSpacePartition: 'debug.physics.showBroadphaseSpacePartitionDebug',
-
-  // Tilemap
-  showTileMapGrid: 'debug.tilemap.showGrid',
-  tileMapGridColor: 'debug.tilemap.gridColor',
-
-  // Isometric
-  showIsometricGrid: 'debug.isometric.showGrid',
-  isometricGridColor: 'debug.isometric.gridColor',
-};
+// @ts-nocheck - This file was originally JS; full type-checking deferred
+import { settingsMappings } from './settings';
 
 if (typeof browser == 'undefined') {
   // Chrome does not support the browser namespace yet.
@@ -298,15 +242,16 @@ function inject(settings, mappings) {
   }
 
   /**
-   * Set a value at a nested path in an object
+   * Patch a value at a nested path in an existing object.
+   * Silently skips if the path doesn't exist (safe for older Excalibur versions).
    */
-  function setPath(obj, path, value) {
+  function patchByPath(obj, path, value) {
     const parts = path.split('.');
     let target = obj;
     for (let i = 0; i < parts.length - 1; i++) {
       const key = parts[i];
       if (target[key] === undefined || target[key] === null) {
-        return; // Path doesn't exist in game, skip
+        return; // Path doesn't exist, skip
       }
       target = target[key];
     }
@@ -335,7 +280,7 @@ function inject(settings, mappings) {
       value = new ColorLike(value);
     }
     
-    setPath(game, path, value);
+    patchByPath(game, path, value);
   }
 
   // Send game state to dev tools

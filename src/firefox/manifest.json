@@ -13,7 +13,7 @@
   },
   "permissions": ["tabs", "scripting"],
   "background": {
-    "scripts": ["../background.js"]
+    "scripts": ["../background.ts"]
   },
   "host_permissions": [
     "http://localhost/*",

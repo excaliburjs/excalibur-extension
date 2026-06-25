@@ -39,7 +39,7 @@ export function colorToHex(color: Color): string {
 }
 
 /**
- * Set a value at a nested path in an object
+ * Set a value at a nested path in an object, creating intermediate objects if needed.
  * @example setByPath(obj, 'debug.transform.showZIndex', true)
  */
 export function setByPath(obj: Record<string, unknown>, path: string, value: unknown): void {
@@ -49,6 +49,24 @@ export function setByPath(obj: Record<string, unknown>, path: string, value: unk
     const key = parts[i];
     if (!(key in target)) {
       target[key] = {};
+    }
+    target = target[key] as Record<string, unknown>;
+  }
+  target[parts[parts.length - 1]] = value;
+}
+
+/**
+ * Patch a value at a nested path in an existing object.
+ * Silently skips if the path doesn't exist (safe for patching game objects).
+ * @example patchByPath(game, 'debug.transform.showZIndex', true)
+ */
+export function patchByPath(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split('.');
+  let target: Record<string, unknown> = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = parts[i];
+    if (target[key] === undefined || target[key] === null) {
+      return; // Path doesn't exist, skip
     }
     target = target[key] as Record<string, unknown>;
   }

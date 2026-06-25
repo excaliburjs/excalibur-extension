@@ -1,5 +1,5 @@
 import { settingsSchema, Settings, SettingsKey, BooleanSettingsKey, ColorSettingsKey, DefaultSettings } from './schema';
-import { setByPath, Color } from './utils';
+import { Color } from './utils';
 
 export interface SettingsChangeEvent {
   settings: Settings;
@@ -83,26 +83,6 @@ class SettingsStore extends EventTarget {
   reset(): void {
     this._state = { ...DefaultSettings };
     this._emitChange();
-  }
-
-  /**
-   * Convert settings to game.debug structure for injection.
-   * Uses gamePath from schema to build nested object.
-   */
-  toGameDebug(): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
-    for (const [key, def] of Object.entries(settingsSchema)) {
-      setByPath(result, def.gamePath, this._state[key as SettingsKey]);
-    }
-    return result;
-  }
-
-  /**
-   * Get flat settings object for message passing.
-   * This maintains backward compatibility with current message format.
-   */
-  toMessage(): Settings {
-    return { ...this._state };
   }
 
   private _emitChange(): void {

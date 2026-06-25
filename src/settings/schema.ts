@@ -62,7 +62,7 @@ export const settingsSchema = {
   showPosLabel: {
     type: 'boolean',
     default: false,
-    label: 'Show Position Label',
+    label: 'Show Coordinates',
     gamePath: 'debug.transform.showPositionLabel',
   },
   posColor: {
@@ -260,3 +260,8 @@ export type ColorSettingsKey = {
 export const DefaultSettings: Settings = Object.fromEntries(
   Object.entries(settingsSchema).map(([key, def]) => [key, def.default])
 ) as Settings;
+
+// Generate settings mappings (key -> gamePath) for background.js injection
+export const settingsMappings: Record<SettingsKey, string> = Object.fromEntries(
+  Object.entries(settingsSchema).map(([key, def]) => [key, def.gamePath])
+) as Record<SettingsKey, string>;
