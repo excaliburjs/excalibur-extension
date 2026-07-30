@@ -309,6 +309,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
     name: string;
     ctor: string;
     pos: string;
+    z: string;
     coordPlane: string;
     collisionType: string;
     collisionGroup: string;
@@ -319,6 +320,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const e = entity as any;
     let pos = `(${e?.pos?.x?.toFixed(2)}, ${e?.pos?.y?.toFixed(2)})`;
+    let z = `0`;
     let coordPlane = '';
     let collisionType = '';
     let collisionGroup = '';
@@ -326,9 +328,10 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
     for (const component of entity.getComponents()) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const c = component as any;
-      if (c.pos && c.coordPlane) {
+      if (c.pos && c.coordPlane && c.z !== undefined) {
         pos = `(${c?.pos?.x?.toFixed(2)}, ${c?.pos?.y?.toFixed(2)})`;
         coordPlane = `${c?.coordPlane}`;
+        z = `${c.z}`;
       }
       if (c.collisionType) {
         collisionType = c.collisionType;
@@ -343,6 +346,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
       name: entity.name,
       ctor: entity.constructor.name,
       pos: pos ?? 'none',
+      z,
       coordPlane,
       collisionType,
       collisionGroup,

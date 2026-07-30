@@ -10,6 +10,7 @@ export interface Entity {
   name: string;
   ctor: string;
   pos: string;
+  z: string;
 
   coordPlane: string;
   collisionType: string;
@@ -157,6 +158,7 @@ export class EntityList extends LitElement {
                   </div>
                   <sl-tag variant="primary">id:${entity.id}</sl-tag>
                   <sl-tag variant="neutral">pos:${entity.pos}</sl-tag>
+                  <sl-tag variant="neutral">z:${entity.z}</sl-tag>
                   ${repeat(
                     entity.tags,
                     (tag) => tag,
