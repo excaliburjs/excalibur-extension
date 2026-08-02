@@ -13,6 +13,8 @@ import './system-stats-list';
 import './scene-list';
 import './physics-settings';
 import './screen-camera';
+import './materials-panel';
+import './no-excalibur-overlay';
 import { colors } from '../colors';
 import { common } from '../common';
 import { Settings } from './debug-settings';
@@ -21,12 +23,15 @@ import { FpsGraph } from './fps-graph';
 import { FrameTimeGraph } from './frame-time-graph';
 import { Stats } from './stats-list';
 import { FlameChart } from './flame-chart';
-import { SlChangeEvent, SlInput, SlRadioGroup } from '@shoelace-style/shoelace';
+import { SlChangeEvent, SlInput, SlRadioGroup, SlSelect } from '@shoelace-style/shoelace';
 import { Entity } from './entity-list';
 import { DefaultPhysicsSettings, Physics } from './physics-settings';
 import { BoundingBox, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';
 import { SystemTimeGraph } from './system-time-graph';
 import { SystemStatsList } from './system-stats-list';
+import { MaterialDetail, MaterialsState, UniformChange } from './material-detail';
+import { MaterialSelected } from './materials-panel';
+import type { ExInstance, HeartbeatMessage } from '../protocol';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -63,12 +68,12 @@ interface InitEvent {
   };
 }
 
-interface HeartbeatEvent {
-  name: 'ex-debug:heartbeat';
-  data: string;
+interface MaterialDetailEvent {
+  name: 'ex-debug:material-detail';
+  data: string | null;
 }
 
-type EventDispatchEvents = InitEvent | HeartbeatEvent;
+type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent;
 
 @customElement('app-main')
 export class App extends LitElement {
@@ -123,6 +128,13 @@ export class App extends LitElement {
 
       .version {
         margin-left: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .version sl-select {
+        min-width: 300px;
       }
       sl-radio {
         margin-bottom: 5px;
@@ -184,12 +196,34 @@ export class App extends LitElement {
   })
   physics: Physics = DefaultPhysicsSettings;
 
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  materials: MaterialsState = { source: 'scan', list: [] };
+
+  @state()
+  materialDetails: Record<string, MaterialDetail> = {};
+
   @state()
   worldPos: string = '???';
   @state()
   screenPos: string = '???';
   @state()
   pagePos: string = '???';
+
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  instances: ExInstance[] = [];
+
+  @state()
+  selectedFrameId: number | null = null;
+
+  @state()
+  hasReceivedHeartbeat: boolean = false;
+
+  private _lastHeartbeatAt: number = 0;
+  private _stalenessIntervalId?: ReturnType<typeof setInterval>;
 
   backgroundConnection!: browser.runtime.Port;
   camera: Camera = {
@@ -223,9 +257,25 @@ export class App extends LitElement {
     } else {
       throw new Error('Could not connect to background page?');
     }
+
+    // Tell the background which tab this panel inspects so the heartbeat
+    // polls the right tab instead of whichever tab is focused
+    this.backgroundConnection.postMessage({
+      name: 'ex-debug:hello',
+      tabId: browser.devtools.inspectedWindow.tabId
+    });
+
+    // If heartbeats stop arriving (e.g. the service worker was killed),
+    // fall back to the "no excalibur" overlay instead of showing stale data
+    this._stalenessIntervalId = setInterval(() => {
+      if (this.hasReceivedHeartbeat && Date.now() - this._lastHeartbeatAt > 1500) {
+        this.instances = [];
+      }
+    }, 1000);
   }
 
   override disconnectedCallback(): void {
+    clearInterval(this._stalenessIntervalId);
     // Disconnect background connection BEFORE Lit tears down the component tree
     // This prevents race conditions where messages arrive during teardown
     if (this.backgroundConnection) {
@@ -262,6 +312,20 @@ export class App extends LitElement {
         break;
       }
       case 'ex-debug:heartbeat': {
+        this._lastHeartbeatAt = Date.now();
+        this.hasReceivedHeartbeat = true;
+        this.instances = message.instances;
+
+        if (message.selectedFrameId !== this.selectedFrameId) {
+          this.selectedFrameId = message.selectedFrameId;
+          this._resetInstanceState();
+        }
+
+        if (message.data == null) {
+          // no instance selected (or a transient miss) — keep the last state
+          break;
+        }
+
         const data = JSON.parse(message.data);
         const {
           version,
@@ -273,8 +337,14 @@ export class App extends LitElement {
           pointer,
           entities,
           stats,
-          physics
+          physics,
+          materials
         } = data;
+
+        // only present while the Materials tab is active
+        if (materials) {
+          this.materials = materials;
+        }
 
         this.config = config;
         this.screen = screen;
@@ -319,9 +389,9 @@ export class App extends LitElement {
             'Upgrade to v0.32+ to see'
         };
 
-        this.fpsGraph.draw(fps);
+        this.fpsGraph?.draw(fps);
 
-        this.frameTimeGraph.draw(
+        this.frameTimeGraph?.draw(
           stats.currFrame._durationStats.total,
           stats.currFrame._durationStats.update,
           stats.currFrame._durationStats.draw
@@ -342,7 +412,107 @@ export class App extends LitElement {
         };
         break;
       }
+      case 'ex-debug:material-detail': {
+        if (message.data) {
+          const detail: MaterialDetail | null = JSON.parse(message.data);
+          if (detail) {
+            this.materialDetails = { ...this.materialDetails, [detail.key]: detail };
+          }
+        }
+        break;
+      }
     }
+  }
+
+  /**
+   * Clears state derived from a specific Excalibur instance when the selected
+   * frame changes, so data from the previous instance doesn't linger.
+   */
+  private _resetInstanceState() {
+    this.engine = {
+      version: '???',
+      currentScene: 'root',
+      scenes: [],
+      entities: [],
+      pointer: null
+    };
+    this.stats = {
+      fps: 0,
+      delta: 0,
+      frameTime: 0,
+      updateTime: 0,
+      drawTime: 0,
+      frameBudget: 0,
+      drawCalls: 0,
+      numActors: 0,
+      rendererSwaps: 0,
+      systemDuration: {}
+    };
+    this.materials = { source: 'scan', list: [] };
+    this.materialDetails = {};
+    this.worldPos = '???';
+    this.screenPos = '???';
+    this.pagePos = '???';
+  }
+
+  selectFrame(evt: SlChangeEvent) {
+    const frameId = +String((evt.target as SlSelect).value);
+    this.backgroundConnection.postMessage({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:select-frame',
+      frameId
+    });
+  }
+
+  /**
+   * Shortens a frame url to hostname + pathname for dropdown labels.
+   */
+  private _shortUrl(url: string) {
+    try {
+      const parsed = new URL(url);
+      return `${parsed.hostname}${parsed.pathname}`;
+    } catch {
+      return url;
+    }
+  }
+
+  /**
+   * Builds a human-readable label for an Excalibur instance in the dropdown.
+   */
+  private _instanceLabel(instance: ExInstance) {
+    const location = instance.frameId === 0
+      ? `Top frame — ${instance.title || this._shortUrl(instance.url)}`
+      : this._shortUrl(instance.url);
+    return `${location} (v${instance.version})`;
+  }
+
+  handleTabShow(evt: CustomEvent<{ name: string }>) {
+    this.backgroundConnection.postMessage({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:materials-active',
+      active: evt.detail.name === 'materials'
+    });
+  }
+
+  materialSelected(evt: CustomEvent<MaterialSelected>) {
+    this.backgroundConnection.postMessage({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:get-material-detail',
+      materialId: evt.detail.materialId,
+      materialName: evt.detail.materialName
+    });
+  }
+
+  updateMaterialUniform(evt: CustomEvent<UniformChange>) {
+    this.backgroundConnection.postMessage({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:update-material-uniform',
+      update: evt.detail
+    });
   }
 
   updatePhysicsSetting(evt: CustomEvent<Physics>) {
@@ -472,16 +642,35 @@ export class App extends LitElement {
 
   override render() {
     return html`
+      ${this.instances.length === 0
+        ? html`<no-excalibur-overlay
+            .message=${this.hasReceivedHeartbeat ? 'No Excalibur detected on the page' : 'Connecting to page…'}
+          ></no-excalibur-overlay>`
+        : ''}
       <h1><img src=${logoImg} alt="Excalibur Dev Tools" />Dev Tools</h1>
-      <div class="version">Engine Version: <span id="excalibur-version">${this.engine.version}</span></div>
+      <div class="version">
+        <span>Engine Version: <span id="excalibur-version">${this.engine.version}</span></span>
+        ${this.instances.length > 1
+          ? html`<sl-select
+              size="small"
+              .value=${String(this.selectedFrameId ?? '')}
+              @sl-change=${this.selectFrame}
+            >
+              ${this.instances.map(
+                (instance) => html`<sl-option value=${String(instance.frameId)}>${this._instanceLabel(instance)}</sl-option>`
+              )}
+            </sl-select>`
+          : ''}
+      </div>
       <entity-inspector></entity-inspector>
 
-      <sl-tab-group>
+      <sl-tab-group @sl-tab-show=${this.handleTabShow}>
         <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
         <sl-tab slot="nav" panel="screen-camera">Screen & Camera</sl-tab>
         <sl-tab slot="nav" panel="perf">Performance</sl-tab>
         <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
         <sl-tab slot="nav" panel="physics">Physics</sl-tab>
+        <sl-tab slot="nav" panel="materials">Materials</sl-tab>
 
         <sl-tab-panel name="inspector">
           <div class="row">
@@ -625,6 +814,15 @@ export class App extends LitElement {
             .settings=${this.physics}
           >
           </physics-settings>
+        </sl-tab-panel>
+        <sl-tab-panel name="materials">
+          <materials-panel
+            @material-selected=${this.materialSelected}
+            @uniform-change=${this.updateMaterialUniform}
+            .materials=${this.materials}
+            .details=${this.materialDetails}
+          >
+          </materials-panel>
         </sl-tab-panel>
       </sl-tab-group>
     `;
