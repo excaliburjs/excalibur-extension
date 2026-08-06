@@ -222,8 +222,14 @@ export class App extends LitElement {
   @state()
   hasReceivedHeartbeat: boolean = false;
 
+  @state()
+  connectionLost: boolean = false;
+
   private _lastHeartbeatAt: number = 0;
   private _stalenessIntervalId?: ReturnType<typeof setInterval>;
+  private _reconnectTimerId?: ReturnType<typeof setTimeout>;
+  private _reconnectDelayMs: number = 500;
+  private _hasInitialized: boolean = false;
 
   backgroundConnection!: browser.runtime.Port;
   camera: Camera = {
@@ -252,36 +258,24 @@ export class App extends LitElement {
   override firstUpdated(): void {
     this.connectToExtension();
 
-    if (this.backgroundConnection) {
-      this.backgroundConnection.onMessage.addListener(this.backgroundMessageDispatch);
-    } else {
-      throw new Error('Could not connect to background page?');
-    }
-
-    // Tell the background which tab this panel inspects so the heartbeat
-    // polls the right tab instead of whichever tab is focused
-    this.backgroundConnection.postMessage({
-      name: 'ex-debug:hello',
-      tabId: browser.devtools.inspectedWindow.tabId
-    });
-
-    // If heartbeats stop arriving (e.g. the service worker was killed),
-    // fall back to the "no excalibur" overlay instead of showing stale data
+    // If heartbeats stop arriving without the port firing onDisconnect
+    // (a wedged service worker), tear the port down and reconnect
     this._stalenessIntervalId = setInterval(() => {
-      if (this.hasReceivedHeartbeat && Date.now() - this._lastHeartbeatAt > 1500) {
-        this.instances = [];
+      if (this.hasReceivedHeartbeat && Date.now() - this._lastHeartbeatAt > 1500 && this._reconnectTimerId === undefined) {
+        this.connectionLost = true;
+        this._teardownPort();
+        this._scheduleReconnect();
       }
     }, 1000);
   }
 
   override disconnectedCallback(): void {
     clearInterval(this._stalenessIntervalId);
+    clearTimeout(this._reconnectTimerId);
+    this._reconnectTimerId = undefined;
     // Disconnect background connection BEFORE Lit tears down the component tree
     // This prevents race conditions where messages arrive during teardown
-    if (this.backgroundConnection) {
-      this.backgroundConnection.onMessage.removeListener(this.backgroundMessageDispatch);
-      this.backgroundConnection.disconnect();
-    }
+    this._teardownPort();
     super.disconnectedCallback();
   }
 
@@ -289,8 +283,73 @@ export class App extends LitElement {
     this.backgroundConnection = browser.runtime.connect({
       name: 'panel'
     });
+    this.backgroundConnection.onMessage.addListener(this.backgroundMessageDispatch);
+    this.backgroundConnection.onDisconnect.addListener(this._handleDisconnect);
+
+    // Tell the background which tab this panel inspects so the heartbeat
+    // polls the right tab instead of whichever tab is focused
+    this.backgroundConnection.postMessage({
+      name: 'ex-debug:hello',
+      tabId: browser.devtools.inspectedWindow.tabId
+    });
     return this.backgroundConnection;
   };
+
+  /**
+   * Removes port listeners and disconnects without triggering a reconnect.
+   */
+  private _teardownPort() {
+    if (this.backgroundConnection) {
+      this.backgroundConnection.onMessage.removeListener(this.backgroundMessageDispatch);
+      this.backgroundConnection.onDisconnect.removeListener(this._handleDisconnect);
+      try {
+        this.backgroundConnection.disconnect();
+      } catch {
+        // port already dead
+      }
+    }
+  }
+
+  /**
+   * Fired when the background service worker dies (extension reload, crash,
+   * idle reclaim). Flags the connection as lost and starts reconnecting.
+   */
+  private _handleDisconnect = () => {
+    this.connectionLost = true;
+    this._scheduleReconnect();
+  };
+
+  /**
+   * Reconnects to the background with backoff; the next heartbeat clears the
+   * connection-lost state and resets the backoff.
+   */
+  private _scheduleReconnect() {
+    if (this._reconnectTimerId !== undefined || !this.isConnected) {
+      return;
+    }
+    this._reconnectTimerId = setTimeout(() => {
+      this._reconnectTimerId = undefined;
+      this._reconnectDelayMs = Math.min(this._reconnectDelayMs * 2, 5000);
+      try {
+        this.connectToExtension();
+      } catch {
+        // extension context invalidated or background unavailable; keep trying
+        this._scheduleReconnect();
+      }
+    }, this._reconnectDelayMs);
+  }
+
+  /**
+   * Posts a message to the background, flagging a lost connection instead of
+   * throwing out of the calling event handler when the port is dead.
+   */
+  private _post(message: object) {
+    try {
+      this.backgroundConnection.postMessage(message);
+    } catch {
+      this._handleDisconnect();
+    }
+  }
 
   backgroundMessageDispatch = (message: EventDispatchEvents) => {
     if (!this.isConnected) return;
@@ -307,6 +366,19 @@ export class App extends LitElement {
   private _handleMessage(message: EventDispatchEvents) {
     switch (message.name) {
       case 'ex-debug:init': {
+        if (this._hasInitialized) {
+          // reconnected after a service-worker restart: the background just
+          // reset to defaults, so push the panel's settings back instead of
+          // adopting the defaults and losing the user's choices
+          this._post({
+            name: 'ex-debug:command',
+            tabId: browser.devtools.inspectedWindow.tabId,
+            dispatch: 'ex-debug:update-debug',
+            debug: settingsStore.getAll()
+          });
+          break;
+        }
+        this._hasInitialized = true;
         const { settings } = message.data;
         settingsStore.setAll(settings);
         break;
@@ -314,6 +386,8 @@ export class App extends LitElement {
       case 'ex-debug:heartbeat': {
         this._lastHeartbeatAt = Date.now();
         this.hasReceivedHeartbeat = true;
+        this.connectionLost = false;
+        this._reconnectDelayMs = 500;
         this.instances = message.instances;
 
         if (message.selectedFrameId !== this.selectedFrameId) {
@@ -366,50 +440,60 @@ export class App extends LitElement {
           this.pagePos = `(${currentPointer.pagePos._x.toFixed(2)},${currentPointer.pagePos._y.toFixed(2)})`;
         }
 
-        const fps = stats.currFrame._fps;
-        const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
-
         const versionTuple = this.engine.version.split('.');
         const majorVersion = +(versionTuple[0] || 0);
         const minorVersion = +(versionTuple[1] || 0);
         this.isV31OrLater = minorVersion >= 31 || majorVersion > 0;
 
-        this.stats = {
-          fps,
-          delta: elapsedMs,
-          frameBudget: elapsedMs - stats.currFrame._durationStats.total,
-          frameTime: stats.currFrame._durationStats.total,
-          updateTime: stats.currFrame._durationStats.update,
-          systemDuration: this.isV31OrLater ? stats.currFrame.systemDuration: {},
-          drawTime: stats.currFrame._durationStats.draw,
-          drawCalls: stats.currFrame._graphicsStats.drawCalls,
-          numActors: stats.currFrame._actorStats.total,
-          rendererSwaps: this.isV31OrLater ? 
-            stats.currFrame._graphicsStats.rendererSwaps :
-            'Upgrade to v0.32+ to see'
-        };
+        // Guard each section independently: a missing field on one engine
+        // version must not freeze every panel that follows it
+        try {
+          const fps = stats.currFrame._fps;
+          const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
 
-        this.fpsGraph?.draw(fps);
+          this.stats = {
+            fps,
+            delta: elapsedMs,
+            frameBudget: elapsedMs - stats.currFrame._durationStats.total,
+            frameTime: stats.currFrame._durationStats.total,
+            updateTime: stats.currFrame._durationStats.update,
+            systemDuration: this.isV31OrLater ? stats.currFrame.systemDuration: {},
+            drawTime: stats.currFrame._durationStats.draw,
+            drawCalls: stats.currFrame._graphicsStats.drawCalls,
+            numActors: stats.currFrame._actorStats.total,
+            rendererSwaps: this.isV31OrLater ?
+              stats.currFrame._graphicsStats.rendererSwaps :
+              'Upgrade to v0.32+ to see'
+          };
 
-        this.frameTimeGraph?.draw(
-          stats.currFrame._durationStats.total,
-          stats.currFrame._durationStats.update,
-          stats.currFrame._durationStats.draw
-        );
+          this.fpsGraph?.draw(fps);
 
-        if (this.isV31OrLater) {
-          this.systemTimeGraph?.draw(this.stats.systemDuration);
-          this.systemStatsList?.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
+          this.frameTimeGraph?.draw(
+            stats.currFrame._durationStats.total,
+            stats.currFrame._durationStats.update,
+            stats.currFrame._durationStats.draw
+          );
+
+          if (this.isV31OrLater) {
+            this.systemTimeGraph?.draw(this.stats.systemDuration);
+            this.systemStatsList?.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
+          }
+        } catch (e) {
+          console.info('Error reading engine stats:', e);
         }
 
-        this.physics = {
-          enabled: physics.enabled,
-          maxFps: physics.maxFps,
-          fixedUpdateFps: physics.fixedUpdateFps,
-          fixedUpdateTimestep: physics.fixedUpdateTimestep,
-          gravity: { ...physics.gravity },
-          config: physics.config
-        };
+        try {
+          this.physics = {
+            enabled: physics.enabled,
+            maxFps: physics.maxFps,
+            fixedUpdateFps: physics.fixedUpdateFps,
+            fixedUpdateTimestep: physics.fixedUpdateTimestep,
+            gravity: { ...physics.gravity },
+            config: physics.config
+          };
+        } catch (e) {
+          console.info('Error reading physics settings:', e);
+        }
         break;
       }
       case 'ex-debug:material-detail': {
@@ -457,7 +541,7 @@ export class App extends LitElement {
 
   selectFrame(evt: SlChangeEvent) {
     const frameId = +String((evt.target as SlSelect).value);
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:select-frame',
@@ -488,7 +572,7 @@ export class App extends LitElement {
   }
 
   handleTabShow(evt: CustomEvent<{ name: string }>) {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:materials-active',
@@ -497,7 +581,7 @@ export class App extends LitElement {
   }
 
   materialSelected(evt: CustomEvent<MaterialSelected>) {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:get-material-detail',
@@ -507,7 +591,7 @@ export class App extends LitElement {
   }
 
   updateMaterialUniform(evt: CustomEvent<UniformChange>) {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-material-uniform',
@@ -518,7 +602,7 @@ export class App extends LitElement {
   updatePhysicsSetting(evt: CustomEvent<Physics>) {
     const settings = evt.detail;
 
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-physics',
@@ -529,7 +613,7 @@ export class App extends LitElement {
   updateDebugSetting(evt: CustomEvent<Settings>) {
     const settings = evt.detail;
 
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-debug',
@@ -538,7 +622,7 @@ export class App extends LitElement {
   }
 
   toggleDebugDraw() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:toggle-debug'
@@ -551,7 +635,7 @@ export class App extends LitElement {
     this.clockStepMs = +(evt.target as SlInput).value;
   }
   toggleTestClock() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:toggle-test-clock'
@@ -559,7 +643,7 @@ export class App extends LitElement {
   }
 
   startClock() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:start-clock'
@@ -567,7 +651,7 @@ export class App extends LitElement {
   }
 
   stopClock() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:stop-clock'
@@ -575,7 +659,7 @@ export class App extends LitElement {
   }
 
   stepClock() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:step-clock',
@@ -584,7 +668,7 @@ export class App extends LitElement {
   }
 
   startProfiler() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:start-profiler',
@@ -593,7 +677,7 @@ export class App extends LitElement {
   }
 
   collectProfile() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:collect-profiler'
@@ -602,7 +686,7 @@ export class App extends LitElement {
 
   killActor(evt: CustomEvent<number>) {
     const id = evt.detail;
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:kill',
@@ -613,7 +697,7 @@ export class App extends LitElement {
   setColorBlind() {
     const colorBlindRadioGroup = this.shadowRoot?.querySelector('#color-blind') as SlRadioGroup;
     const colorBlindMode = (colorBlindRadioGroup?.value) ?? 'Normal';
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:color-blind',
@@ -622,7 +706,7 @@ export class App extends LitElement {
   }
 
   identifyActor(evt: CustomEvent<number>) {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:identify-actor',
@@ -632,7 +716,7 @@ export class App extends LitElement {
 
   goToScene(evt: CustomEvent<string>) {
     const scene = evt.detail;
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:goto-scene',
@@ -642,11 +726,15 @@ export class App extends LitElement {
 
   override render() {
     return html`
-      ${this.instances.length === 0
+      ${this.connectionLost
         ? html`<no-excalibur-overlay
-            .message=${this.hasReceivedHeartbeat ? 'No Excalibur detected on the page' : 'Connecting to page…'}
+            .message=${'Connection to the extension was lost — reconnecting… (reopen DevTools if this persists)'}
           ></no-excalibur-overlay>`
-        : ''}
+        : this.instances.length === 0
+          ? html`<no-excalibur-overlay
+              .message=${this.hasReceivedHeartbeat ? 'No Excalibur detected on the page' : 'Connecting to page…'}
+            ></no-excalibur-overlay>`
+          : ''}
       <h1><img src=${logoImg} alt="Excalibur Dev Tools" />Dev Tools</h1>
       <div class="version">
         <span>Engine Version: <span id="excalibur-version">${this.engine.version}</span></span>

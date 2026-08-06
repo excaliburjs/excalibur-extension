@@ -579,42 +579,47 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
     tags: string[];
   }> = [];
   for (const entity of game.currentScene.entities) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const e = entity as any;
-    let pos = `(${e?.pos?.x?.toFixed(2)}, ${e?.pos?.y?.toFixed(2)})`;
-    let z = `0`;
-    let coordPlane = '';
-    let collisionType = '';
-    let collisionGroup = '';
-    let collisionMask = '';
-    for (const component of entity.getComponents()) {
+    // one strange entity must never take down the whole heartbeat
+    try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const c = component as any;
-      if (c.pos && c.coordPlane && c.z !== undefined) {
-        pos = `(${c?.pos?.x?.toFixed(2)}, ${c?.pos?.y?.toFixed(2)})`;
-        coordPlane = `${c?.coordPlane}`;
-        z = `${c.z}`;
+      const e = entity as any;
+      let pos = `(${e?.pos?.x?.toFixed(2)}, ${e?.pos?.y?.toFixed(2)})`;
+      let z = `0`;
+      let coordPlane = '';
+      let collisionType = '';
+      let collisionGroup = '';
+      let collisionMask = '';
+      for (const component of entity.getComponents()) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const c = component as any;
+        if (c.pos && c.coordPlane && c.z !== undefined) {
+          pos = `(${c?.pos?.x?.toFixed(2)}, ${c?.pos?.y?.toFixed(2)})`;
+          coordPlane = `${c?.coordPlane}`;
+          z = `${c.z}`;
+        }
+        if (c.collisionType) {
+          collisionType = c.collisionType;
+          collisionGroup = c.group?.category ?? '';
+          collisionMask = c.group?.mask ?? '';
+        }
       }
-      if (c.collisionType) {
-        collisionType = c.collisionType;
-        collisionGroup = c.group.category;
-        collisionMask = c.group.mask;
-      }
-    }
 
-    const tags = Array.from(entity.tags);
-    entities.push({
-      id: entity.id,
-      name: entity.name,
-      ctor: entity.constructor.name,
-      pos: pos ?? 'none',
-      z,
-      coordPlane,
-      collisionType,
-      collisionGroup,
-      collisionMask,
-      tags
-    });
+      const tags = Array.from(entity.tags);
+      entities.push({
+        id: entity.id,
+        name: entity.name,
+        ctor: entity.constructor.name,
+        pos: pos ?? 'none',
+        z,
+        coordPlane,
+        collisionType,
+        collisionGroup,
+        collisionMask,
+        tags
+      });
+    } catch {
+      // skip entities that throw during inspection
+    }
   }
 
   // Collect material/shader information, only while the Materials tab is visible
@@ -909,8 +914,13 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
     }
   }
 
+  // _originalOptions is a private engine field; guard for versions without it
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const {scenes: _, ...config } = (game as any)._originalOptions;
+  const {scenes: _, ...config } = (game as any)._originalOptions ?? {};
+
+  // scene.physics is missing on older engines; never let it kill the payload
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const physicsConfig = (game.currentScene as any)?.physics?.config;
 
   // Game data is stringified to ensure get properties are called.
   return JSON.stringify({
@@ -949,19 +959,21 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
       maxFps: game.maxFps,
       fixedUpdateFps: game.fixedUpdateFps,
       fixedUpdateTimestep: game.fixedUpdateTimestep,
-      gravity: game.currentScene.physics.config?.gravity ?? { _x: 0, _y: 0 },
-      solverStrategy: game.currentScene.physics.config?.solver ?? 'arcade',
-      config: { ...game.currentScene.physics.config }
+      gravity: physicsConfig?.gravity ?? { _x: 0, _y: 0 },
+      solverStrategy: physicsConfig?.solver ?? 'arcade',
+      config: { ...(physicsConfig ?? {}) }
     }
   });
 }
 
 /**
- *  Sets the actual defaults
+ *  Creates the default debug settings for a panel connection. Each connection
+ *  gets its own copy so panels on different tabs never share state and a
+ *  closed panel's settings (e.g. collectMaterials) can't leak into the next.
  *  @typedef {import('./components/debug-settings').Settings DebugSettings
  *  @type DebugSettings
  */
-const debugSettings = {
+const createDefaultDebugSettings = () => ({
   toggleDebug: false,
   // Not part of settingsMappings so it is never patched onto the game;
   // gates material collection to when the Materials tab is visible
@@ -1006,7 +1018,7 @@ const debugSettings = {
   tileMapGridColor: { r: 0, g: 0, b: 0, a: 1 },
   showIsometricGrid: false,
   isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
-};
+});
 
 /**
  * Runs an injected function in a specific frame (default top frame) of a tab,
@@ -1041,6 +1053,26 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
   const state: { tabId: number | null; selectedFrameId: number | null } = {
     tabId: null,
     selectedFrameId: null
+  };
+
+  // Per-connection settings: panels on different tabs must not share state
+  const debugSettings = createDefaultDebugSettings();
+
+  let disconnected = false;
+
+  /**
+   * Posts to the panel unless the port is already gone; async work (the
+   * heartbeat, command replies) can resolve after the panel closes.
+   */
+  const safePostMessage = (message: object) => {
+    if (disconnected) {
+      return;
+    }
+    try {
+      port.postMessage(message);
+    } catch {
+      disconnected = true;
+    }
   };
 
   port.onMessage.addListener((message) => {
@@ -1134,10 +1166,12 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
             execInFrame(message.tabId, state.selectedFrameId, getMaterialDetail, [
               { materialId: message.materialId, materialName: message.materialName }
             ]).then((results) => {
-              port.postMessage({
+              safePostMessage({
                 name: 'ex-debug:material-detail',
                 data: results?.[0]?.result ?? null
               });
+            }).catch((e) => {
+              console.info('material detail reply failed:', e);
             });
           }
           break;
@@ -1148,7 +1182,7 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
     }
   });
 
-  port.postMessage({
+  safePostMessage({
     name: 'ex-debug:init',
     data: {
       settings: debugSettings
@@ -1192,7 +1226,7 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
         });
         data = gameState[0]?.result ?? null;
       }
-      port.postMessage({
+      safePostMessage({
         name: 'ex-debug:heartbeat',
         instances,
         selectedFrameId: state.selectedFrameId,
@@ -1201,7 +1235,7 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
     } catch {
       // Non-injectable target (chrome:// page, dead tab) — tell the panel
       // there is nothing here rather than leaving it hanging
-      port.postMessage({
+      safePostMessage({
         name: 'ex-debug:heartbeat',
         instances: [],
         selectedFrameId: null,
@@ -1212,6 +1246,7 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
 
   port.onDisconnect.addListener(() => {
     console.info('Disconnected:', port.name);
+    disconnected = true;
     clearInterval(intervalId);
   });
 });
