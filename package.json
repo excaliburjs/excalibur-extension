@@ -1,6 +1,5 @@
 {
   "scripts": {
-    "postinstall": "patch-package",
     "format": "prettier . --check",
     "format:fix": "npm run format -- --write",
     "lint": "eslint ./src/",
