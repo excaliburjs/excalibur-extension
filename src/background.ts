@@ -925,6 +925,10 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
   // Game data is stringified to ensure get properties are called.
   return JSON.stringify({
     version: game.version,
+    // Reflect the engine's actual debug-mode state so the panel can adopt it
+    // on the first heartbeat rather than defaulting to false and clobbering
+    // a previously-enabled overlay (see createDefaultDebugSettings/`inject`).
+    isDebug: game.isDebug,
     /**
      * @typedef {import('./@types/excalibur.d.ts').EngineOptions} EngineOptions
      * @type {EngineOptions}
@@ -972,10 +976,16 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
  * closed panel's settings (e.g. collectMaterials) can't leak into the next.
  */
 const createDefaultDebugSettings = () => ({
-  toggleDebug: false,
   // Not part of settingsMappings so it is never patched onto the game;
   // gates material collection to when the Materials tab is visible
   collectMaterials: false,
+  // toggleDebug starts undefined: the background does not know the game's
+  // current debug state when a panel connects. Leaving it undefined makes
+  // `inject` skip the force-on/off branches on the first heartbeat, so a
+  // previously-enabled debug overlay isn't clobbered when devtools is
+  // reopened. The panel adopts the game's actual `isDebug` from the first
+  // heartbeat (see app-main) and then drives this field explicitly.
+  toggleDebug: undefined as boolean | undefined,
   debugTextForegroundColor: { r: 0, g: 0, b: 0, a: 1 },
   debugTextBackgroundColor: { r: 0, g: 0, b: 0, a: 0 },
   debugTextBorderColor: { r: 0, g: 0, b: 0, a: 0 },
@@ -1016,6 +1026,17 @@ const createDefaultDebugSettings = () => ({
   tileMapGridColor: { r: 0, g: 0, b: 0, a: 1 },
   showIsometricGrid: false,
   isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
+
+  // Screen debug settings (v0.33+); mirrors the engine's DebugConfig.screen
+  // defaults so the panel starts in sync with the running game. patchByPath
+  // silently skips these on older engines where game.debug.screen is absent.
+  screenDebugShowAll: false,
+  screenDebugShowContentArea: true,
+  screenContentAreaColor: { r: 0, g: 255, b: 0, a: 1 },
+  screenDebugShowUnsafeArea: true,
+  screenUnsafeAreaColor: { r: 255, g: 0, b: 0, a: 1 },
+  screenDebugShowLegend: true,
+  screenLegendColor: { r: 255, g: 255, b: 255, a: 1 },
 });
 
 /**

@@ -15,6 +15,7 @@ import './physics-settings';
 import './screen-camera';
 import './materials-panel';
 import './no-excalibur-overlay';
+import './screen-debug-settings';
 import { colors } from '../colors';
 import { common } from '../common';
 import { Settings } from './debug-settings';
@@ -236,6 +237,14 @@ export class App extends LitElement {
 
   toggleDebug: boolean = false;
 
+  /**
+   * Tracks whether the user has explicitly toggled debug draw (or the panel
+   * has already synced from the game). Until true, the first heartbeat that
+   * carries the game's `isDebug` state is adopted into `toggleDebug`, so
+   * reopening devtools doesn't clobber a previously-enabled debug overlay.
+   */
+  private _toggleDebugUserSet: boolean = false;
+
   private _currentTabName: string = 'inspector';
 
   private _lastHeartbeatAt: number = 0;
@@ -257,6 +266,7 @@ export class App extends LitElement {
 
   isV31OrLater: boolean = false;
   isV32OrLater: boolean = false;
+  isV33OrLater: boolean = false;
 
   override shouldUpdate() {
     return this.isConnected;
@@ -410,6 +420,7 @@ export class App extends LitElement {
         const data = JSON.parse(message.data);
         const {
           version,
+          isDebug,
           config,
           screen,
           camera,
@@ -421,6 +432,13 @@ export class App extends LitElement {
           physics,
           materials
         } = data;
+
+        // Adopt the game's actual debug state on the first heartbeat that
+        // carries data, so reopening devtools doesn't reset a previously-
+        // enabled overlay. Once the user explicitly toggles, stop adopting.
+        if (!this._toggleDebugUserSet) {
+          this.toggleDebug = !!isDebug;
+        }
 
         // only present while the Materials tab is active
         if (materials) {
@@ -455,6 +473,7 @@ export class App extends LitElement {
         if (this.isV32OrLater !== wasV32OrLater) {
           this._syncMaterialsActive();
         }
+        this.isV33OrLater = versionRank >= 33e3;
 
         // Guard each section independently: a missing field on one engine
         // version must not freeze every panel that follows it
@@ -640,6 +659,7 @@ export class App extends LitElement {
 
   toggleDebugDraw() {
     this.toggleDebug = !this.toggleDebug;
+    this._toggleDebugUserSet = true;
     this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
@@ -857,7 +877,13 @@ export class App extends LitElement {
         </sl-tab-panel>
 
         <sl-tab-panel name="screen-camera">
-          <screen-camera .config=${this.config} .screen=${this.screen} .camera=${this.camera}></screen-camera>
+          <screen-camera
+            .config=${this.config}
+            .screen=${this.screen}
+            .camera=${this.camera}
+            .isV33OrLater=${this.isV33OrLater}
+            @debug-settings-change=${this.updateDebugSetting}
+          ></screen-camera>
         </sl-tab-panel>
         <sl-tab-panel name="perf">
           <div class="row">

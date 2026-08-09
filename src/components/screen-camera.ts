@@ -1,3 +1,4 @@
+import './screen-debug-settings';
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators";
 import { colors } from "../colors";
@@ -50,8 +51,20 @@ export class ScreenAndCamera extends LitElement {
   @property({ type: Object }) config: EngineOptions = {};
   @property({ type: Object }) camera: CameraLike = {} as unknown as CameraLike;
 
+  /**
+   * When false, Excalibur is older than v0.33.0 and the screen-debug overlay
+   * is unsupported. Forwarded to <screen-debug-settings .unsupported>.
+   */
+  @property({ type: Boolean }) isV33OrLater = false;
+
   render() {
     return html`
+
+<div class="row">
+  <div class="widget">
+    <screen-debug-settings .unsupported=${!this.isV33OrLater}></screen-debug-settings>
+  </div>
+</div>
 
 <div class="row">
   <div class="widget">

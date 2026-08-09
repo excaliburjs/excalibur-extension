@@ -1,4 +1,4 @@
-import { black, transparent, red } from './utils';
+import { black, transparent, red, green, white } from './utils';
 
 export type SettingType = 'boolean' | 'number' | 'color';
 
@@ -232,6 +232,54 @@ export const settingsSchema = {
     default: black,
     label: 'Isometric Grid Color',
     gamePath: 'debug.isometric.gridColor',
+  },
+
+  // Screen debug settings (v0.33+)
+  // Maps to game.debug.screen.*; the engine gates all screen overlay rendering
+  // behind showAll, so the master toggle is the only one that must be on for
+  // anything to render. Sub-toggles and colors are no-ops on older engines
+  // (patchByPath silently skips when game.debug.screen is undefined).
+  screenDebugShowAll: {
+    type: 'boolean',
+    default: false,
+    label: 'Show Screen Debug',
+    gamePath: 'debug.screen.showAll',
+  },
+  screenDebugShowContentArea: {
+    type: 'boolean',
+    default: true,
+    label: 'Show Content Area',
+    gamePath: 'debug.screen.showContentArea',
+  },
+  screenDebugShowUnsafeArea: {
+    type: 'boolean',
+    default: true,
+    label: 'Show Unsafe Area',
+    gamePath: 'debug.screen.showUnsafeArea',
+  },
+  screenDebugShowLegend: {
+    type: 'boolean',
+    default: true,
+    label: 'Show Legend',
+    gamePath: 'debug.screen.showLegend',
+  },
+  screenContentAreaColor: {
+    type: 'color',
+    default: green,
+    label: 'Content Area Color',
+    gamePath: 'debug.screen.contentAreaColor',
+  },
+  screenUnsafeAreaColor: {
+    type: 'color',
+    default: red,
+    label: 'Unsafe Area Color',
+    gamePath: 'debug.screen.unsafeAreaColor',
+  },
+  screenLegendColor: {
+    type: 'color',
+    default: white,
+    label: 'Legend Color',
+    gamePath: 'debug.screen.legendColor',
   },
 } as const satisfies Record<string, SettingDefinition>;
 
