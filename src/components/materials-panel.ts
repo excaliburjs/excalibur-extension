@@ -96,6 +96,13 @@ export class MaterialsPanel extends LitElement {
   @property({ type: Object })
   details: Record<string, MaterialDetail> = {};
 
+  /**
+   * When true, the running Excalibur engine is not newer than v0.32.0 and the
+   * Materials tab is replaced with a version-warning message.
+   */
+  @property({ type: Boolean })
+  unsupported = false;
+
   @state()
   private _selectedKey: string | null = null;
 
@@ -133,6 +140,15 @@ export class MaterialsPanel extends LitElement {
   }
 
   override render() {
+    if (this.unsupported) {
+      return html`
+        <div class="empty section">
+          This panel requires Excalibur newer than v0.32.0.
+          <div class="hint">Upgrade the engine to use the Materials tab.</div>
+        </div>
+      `;
+    }
+
     const list = this.materials.list;
     if (list.length === 0) {
       return html`

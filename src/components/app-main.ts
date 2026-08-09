@@ -250,6 +250,7 @@ export class App extends LitElement {
     } = {} as any;
 
   isV31OrLater: boolean = false;
+  isV32OrLater: boolean = false;
 
   override shouldUpdate() {
     return this.isConnected;
@@ -440,10 +441,12 @@ export class App extends LitElement {
           this.pagePos = `(${currentPointer.pagePos._x.toFixed(2)},${currentPointer.pagePos._y.toFixed(2)})`;
         }
 
-        const versionTuple = this.engine.version.split('.');
-        const majorVersion = +(versionTuple[0] || 0);
-        const minorVersion = +(versionTuple[1] || 0);
-        this.isV31OrLater = minorVersion >= 31 || majorVersion > 0;
+        const v = this.engine.version.split('.');
+        // Single comparable rank: major*1e6 + minor*1e3 + patch
+        const versionRank = (+v[0] || 0) * 1e6 + (+v[1] || 0) * 1e3 + (+v[2] || 0);
+        this.isV31OrLater = versionRank >= 31e3;
+        // Strictly newer than v0.32.0 (v0.32.1+, v0.33+, v1+)
+        this.isV32OrLater = versionRank > 32e3;
 
         // Guard each section independently: a missing field on one engine
         // version must not freeze every panel that follows it
@@ -909,6 +912,7 @@ export class App extends LitElement {
             @uniform-change=${this.updateMaterialUniform}
             .materials=${this.materials}
             .details=${this.materialDetails}
+            .unsupported=${!this.isV32OrLater}
           >
           </materials-panel>
         </sl-tab-panel>
