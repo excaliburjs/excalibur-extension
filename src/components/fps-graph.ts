@@ -89,7 +89,9 @@ export class FpsGraph extends LitElement {
   }
 
   draw(fps: number) {
-    if (!this.isConnected) return;
+    if (!this.isConnected) {
+      return;
+    }
     this.data.push(fps);
     this.data.shift();
 

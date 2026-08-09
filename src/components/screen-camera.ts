@@ -4,8 +4,23 @@ import { colors } from "../colors";
 import { common } from "../common";
 import { BoundingBox, Color, DisplayMode, EngineOptions, Resolution, ViewportDimension } from "../@types/excalibur";
 
+interface ScreenLike {
+  viewport: ViewportDimension;
+  resolution: Resolution;
+  displayMode: DisplayMode;
+  pixelRatio: number;
+  unsafeArea: BoundingBox;
+  contentArea: BoundingBox;
+}
+
+interface CameraLike {
+  pos: { _x: number; _y: number };
+}
+
 const colorToHex = (color: Color) => {
-  if (!color) return "#FFFFFFFF";
+  if (!color) {
+    return "#FFFFFFFF";
+  }
   const r = color.r.toString(16).padStart(2, '0');
   const g = color.g.toString(16).padStart(2, '0');
   const b = color.b.toString(16).padStart(2, '0');
@@ -30,17 +45,10 @@ export class ScreenAndCamera extends LitElement {
     return this.isConnected;
   }
 
-  @property({ type: Object }) screen: {
-    viewport: ViewportDimension,
-    resolution: Resolution,
-    displayMode: DisplayMode,
-    pixelRatio: number,
-    unsafeArea: BoundingBox,
-    contentArea: BoundingBox
-  } = {} as any;
+  @property({ type: Object }) screen: ScreenLike = {} as unknown as ScreenLike;
 
   @property({ type: Object }) config: EngineOptions = {};
-  @property({ type: Object }) camera: any = {};
+  @property({ type: Object }) camera: CameraLike = {} as unknown as CameraLike;
 
   render() {
     return html`

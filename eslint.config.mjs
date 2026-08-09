@@ -5,6 +5,14 @@ import jsdoc from 'eslint-plugin-jsdoc';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
+  {
+    ignores: [
+      'dist-chrome/**',
+      'dist-firefox/**',
+      // Vendored Excalibur engine type declarations — upstream `.d.ts` dump, not hand-edited source
+      'src/@types/**/*.d.ts'
+    ]
+  },
   { files: ['**/*.{js,mjs,cjs,ts}'] },
   { languageOptions: { globals: globals.browser } },
   pluginJs.configs.recommended,

@@ -56,7 +56,9 @@ export class StatsList extends LitElement {
   };
 
   updateStats(stats: Stats) {
-    if (!this.isConnected) return;
+    if (!this.isConnected) {
+      return;
+    }
     this.stats = stats;
     this.requestUpdate();
   }

@@ -10,6 +10,7 @@ const tickWidth = 1; // px
 const nTicks = Math.floor(totalWidth / tickWidth);
 const zeroes = () => 0;
 
+/** Slugifies a string for use as a CSS class or id. */
 function slugify(str: string) {
   return str
     .toLowerCase()
@@ -103,7 +104,9 @@ export class SystemTimeGraph extends LitElement {
   
   initLegend = false;
   draw(systemDuration: Record<string, number>) {
-    if (!this.isConnected) return;
+    if (!this.isConnected) {
+      return;
+    }
     const legend = Object.keys(systemDuration);
 
     const color = d3.scaleOrdinal<string>().domain(legend).range([...d3.schemeDark2, ...d3.schemeAccent]);
@@ -143,7 +146,7 @@ export class SystemTimeGraph extends LitElement {
         .style('alignment-baseline', 'middle');
     }
 
-    for (let key in systemDuration) {
+    for (const key in systemDuration) {
       if(!this.timeData[key]) {
         this.timeData[key] = d3.range(nTicks).map(zeroes);
         this.d3Svg

@@ -2,7 +2,7 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
-import { SlChangeEvent, SlSwitch, SlSelect } from '@shoelace-style/shoelace';
+import { SlChangeEvent, SlSwitch } from '@shoelace-style/shoelace';
 import { PhysicsConfig } from '../@types/excalibur';
 
 declare module "../@types/excalibur" {
@@ -65,7 +65,9 @@ export class PhysicsSettings extends LitElement {
   };
 
   updateSettings(settings: Physics) {
-    if (!this.isConnected) return;
+    if (!this.isConnected) {
+      return;
+    }
     this.settings = settings;
     this.requestUpdate();
   }

@@ -151,7 +151,9 @@ export class FrameTimeGraph extends LitElement {
   }
 
   draw(frameTime: number, updateTime: number, drawTime: number) {
-    if (!this.isConnected) return;
+    if (!this.isConnected) {
+      return;
+    }
     this.frameTimeData.push(frameTime);
     this.frameTimeData.shift();
     this.updateTimeData.push(updateTime);

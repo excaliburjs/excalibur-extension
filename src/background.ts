@@ -193,12 +193,11 @@ function updatePhysics(settings: { config: Record<string, unknown> }) {
   }
 
 
-  /**
-  * Performs a deep merge of objects and returns mutated first object. 
-  *
-  * @param {...object} objects - Objects to merge
-  * @returns {object} New object with merged key/values
-  */
+/**
+ * Performs a deep merge of objects and returns mutated first object.
+ * @param {...object} objects - Objects to merge
+ * @returns {object} New object with merged key/values
+ */
   function mergeDeep(...objects: Record<string, unknown>[]) {
     const isObject = (obj: unknown) => obj && typeof obj === 'object';
 
@@ -208,11 +207,9 @@ function updatePhysics(settings: { config: Record<string, unknown> }) {
         const oVal = obj[key];
         if (Array.isArray(pVal) && Array.isArray(oVal)) {
           prev[key] = pVal.concat(...oVal);
-        }
-        else if (isObject(pVal) && isObject(oVal)) {
+        } else if (isObject(pVal) && isObject(oVal)) {
           prev[key] = mergeDeep(pVal as Record<string, unknown>, oVal as Record<string, unknown>);
-        }
-        else {
+        } else {
           prev[key] = oVal;
         }
       });
@@ -255,6 +252,7 @@ function updateMaterialUniform(update: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyGame = game as any;
 
+  /** Resolves the target material by registry/devtools id, falling back to name. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function findMaterial(): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -340,6 +338,7 @@ function getMaterialDetail(query: { materialId: number; materialName: string }) 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyGame = game as any;
 
+  /** Resolves the target material by registry/devtools id, falling back to name. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function findMaterial(): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -477,9 +476,8 @@ function getMaterialDetail(query: { materialId: number; materialName: string }) 
 /**
  * Injects settings defined by the devtool into the game. Information about
  * the game state is then returned from this function.
- *
- * @param {Object} settings - Flat settings object
- * @param {Object} mappings - Map of setting keys to game.debug.* paths
+ * @param {object} settings - Flat settings object
+ * @param {object} mappings - Map of setting keys to game.debug.* paths
  */
 function inject(settings: Record<string, unknown>, mappings: Record<string, string>) {
   if (!window.___EXCALIBUR_DEVTOOL) {
@@ -502,7 +500,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
       this.r = r;
       this.g = g;
       this.b = b;
-      this.a = a != null && a != undefined ? a : 1;
+      this.a = a != null ? a : 1;
     }
     clone(dest?: ColorLike) {
       const result = dest || new ColorLike({ r: this.r, g: this.g, b: this.b, a: this.a });
@@ -544,10 +542,12 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
 
   // Apply all settings using the mappings
   for (const [key, path] of Object.entries(mappings)) {
-    if (settings[key] === undefined) continue;
-    
+    if (settings[key] === undefined) {
+      continue;
+    }
+
     let value = settings[key];
-    
+
     // Convert color objects to ColorLike instances
     if (value && typeof value === 'object' && 'r' in value && 'g' in value && 'b' in value) {
       value = new ColorLike(value as { r: number; g: number; b: number; a?: number });
@@ -915,7 +915,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
   }
 
   // _originalOptions is a private engine field; guard for versions without it
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const {scenes: _, ...config } = (game as any)._originalOptions ?? {};
 
   // scene.physics is missing on older engines; never let it kill the payload
@@ -967,11 +967,9 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
 }
 
 /**
- *  Creates the default debug settings for a panel connection. Each connection
- *  gets its own copy so panels on different tabs never share state and a
- *  closed panel's settings (e.g. collectMaterials) can't leak into the next.
- *  @typedef {import('./components/debug-settings').Settings DebugSettings
- *  @type DebugSettings
+ * Creates the default debug settings for a panel connection. Each connection
+ * gets its own copy so panels on different tabs never share state and a
+ * closed panel's settings (e.g. collectMaterials) can't leak into the next.
  */
 const createDefaultDebugSettings = () => ({
   toggleDebug: false,

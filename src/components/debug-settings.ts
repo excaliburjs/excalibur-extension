@@ -54,7 +54,9 @@ export class DebugSettings extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     const handler = () => {
-      if (!this.isConnected) return;
+      if (!this.isConnected) {
+        return;
+      }
       this.requestUpdate();
     };
     settingsStore.addEventListener('change', handler);

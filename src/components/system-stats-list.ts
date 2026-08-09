@@ -40,7 +40,9 @@ export class SystemStatsList extends LitElement {
   systemDuration: Record<string, number>= {};
 
   updateStats(stats: Record<string, number>) {
-    if (!this.isConnected) return;
+    if (!this.isConnected) {
+      return;
+    }
     this.systemDuration= stats;
     this.requestUpdate();
   }

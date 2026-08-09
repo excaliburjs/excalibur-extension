@@ -61,10 +61,19 @@ interface Camera {
   strategies: { name: string }[];
 }
 
+interface ScreenState {
+  viewport: ViewportDimension;
+  resolution: Resolution;
+  displayMode: DisplayMode;
+  pixelRatio: number;
+  unsafeArea: BoundingBox;
+  contentArea: BoundingBox;
+}
+
 interface InitEvent {
   name: 'ex-debug:init';
   data: {
-    settings: Settings;
+    settings: Settings & { toggleDebug?: boolean };
   };
 }
 
@@ -225,6 +234,10 @@ export class App extends LitElement {
   @state()
   connectionLost: boolean = false;
 
+  toggleDebug: boolean = false;
+
+  private _currentTabName: string = 'inspector';
+
   private _lastHeartbeatAt: number = 0;
   private _stalenessIntervalId?: ReturnType<typeof setInterval>;
   private _reconnectTimerId?: ReturnType<typeof setTimeout>;
@@ -240,14 +253,7 @@ export class App extends LitElement {
   };
 
   config: EngineOptions = {};
-  screen: {
-      viewport: ViewportDimension,
-      resolution: Resolution,
-      displayMode: DisplayMode,
-      pixelRatio: number,
-      unsafeArea: BoundingBox,
-      contentArea: BoundingBox
-    } = {} as any;
+  screen: ScreenState = {} as unknown as ScreenState;
 
   isV31OrLater: boolean = false;
   isV32OrLater: boolean = false;
@@ -353,13 +359,14 @@ export class App extends LitElement {
   }
 
   backgroundMessageDispatch = (message: EventDispatchEvents) => {
-    if (!this.isConnected) return;
+    if (!this.isConnected) {
+      return;
+    }
     try {
       this._handleMessage(message);
     } catch (e) {
-      // Suppress errors from updates during component teardown
       if (this.isConnected) {
-        console.error('Error handling message:', e);
+        console.info('Error handling message:', e);
       }
     }
   };
@@ -368,20 +375,19 @@ export class App extends LitElement {
     switch (message.name) {
       case 'ex-debug:init': {
         if (this._hasInitialized) {
-          // reconnected after a service-worker restart: the background just
-          // reset to defaults, so push the panel's settings back instead of
-          // adopting the defaults and losing the user's choices
           this._post({
             name: 'ex-debug:command',
             tabId: browser.devtools.inspectedWindow.tabId,
             dispatch: 'ex-debug:update-debug',
-            debug: settingsStore.getAll()
+            debug: { ...settingsStore.getAll(), toggleDebug: this.toggleDebug }
           });
+          this._syncMaterialsActive();
           break;
         }
         this._hasInitialized = true;
         const { settings } = message.data;
         settingsStore.setAll(settings);
+        this.toggleDebug = settings.toggleDebug ?? false;
         break;
       }
       case 'ex-debug:heartbeat': {
@@ -442,11 +448,13 @@ export class App extends LitElement {
         }
 
         const v = this.engine.version.split('.');
-        // Single comparable rank: major*1e6 + minor*1e3 + patch
         const versionRank = (+v[0] || 0) * 1e6 + (+v[1] || 0) * 1e3 + (+v[2] || 0);
         this.isV31OrLater = versionRank >= 31e3;
-        // Strictly newer than v0.32.0 (v0.32.1+, v0.33+, v1+)
-        this.isV32OrLater = versionRank > 32e3;
+        const wasV32OrLater = this.isV32OrLater;
+        this.isV32OrLater = versionRank >= 32e3;
+        if (this.isV32OrLater !== wasV32OrLater) {
+          this._syncMaterialsActive();
+        }
 
         // Guard each section independently: a missing field on one engine
         // version must not freeze every panel that follows it
@@ -575,11 +583,17 @@ export class App extends LitElement {
   }
 
   handleTabShow(evt: CustomEvent<{ name: string }>) {
+    this._currentTabName = evt.detail.name;
+    this._syncMaterialsActive();
+  }
+
+  private _syncMaterialsActive() {
+    const active = this._currentTabName === 'materials' && this.isV32OrLater;
     this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:materials-active',
-      active: evt.detail.name === 'materials'
+      active
     });
   }
 
@@ -625,10 +639,12 @@ export class App extends LitElement {
   }
 
   toggleDebugDraw() {
+    this.toggleDebug = !this.toggleDebug;
     this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'ex-debug:toggle-debug'
+      dispatch: 'ex-debug:update-debug',
+      debug: { ...settingsStore.getAll(), toggleDebug: this.toggleDebug }
     });
   }
 
