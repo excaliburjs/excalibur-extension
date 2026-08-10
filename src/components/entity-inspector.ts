@@ -354,7 +354,14 @@ export class EntityInspector extends LitElement {
 
   private _numberChangeHandler(target: EntityPropertyUpdate['target'], property: string, toWire: (n: number) => number = (n) => n) {
     return (evt: Event) => {
-      const num = Number((evt.target as SlInput).value);
+      const raw = (evt.target as SlInput).value;
+      // Number('') is 0, so an emptied field would silently write 0 into the
+      // running game; skip instead — the next unfrozen heartbeat re-render
+      // restores the live value
+      if (raw.trim() === '') {
+        return;
+      }
+      const num = Number(raw);
       if (Number.isFinite(num)) {
         this._dispatchPropertyChange(target, property, 'number', toWire(num));
       }
@@ -372,8 +379,12 @@ export class EntityInspector extends LitElement {
       const inputs = Array.from(
         this.shadowRoot!.querySelectorAll<SlInput>(`sl-input[data-vec="${CSS.escape(`${target}.${property}`)}"]`)
       ).sort((a, b) => Number(a.dataset.index) - Number(b.dataset.index));
-      const values = inputs.map((input) => Number(input.value) || 0);
-      this._dispatchPropertyChange(target, property, 'vector', { x: values[0] ?? 0, y: values[1] ?? 0 });
+      const values = inputs.map((input) => (input.value.trim() === '' ? NaN : Number(input.value)));
+      // An emptied or non-numeric axis must not be coerced to 0 in the game
+      if (values.length < 2 || values.some((v) => !Number.isFinite(v))) {
+        return;
+      }
+      this._dispatchPropertyChange(target, property, 'vector', { x: values[0], y: values[1] });
     };
   }
 
@@ -731,7 +742,9 @@ export class EntityInspector extends LitElement {
         : nothing}
       ${repeat(
         entity.components,
-        (component) => component.type,
+        // Minified games collapse constructor names ('t', 'e', ...), so the
+        // type alone can collide; the index keeps keys unique
+        (component, index) => `${component.type}#${index}`,
         (component) => this._renderComponent(component)
       )}
     `;

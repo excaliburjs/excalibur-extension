@@ -120,6 +120,17 @@ export class MaterialsPanel extends LitElement {
     this._selectedKey = material.key;
   }
 
+  override willUpdate() {
+    // Reconcile the selection before render: auto-select the first material,
+    // and fall back to it when the selected material disappears (scene
+    // change, hot reload, registry rebuild) so `updated()` fetches detail
+    // for the material actually being displayed
+    const list = this.materials.list;
+    if (list.length > 0 && !list.some((m) => m.key === this._selectedKey)) {
+      this._selectedKey = list[0].key;
+    }
+  }
+
   override updated() {
     // Fetch (or re-fetch on source change) the selected material's detail
     const selected = this._selected;
@@ -164,11 +175,8 @@ export class MaterialsPanel extends LitElement {
       `;
     }
 
-    // Auto-select the first material for convenience
+    // willUpdate guarantees a valid selection whenever the list is non-empty
     const selected = this._selected ?? list[0];
-    if (this._selectedKey === null) {
-      this._selectedKey = selected.key;
-    }
 
     return html`
       <div class="layout">

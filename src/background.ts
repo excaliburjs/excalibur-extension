@@ -1911,6 +1911,12 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
   // Per-connection settings: panels on different tabs must not share state
   const debugSettings = createDefaultDebugSettings();
 
+  // Monotonic token for picker arm/disarm operations. A picker-start install
+  // resolves asynchronously; if a stop (or frame switch, or disconnect)
+  // happened in the meantime, the stale install must not re-arm the flag and
+  // must tear down the picker it just put on the page.
+  let pickerOpSeq = 0;
+
   let disconnected = false;
 
   /**
@@ -1947,6 +1953,7 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
           {
             if (debugSettings.pickerActive) {
               // the picker lives in the previously selected frame only
+              pickerOpSeq++;
               debugSettings.pickerActive = false;
               execInFrame(message.tabId, state.selectedFrameId, stopEntityPicker);
             }
@@ -2042,13 +2049,22 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
           {
             // Arm the flag only after install resolves so a heartbeat can't
             // observe pickerActive with no page global and wrongly disarm
-            execInFrame(message.tabId, state.selectedFrameId, startEntityPicker).then(() => {
-              debugSettings.pickerActive = true;
+            const op = ++pickerOpSeq;
+            const frameId = state.selectedFrameId;
+            execInFrame(message.tabId, frameId, startEntityPicker).then(() => {
+              if (op === pickerOpSeq) {
+                debugSettings.pickerActive = true;
+              } else {
+                // a stop/frame-switch/disconnect raced this install; tear
+                // down the picker it left behind in the original frame
+                execInFrame(message.tabId, frameId, stopEntityPicker);
+              }
             });
           }
           break;
         case 'ex-debug:picker-stop':
           {
+            pickerOpSeq++;
             debugSettings.pickerActive = false;
             execInFrame(message.tabId, state.selectedFrameId, stopEntityPicker);
           }
@@ -2093,6 +2109,11 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
     name: 'ex-debug:init'
   });
 
+  // Consecutive failed heartbeat ticks; a single transient executeScript
+  // rejection (e.g. an unrelated iframe navigating mid-tick) must not be
+  // reported as "no game" — the panel would fully reset its state
+  let failedHeartbeatTicks = 0;
+
   // Poll the inspected tab every 200ms once the panel has said hello
   const intervalId = setInterval(async () => {
     const tabId = state.tabId;
@@ -2114,6 +2135,14 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
       // Reconcile the selection: keep it while its frame still has a game,
       // otherwise prefer the top frame, then the first instance found
       if (!instances.some((i) => i.frameId === state.selectedFrameId)) {
+        if (debugSettings.pickerActive && state.selectedFrameId !== null) {
+          // the armed picker lives in the frame that just lost its game
+          // (e.g. HMR cleared the global while the document survived);
+          // tear it down or its click swallowers outlive the selection
+          pickerOpSeq++;
+          debugSettings.pickerActive = false;
+          execInFrame(tabId, state.selectedFrameId, stopEntityPicker);
+        }
         state.selectedFrameId = instances.some((i) => i.frameId === 0)
           ? 0
           : instances.length > 0
@@ -2130,6 +2159,7 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
         });
         data = gameState[0]?.result ?? null;
       }
+      failedHeartbeatTicks = 0;
       safePostMessage({
         name: 'ex-debug:heartbeat',
         instances,
@@ -2137,8 +2167,15 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
         data
       });
     } catch {
-      // Non-injectable target (chrome:// page, dead tab) — tell the panel
-      // there is nothing here rather than leaving it hanging
+      // Non-injectable target (chrome:// page, dead tab) or a transient
+      // executeScript failure. Skip a couple of ticks before telling the
+      // panel there is nothing here — the panel keeps its last state and
+      // its staleness detector (1.5s) stays well clear — while a
+      // persistent failure still surfaces within ~600ms
+      failedHeartbeatTicks++;
+      if (failedHeartbeatTicks < 3) {
+        return;
+      }
       safePostMessage({
         name: 'ex-debug:heartbeat',
         instances: [],
@@ -2152,6 +2189,9 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
     console.info('Disconnected:', port.name);
     disconnected = true;
     clearInterval(intervalId);
+    // invalidate any in-flight picker install so its .then tears it down
+    // instead of arming a picker nobody can disarm
+    pickerOpSeq++;
     if (debugSettings.pickerActive && state.tabId !== null) {
       // never leave the page swallowing canvas clicks after the panel closes
       debugSettings.pickerActive = false;

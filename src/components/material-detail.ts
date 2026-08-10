@@ -464,8 +464,15 @@ export class MaterialDetailView extends LitElement {
 
   private _scalarChangeHandler(uniform: MaterialUniform) {
     return (evt: Event) => {
+      const raw = (evt.target as SlInput).value;
+      const num = Number(raw);
+      // An emptied field ('' coerces to 0) or garbage must not overwrite the
+      // uniform; the next heartbeat re-render restores the live value
+      if (raw.trim() === '' || !Number.isFinite(num)) {
+        return;
+      }
       const kind = uniform.typeName === 'float' ? 'float' : 'int';
-      this._dispatchUniformChange(uniform.name, kind, Number((evt.target as SlInput).value) || 0);
+      this._dispatchUniformChange(uniform.name, kind, num);
     };
   }
 
@@ -480,7 +487,11 @@ export class MaterialDetailView extends LitElement {
       const inputs = Array.from(
         this.shadowRoot!.querySelectorAll<SlInput>(`sl-input[data-uniform="${CSS.escape(uniform.name)}"]`)
       ).sort((a, b) => Number(a.dataset.index) - Number(b.dataset.index));
-      const values = inputs.map((input) => Number(input.value) || 0);
+      const values = inputs.map((input) => (input.value.trim() === '' ? NaN : Number(input.value)));
+      // An emptied or non-numeric component must not be coerced to 0
+      if (values.some((v) => !Number.isFinite(v))) {
+        return;
+      }
       this._dispatchUniformChange(uniform.name, 'floatArray', values);
     };
   }

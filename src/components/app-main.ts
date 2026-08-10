@@ -683,7 +683,8 @@ export class App extends LitElement {
       // clear the flag on the background so the new frame isn't inspected
       this._syncInspectEntity();
     }
-    // the background already tore down the old frame's picker on select-frame
+    // the background already tore down the old frame's picker, both on
+    // explicit select-frame and on automatic frame reconciliation
     this.pickerArmed = false;
   }
 
