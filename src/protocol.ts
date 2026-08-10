@@ -99,6 +99,22 @@ export interface EntityGraphicsDetail {
 }
 
 /**
+ * Live entity-picker state carried in the heartbeat while the picker is
+ * armed (`pickerActive` on the connection's debug settings). `active: false`
+ * means the page-side picker is gone (Escape pressed or the page navigated)
+ * and the panel must disarm its toggle.
+ */
+export interface PickerState {
+  active: boolean;
+  /** Topmost entity currently under the cursor, null when over empty space */
+  hovered: { id: number; name: string; ctor: string } | null;
+  /** Entity id committed by the last pick click, null before any pick */
+  pickedId: number | null;
+  /** Increments on each pick; the panel commits when it sees a new value */
+  pickSeq: number;
+}
+
+/**
  * Heartbeat posted by the background worker every 200ms.
  */
 export interface HeartbeatMessage {

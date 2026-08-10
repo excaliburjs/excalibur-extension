@@ -24,6 +24,7 @@ export interface Entity {
  * @event kill-actor
  * @event identify-actor
  * @event inspect-entity
+ * @event toggle-picker
  */
 @customElement('entity-list')
 export class EntityList extends LitElement {
@@ -69,6 +70,9 @@ export class EntityList extends LitElement {
       sl-input {
         padding-bottom: 10px;
       }
+      #pick-entity {
+        margin-bottom: 10px;
+      }
       sl-switch {
         padding-bottom: 10px;
       }
@@ -97,6 +101,9 @@ export class EntityList extends LitElement {
 
   @property({ type: Array })
   entities: Entity[] = [];
+
+  @property({ type: Boolean })
+  pickerArmed = false;
 
   @state()
   showOffscreen = false;
@@ -138,6 +145,10 @@ export class EntityList extends LitElement {
     };
   }
 
+  private _togglePicker() {
+    this.dispatchEvent(new CustomEvent('toggle-picker', { bubbles: true, composed: true }));
+  }
+
   render() {
     let entities = this.entities.slice();
     if (!this.showOffscreen) {
@@ -152,6 +163,14 @@ export class EntityList extends LitElement {
 
     return html`
       <div class="section">
+        <sl-button
+          id="pick-entity"
+          size="small"
+          variant=${this.pickerArmed ? 'primary' : 'default'}
+          @click=${this._togglePicker}>
+          <sl-icon slot="prefix" name="crosshair"></sl-icon>
+          ${this.pickerArmed ? 'Picking… (Esc to cancel)' : 'Pick entity on page'}
+        </sl-button>
         <sl-input id="filter-entities" @sl-input=${this._inputFilter} placeholder="Filter Entities by Name, Ctor, or Tag"></sl-input>
         <sl-switch id="show-offscreen" @sl-change=${this._toggleOffscreen}>Show Offscreen Entities</sl-switch>
         <ul class="scrollbar">

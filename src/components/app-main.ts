@@ -38,7 +38,8 @@ import type {
   EntityPropertyUpdate,
   ExInstance,
   HeartbeatMessage,
-  InspectedEntity
+  InspectedEntity,
+  PickerState
 } from '../protocol';
 
 globalThis.browser = globalThis.browser || chrome;
@@ -247,6 +248,20 @@ export class App extends LitElement {
    */
   private _fetchedGraphicsKey: string | null = null;
 
+  /** True while the page-side entity picker is armed */
+  @state()
+  pickerArmed = false;
+
+  /**
+   * When the picker was armed; heartbeats reporting the page-side picker as
+   * missing are ignored inside this grace window so the arm round-trip
+   * (command → install → flag set) can't disarm the toggle it just turned on.
+   */
+  private _pickerArmedAt = 0;
+
+  /** Last pickSeq committed, so one pick is only inspected once */
+  private _lastPickSeq = 0;
+
   @state()
   worldPos: string = '???';
   @state()
@@ -427,6 +442,11 @@ export class App extends LitElement {
           this._syncMaterialsActive();
           // a restarted background starts with a cleared inspect flag; restore it
           this._syncInspectEntity();
+          // likewise re-arm the picker; startEntityPicker is idempotent
+          // against a page global that survived the service-worker restart
+          if (this.pickerArmed) {
+            this._syncPicker();
+          }
           break;
         }
         this._hasInitialized = true;
@@ -487,6 +507,25 @@ export class App extends LitElement {
           if (data.inspectedEntity && data.inspectedEntity.graphicsKey !== this._fetchedGraphicsKey) {
             this._fetchedGraphicsKey = data.inspectedEntity.graphicsKey;
             this._requestEntityGraphics(data.inspectedEntity.id);
+          }
+        }
+
+        // only present while the entity picker is armed
+        if (data.picker !== undefined && this.pickerArmed) {
+          const picker: PickerState = data.picker;
+          if (!picker.active) {
+            // The page-side picker is gone (Escape or navigation). The grace
+            // window covers the arm round-trip; see _pickerArmedAt.
+            if (Date.now() - this._pickerArmedAt > 1000) {
+              this.pickerArmed = false;
+              this._syncPicker();
+            }
+          } else if (picker.pickSeq > this._lastPickSeq && picker.pickedId !== null) {
+            this._lastPickSeq = picker.pickSeq;
+            // single-pick: disarm, tear down the page state, open the inspector
+            this.pickerArmed = false;
+            this._syncPicker();
+            this._inspectEntityById(picker.pickedId);
           }
         }
 
@@ -630,6 +669,8 @@ export class App extends LitElement {
       // clear the flag on the background so the new frame isn't inspected
       this._syncInspectEntity();
     }
+    // the background already tore down the old frame's picker on select-frame
+    this.pickerArmed = false;
   }
 
   selectFrame(evt: SlChangeEvent) {
@@ -843,16 +884,51 @@ export class App extends LitElement {
   }
 
   /**
-   * Opens the inspector dialog for an entity (from the entity list button or
-   * parent/child navigation inside the dialog). The next heartbeat delivers
+   * Opens the inspector dialog for an entity. The next heartbeat delivers
    * the serialized entity and triggers the graphics fetch via graphicsKey.
    */
-  inspectEntity(evt: CustomEvent<number>) {
-    this.inspectedEntityId = evt.detail;
+  private _inspectEntityById(id: number) {
+    this.inspectedEntityId = id;
     this.inspectedEntity = null;
     this.entityGraphics = null;
     this._fetchedGraphicsKey = null;
     this._syncInspectEntity();
+  }
+
+  /**
+   * Opens the inspector dialog for an entity (from the entity list button or
+   * parent/child navigation inside the dialog).
+   */
+  inspectEntity(evt: CustomEvent<number>) {
+    this._inspectEntityById(evt.detail);
+  }
+
+  /**
+   * Posts the picker command matching the current armed state: start installs
+   * the page-side picker (the background arms its flag once the install
+   * resolves), stop tears it down and clears the flag.
+   */
+  private _syncPicker() {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: this.pickerArmed ? 'ex-debug:picker-start' : 'ex-debug:picker-stop'
+    });
+  }
+
+  /**
+   * Toggles the page-side entity picker from the entity list button. A pick
+   * or a page-side Escape also disarms via the heartbeat's picker state.
+   */
+  togglePicker() {
+    this.pickerArmed = !this.pickerArmed;
+    if (this.pickerArmed) {
+      this._pickerArmedAt = Date.now();
+      // stopEntityPicker cleared the page global, so a fresh install restarts
+      // its pick sequence at 0
+      this._lastPickSeq = 0;
+    }
+    this._syncPicker();
   }
 
   /**
@@ -1002,7 +1078,7 @@ export class App extends LitElement {
           <div class="row">
             <div class="widget">
               <h2>Entities</h2>
-              <entity-list .entities=${this.engine.entities} @kill-actor=${this.killActor} @identify-actor=${this.identifyActor} @inspect-entity=${this.inspectEntity}></entity-list>
+              <entity-list .entities=${this.engine.entities} .pickerArmed=${this.pickerArmed} @kill-actor=${this.killActor} @identify-actor=${this.identifyActor} @inspect-entity=${this.inspectEntity} @toggle-picker=${this.togglePicker}></entity-list>
             </div>
             <div class="widget">
               <h2>Scene</h2>

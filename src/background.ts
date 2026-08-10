@@ -7,6 +7,14 @@ declare global {
     ___EXCALIBUR_DEVTOOL?: Engine;
     ___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK?: boolean;
     ___EXCALIBUR_DEVTOOL_EXTENSION_MATERIAL_ID?: number;
+    ___EXCALIBUR_DEVTOOL_EXTENSION_PICKER?: {
+      seq: number;
+      pickedId: number | null;
+      hovered: { id: number; name: string; ctor: string } | null;
+      teardown: () => void;
+      /** Hit-test diagnostics readable from the page console */
+      debug?: Record<string, unknown>;
+    };
   }
 }
 
@@ -142,6 +150,348 @@ function identifyEntity(entityId: number) {
     context.fade(0, 200);
     context.fade(1, 200);
   }, 3);
+}
+
+/**
+ * Installs the page-side entity picker: capture-phase pointer listeners, a
+ * DOM highlight overlay, and a rAF loop that re-projects the highlight as
+ * the camera or entities move under a stationary cursor. Hit-testing mirrors
+ * the engine's own PointerSystem algorithm using only public API
+ * (physics.query + collider.contains, plus GraphicsComponent world bounds —
+ * which already handle CoordPlane.Screen via the camera inverse) so it never
+ * touches version-fragile internals. Pick clicks on the canvas are swallowed
+ * before the engine's own listeners see them. Results are left on
+ * window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER for the heartbeat to read;
+ * Escape and stopEntityPicker share the teardown stored there. Idempotent.
+ */
+function startEntityPicker() {
+  if (window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER) {
+    return;
+  }
+  if (!window.___EXCALIBUR_DEVTOOL) {
+    return;
+  }
+
+  /**
+   * @typedef {import('./@types/excalibur').Engine} Engine
+   * @type {Engine}
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const game = window.___EXCALIBUR_DEVTOOL as any;
+
+  const state: NonNullable<Window['___EXCALIBUR_DEVTOOL_EXTENSION_PICKER']> = {
+    seq: 0,
+    pickedId: null,
+    hovered: null,
+    teardown: () => {
+      // replaced with the real teardown once listeners are installed
+    }
+  };
+
+  // Highlight rect + name chip, positioned in page coordinates so scroll,
+  // canvas CSS scaling, and pixelRatio are all handled by the engine's
+  // world->page projection
+  const highlight = document.createElement('div');
+  highlight.style.cssText =
+    'position:absolute;pointer-events:none;z-index:2147483647;' +
+    'background:rgba(255,213,46,0.15);box-sizing:border-box;display:none;';
+  const label = document.createElement('div');
+  label.style.cssText =
+    'position:absolute;left:0;top:-22px;padding:2px 6px;background:#222;' +
+    'color:#ffd52e;font:11px monospace;border-radius:3px;white-space:nowrap;';
+  highlight.appendChild(label);
+  document.body.appendChild(highlight);
+
+  const canvas = game.canvas as HTMLCanvasElement | undefined;
+  const priorCursor = canvas ? canvas.style.cursor : '';
+  if (canvas) {
+    canvas.style.cursor = 'crosshair';
+  }
+
+  // Vectors must be constructed in the page realm. camera.pos is a
+  // WatchVector whose constructor is (original, callback) — NOT (x, y) —
+  // so normalize via clone(), which always returns a base Vector, and
+  // validate the ctor actually round-trips (x, y) before trusting it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let VecCtor: any = null;
+  try {
+    const Ctor = game.currentScene.camera.pos.clone().constructor;
+    const probe = new Ctor(1, 2);
+    if (probe.x === 1 && probe.y === 2) {
+      VecCtor = Ctor;
+    }
+  } catch {
+    VecCtor = null;
+  }
+
+  /** Builds a page-realm vector, falling back to a plain point */
+  const makeVec = (x: number, y: number) => (VecCtor ? new VecCtor(x, y) : { x, y });
+
+  /** Resolves an entity's z the same way the heartbeat entity list does */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const zOf = (entity: any): number => {
+    if (typeof entity.z === 'number') {
+      return entity.z;
+    }
+    try {
+      for (const c of entity.getComponents()) {
+        if (c.pos && c.coordPlane && c.z !== undefined) {
+          return c.z;
+        }
+      }
+    } catch {
+      // no transform — treat as bottom
+    }
+    return -Infinity;
+  };
+
+  // Hit-test diagnostics: readable in the page console via
+  // window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER.debug when picking misbehaves
+  const dbg: Record<string, unknown> = {
+    moves: 0,
+    lastPage: null,
+    lastWorld: null,
+    entities: 0,
+    colliderHits: 0,
+    graphicsHits: 0,
+    err: null,
+    colliderErr: null,
+    graphicsErr: null
+  };
+  state.debug = dbg;
+
+  /**
+   * Finds the topmost entity under a page coordinate: collider hits via
+   * physics.query refined by collider.contains (broadphase-only on engines
+   * without contains), plus graphics world-bounds hits; highest z wins with
+   * later-added (higher id) breaking ties, matching engine draw order.
+   */
+  const pickAt = (pageX: number, pageY: number) => {
+    try {
+      dbg.lastPage = [pageX, pageY];
+      const scene = game.currentScene;
+      if (!scene) {
+        return null;
+      }
+      const worldVec =
+        game.screen && typeof game.screen.pageToWorldCoordinates === 'function'
+          ? game.screen.pageToWorldCoordinates(makeVec(pageX, pageY))
+          : game.input?.pointers?.primary?.lastWorldPos;
+      if (!worldVec) {
+        dbg.lastWorld = null;
+        return null;
+      }
+      dbg.lastWorld = [worldVec.x, worldVec.y];
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hits = new Map<number, any>();
+      try {
+        if (scene.physics && typeof scene.physics.query === 'function') {
+          for (const collider of scene.physics.query(worldVec) ?? []) {
+            const owner = collider?.owner;
+            if (!owner || (typeof owner.isKilled === 'function' && owner.isKilled())) {
+              continue;
+            }
+            if (typeof collider.contains === 'function' && !collider.contains(worldVec)) {
+              continue;
+            }
+            hits.set(owner.id, owner);
+          }
+        }
+        dbg.colliderHits = hits.size;
+      } catch (e) {
+        dbg.colliderErr = String(e);
+      }
+      try {
+        const all = scene.entities ?? [];
+        dbg.entities = all.length;
+        for (const entity of all) {
+          if (hits.has(entity.id) || (typeof entity.isKilled === 'function' && entity.isKilled())) {
+            continue;
+          }
+          try {
+            const bounds = entity.graphics?.bounds;
+            if (bounds && typeof bounds.contains === 'function' && bounds.contains(worldVec)) {
+              hits.set(entity.id, entity);
+            }
+          } catch (e) {
+            dbg.graphicsErr = String(e);
+          }
+        }
+        dbg.graphicsHits = hits.size;
+      } catch (e) {
+        dbg.graphicsErr = String(e);
+      }
+      if (hits.size === 0) {
+        return null;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let top: any = null;
+      let topZ = -Infinity;
+      for (const entity of hits.values()) {
+        const z = zOf(entity);
+        if (top === null || z > topZ || (z === topZ && entity.id > top.id)) {
+          top = entity;
+          topZ = z;
+        }
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let bounds: any = null;
+      try {
+        bounds = top.graphics?.bounds ?? null;
+      } catch {
+        bounds = null;
+      }
+      if (!bounds) {
+        try {
+          bounds = top.collider?.bounds ?? null;
+        } catch {
+          bounds = null;
+        }
+      }
+      return {
+        id: top.id as number,
+        name: String(top.name ?? ''),
+        ctor: String(top.constructor?.name ?? ''),
+        bounds
+      };
+    } catch (e) {
+      dbg.err = String(e);
+      return null;
+    }
+  };
+
+  /**
+   * Positions the highlight over the hovered entity's bounds; on engines
+   * without worldToPageCoordinates, degrades to a cursor-adjacent label.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const positionOverlay = (hovered: any, pageX: number, pageY: number) => {
+    if (!hovered) {
+      highlight.style.display = 'none';
+      return;
+    }
+    label.textContent = `${hovered.name} | ${hovered.ctor} #${hovered.id}`;
+    // worldToPageCoordinates dispatches on `instanceof Vector` internally, so
+    // the rect projection is only usable with a real page-realm Vector ctor
+    if (hovered.bounds && VecCtor && game.screen && typeof game.screen.worldToPageCoordinates === 'function') {
+      try {
+        const tl = game.screen.worldToPageCoordinates(makeVec(hovered.bounds.left, hovered.bounds.top));
+        const br = game.screen.worldToPageCoordinates(makeVec(hovered.bounds.right, hovered.bounds.bottom));
+        highlight.style.left = `${Math.min(tl.x, br.x)}px`;
+        highlight.style.top = `${Math.min(tl.y, br.y)}px`;
+        highlight.style.width = `${Math.abs(br.x - tl.x)}px`;
+        highlight.style.height = `${Math.abs(br.y - tl.y)}px`;
+        highlight.style.border = '1px solid #ffd52e';
+        highlight.style.display = 'block';
+        return;
+      } catch {
+        // fall through to the degraded label
+      }
+    }
+    highlight.style.left = `${pageX + 14}px`;
+    highlight.style.top = `${pageY + 14}px`;
+    highlight.style.width = '0px';
+    highlight.style.height = '0px';
+    highlight.style.border = 'none';
+    highlight.style.display = 'block';
+  };
+
+  let lastPageX = -1;
+  let lastPageY = -1;
+
+  /** Tracks the cursor and updates the hovered entity + highlight */
+  const onMove = (e: PointerEvent) => {
+    dbg.moves = (dbg.moves as number) + 1;
+    lastPageX = e.pageX;
+    lastPageY = e.pageY;
+    if (state.pickedId === null) {
+      state.hovered = pickAt(e.pageX, e.pageY);
+      positionOverlay(state.hovered, e.pageX, e.pageY);
+    }
+  };
+  /** Swallows canvas clicks so the pick never reaches the game */
+  const swallow = (e: Event) => {
+    if (canvas && e.target === canvas) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  };
+  /** Commits the hovered entity as the pick and freezes the overlay */
+  const onDown = (e: PointerEvent) => {
+    if (canvas && e.target === canvas) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (state.hovered) {
+        state.pickedId = state.hovered.id;
+        state.seq++;
+        highlight.style.display = 'none';
+      }
+    }
+  };
+  /** Escape cancels page-side; the panel disarms on the next heartbeat */
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      state.teardown();
+    }
+  };
+
+  window.addEventListener('pointermove', onMove, true);
+  window.addEventListener('pointerdown', onDown, true);
+  window.addEventListener('pointerup', swallow, true);
+  window.addEventListener('click', swallow, true);
+  window.addEventListener('keydown', onKey, true);
+
+  let rafId = 0;
+  /** Re-projects the highlight each frame so it tracks camera/entity motion */
+  const tick = () => {
+    if (lastPageX >= 0 && state.pickedId === null) {
+      state.hovered = pickAt(lastPageX, lastPageY);
+      positionOverlay(state.hovered, lastPageX, lastPageY);
+    }
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+
+  let tornDown = false;
+  state.teardown = () => {
+    if (tornDown) {
+      return;
+    }
+    tornDown = true;
+    window.removeEventListener('pointermove', onMove, true);
+    window.removeEventListener('pointerdown', onDown, true);
+    window.removeEventListener('pointerup', swallow, true);
+    window.removeEventListener('click', swallow, true);
+    window.removeEventListener('keydown', onKey, true);
+    cancelAnimationFrame(rafId);
+    highlight.remove();
+    if (canvas) {
+      canvas.style.cursor = priorCursor;
+    }
+    window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER = undefined;
+  };
+
+  window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER = state;
+}
+
+/**
+ * Tears down the page-side entity picker if installed. DOM-only and
+ * idempotent, so it works even when the game itself is gone.
+ */
+function stopEntityPicker() {
+  const picker = window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER;
+  if (picker && typeof picker.teardown === 'function') {
+    try {
+      picker.teardown();
+    } catch {
+      // injected code never throws
+    }
+  }
+  window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER = undefined;
 }
 
 
@@ -1438,6 +1788,19 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
     }
   }
 
+  // Live picker state, only while the picker is armed for this connection.
+  // undefined = not armed (dropped by JSON.stringify); active: false tells
+  // the panel the page-side picker is gone (Escape or navigation) so it must
+  // disarm — the heartbeat reports, it never re-installs.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let picker: any = undefined;
+  if (settings.pickerActive) {
+    const pickerState = window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER;
+    picker = pickerState
+      ? { active: true, hovered: pickerState.hovered, pickedId: pickerState.pickedId, pickSeq: pickerState.seq }
+      : { active: false, hovered: null, pickedId: null, pickSeq: 0 };
+  }
+
   // _originalOptions is a private engine field; guard for versions without it
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const {scenes: _, ...config } = (game as any)._originalOptions ?? {};
@@ -1482,6 +1845,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
     entities: entities,
     materials: materials,
     inspectedEntity: inspectedEntity,
+    picker: picker,
     stats: game.debug?.stats,
     physics: {
       enabled: !!game.physics?.enabled,
@@ -1507,6 +1871,9 @@ const createDefaultDebugSettings = () => ({
   // Also not part of settingsMappings; set while the entity inspector dialog
   // is open so the heartbeat includes a deep-serialized `inspectedEntity`
   inspectEntityId: null as number | null,
+  // Also not part of settingsMappings; set while the page-side entity picker
+  // is armed so the heartbeat includes its live `picker` state
+  pickerActive: false,
   // toggleDebug starts undefined: the background does not know the game's
   // current debug state when a panel connects. Leaving it undefined makes
   // `inject` skip the force-on/off branches on the first heartbeat, so a
@@ -1639,6 +2006,11 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
       switch (message.dispatch) {
         case 'ex-debug:select-frame':
           {
+            if (debugSettings.pickerActive) {
+              // the picker lives in the previously selected frame only
+              debugSettings.pickerActive = false;
+              execInFrame(message.tabId, state.selectedFrameId, stopEntityPicker);
+            }
             state.selectedFrameId = message.frameId;
           }
           break;
@@ -1725,6 +2097,21 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
         case 'ex-debug:inspect-entity':
           {
             debugSettings.inspectEntityId = message.entityId ?? null;
+          }
+          break;
+        case 'ex-debug:picker-start':
+          {
+            // Arm the flag only after install resolves so a heartbeat can't
+            // observe pickerActive with no page global and wrongly disarm
+            execInFrame(message.tabId, state.selectedFrameId, startEntityPicker).then(() => {
+              debugSettings.pickerActive = true;
+            });
+          }
+          break;
+        case 'ex-debug:picker-stop':
+          {
+            debugSettings.pickerActive = false;
+            execInFrame(message.tabId, state.selectedFrameId, stopEntityPicker);
           }
           break;
         case 'ex-debug:get-entity-graphics':
@@ -1826,5 +2213,10 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
     console.info('Disconnected:', port.name);
     disconnected = true;
     clearInterval(intervalId);
+    if (debugSettings.pickerActive && state.tabId !== null) {
+      // never leave the page swallowing canvas clicks after the panel closes
+      debugSettings.pickerActive = false;
+      execInFrame(state.tabId, state.selectedFrameId, stopEntityPicker);
+    }
   });
 });
