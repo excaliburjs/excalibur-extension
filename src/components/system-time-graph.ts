@@ -1,7 +1,7 @@
 import { css, html, LitElement } from 'lit';
 import { colors } from '../colors';
 import * as d3 from 'd3';
-import { customElement, property } from 'lit/decorators';
+import { customElement } from 'lit/decorators';
 
 const totalHeight = 350; //px
 const totalWidth = 900; //px
@@ -30,6 +30,9 @@ export class SystemTimeGraph extends LitElement {
         background-color: var(--panel-color);
         margin-bottom: 10px;
       }
+      .legend-item {
+        cursor: pointer;
+      }
     `
   ];
 
@@ -43,7 +46,9 @@ export class SystemTimeGraph extends LitElement {
   d3Svg!: d3.Selection<SVGSVGElement, undefined, null, undefined>;
 
 
-  @property() legend: string[] = [];
+  private _color = d3.scaleOrdinal<string>().range([...d3.schemeDark2, ...d3.schemeAccent]);
+  private _focusedKey: string | null = null;
+  private _legendKeys = ''; // joined key list; guards legend re-join
 
   timeData: Record<string, number[]> = {};
 
@@ -98,63 +103,40 @@ export class SystemTimeGraph extends LitElement {
       .attr('y1', y(16.6))
       .attr('y2', y(16.6));
 
+    this.d3Svg.append('g').attr('id', 'legend');
+
     this.systemTimeRoot.appendChild(this.d3Svg.node()!);
   }
 
-  
-  initLegend = false;
   draw(systemDuration: Record<string, number>) {
     if (!this.isConnected) {
       return;
     }
-    const legend = Object.keys(systemDuration);
 
-    const color = d3.scaleOrdinal<string>().domain(legend).range([...d3.schemeDark2, ...d3.schemeAccent]);
-
-    // TODO don't append every draw
-    if (!this.initLegend && legend.length) {
-      this.initLegend = true;
-      this.d3Svg
-        .selectAll('mydots')
-        .data(legend)
-        .enter()
-        .append('circle')
-        .attr('cx', totalWidth - 270)
-        .attr('cy', function (_, i) {
-          return 20 + i * 25;
-        }) // 100 is where the first dot appears. 25 is the distance between dots
-        .attr('r', 7)
-        .style('fill', (d) => color(d));
-
-      // Add one dot in the legend for each name.
-      this.d3Svg
-        .selectAll('mylabels')
-        .data(legend)
-        .enter()
-        .append('text')
-        .attr('x', totalWidth - 250)
-        .attr('y', function (_, i) {
-          return 20 + i * 25;
-        }) // 100 is where the first dot appears. 25 is the distance between dots
-        .style('fill', function (d) {
-          return color(d);
-        })
-        .text(function (d) {
-          return d;
-        })
-        .attr('text-anchor', 'left')
-        .style('alignment-baseline', 'middle');
+    // prune series that no longer exist (scene change)
+    let pruned = false;
+    for (const key of Object.keys(this.timeData)) {
+      if (!(key in systemDuration)) {
+        delete this.timeData[key];
+        this.d3Svg.select('path#' + slugify(key)).remove();
+        if (this._focusedKey === key) {
+          this._focusedKey = null;
+        }
+        pruned = true;
+      }
     }
 
     for (const key in systemDuration) {
       if(!this.timeData[key]) {
         this.timeData[key] = d3.range(nTicks).map(zeroes);
+        const focused = this._focusedKey === null || this._focusedKey === key;
         this.d3Svg
           .append('path')
           .attr('id', slugify(key))
           .attr('fill', 'none')
-          .attr('stroke', color(key))
-          .attr('stroke-width', 1.5)
+          .attr('stroke', this._color(key))
+          .attr('stroke-width', this._focusedKey === key ? 2.5 : 1.5)
+          .attr('stroke-opacity', focused ? 1 : 0.15)
           .attr('d', this.line(this.timeData[key]));
       }
       this.timeData[key].push(systemDuration[key]);
@@ -164,7 +146,99 @@ export class SystemTimeGraph extends LitElement {
       this.d3Svg.select('path#' + slugify(key)).attr('d', this.line(this.timeData[key]));
     }
 
+    this._updateLegend(Object.keys(systemDuration));
+    if (pruned) {
+      this._applyFocus();
+    }
+
     this.requestUpdate();
+  }
+
+  /**
+   * Rebuilds the legend from the current series keys via a d3 data join;
+   * no-op while the key set is unchanged.
+   */
+  private _updateLegend(keys: string[]) {
+    const joined = keys.join(',');
+    if (joined === this._legendKeys) {
+      return;
+    }
+    this._legendKeys = joined;
+
+    const items = this.d3Svg
+      .select<SVGGElement>('g#legend')
+      .selectAll<SVGGElement, string>('g.legend-item')
+      .data(keys, (d) => d);
+
+    const enter = items
+      .enter()
+      .append('g')
+      .attr('class', 'legend-item')
+      .on('click', (_event, d) => this._toggleFocus(d));
+
+    enter
+      .append('rect')
+      .attr('x', -10)
+      .attr('y', -10)
+      .attr('width', 260)
+      .attr('height', 20)
+      .attr('fill', 'transparent');
+
+    enter
+      .append('circle')
+      .attr('r', 7)
+      .style('fill', (d) => this._color(d));
+
+    enter
+      .append('text')
+      .attr('x', 20)
+      .style('fill', (d) => this._color(d))
+      .text((d) => d)
+      .attr('text-anchor', 'left')
+      .style('alignment-baseline', 'middle');
+
+    enter
+      .merge(items)
+      .attr('transform', (_, i) => `translate(${totalWidth - 270}, ${20 + i * 25})`);
+
+    items.exit().remove();
+
+    this._applyFocus();
+  }
+
+  /** Toggles focus on a series; re-clicking the focused key clears it. */
+  private _toggleFocus(key: string) {
+    this._focusedKey = this._focusedKey === key ? null : key;
+    this._applyFocus();
+  }
+
+  /** Applies the focus dim/highlight state to series paths and legend items. */
+  private _applyFocus() {
+    for (const key of Object.keys(this.timeData)) {
+      const focused = this._focusedKey === null || this._focusedKey === key;
+      this.d3Svg
+        .select('path#' + slugify(key))
+        .attr('stroke-opacity', focused ? 1 : 0.15)
+        .attr('stroke-width', this._focusedKey === key ? 2.5 : 1.5);
+    }
+    this.d3Svg
+      .select('g#legend')
+      .selectAll<SVGGElement, string>('g.legend-item')
+      .attr('opacity', (d) => (this._focusedKey === null || this._focusedKey === d ? 1 : 0.35));
+  }
+
+  /** Clears all series data, paths, legend, and focus (instance/frame change). */
+  reset() {
+    if (!this.d3Svg) {
+      return;
+    }
+    for (const key of Object.keys(this.timeData)) {
+      this.d3Svg.select('path#' + slugify(key)).remove();
+    }
+    this.timeData = {};
+    this.d3Svg.select('g#legend').selectAll('*').remove();
+    this._focusedKey = null;
+    this._legendKeys = '';
   }
 
   override render() {

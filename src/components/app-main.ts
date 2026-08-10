@@ -656,6 +656,8 @@ export class App extends LitElement {
       rendererSwaps: 0,
       systemDuration: {}
     };
+    this.systemTimeGraph?.reset();
+    this.systemStatsList?.reset();
     this.materials = { source: 'scan', list: [] };
     this.materialDetails = {};
     this.worldPos = '???';

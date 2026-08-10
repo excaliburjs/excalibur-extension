@@ -12,6 +12,9 @@ export class FrameTimeGraph extends LitElement {
         background-color: var(--panel-color);
         margin-bottom: 10px;
       }
+      .legend-item {
+        cursor: pointer;
+      }
     `
   ];
 
@@ -27,6 +30,14 @@ export class FrameTimeGraph extends LitElement {
   frameTimeData: number[] = [];
   updateTimeData: number[] = [];
   drawTimeData: number[] = [];
+
+  private static readonly _PATH_IDS: Record<string, string> = {
+    Total: 'line',
+    Update: 'line-update',
+    Draw: 'line-draw'
+  };
+
+  private _focusedKey: string | null = null;
 
   override firstUpdated(): void {
     this.frameTimeRoot = this.renderRoot.querySelector('#frame-time-graph') as HTMLElement;
@@ -60,34 +71,33 @@ export class FrameTimeGraph extends LitElement {
       .attr('viewBox', [0, 0, totalWidth, totalHeight + 20]) // -10,-10,310,140
       .attr('style', 'max-width: 100%; height: auto; height: intrinsic;');
 
-    this.d3Svg
-      .selectAll('mydots')
+    const legendItems = this.d3Svg
+      .selectAll('g.legend-item')
       .data(legendKeys)
       .enter()
+      .append('g')
+      .attr('class', 'legend-item')
+      .attr('transform', (_, i) => `translate(250, ${20 + i * 25})`) // 25 is the distance between dots
+      .on('click', (_event, d) => this._toggleFocus(d));
+
+    legendItems
+      .append('rect')
+      .attr('x', -10)
+      .attr('y', -10)
+      .attr('width', 60)
+      .attr('height', 20)
+      .attr('fill', 'transparent');
+
+    legendItems
       .append('circle')
-      .attr('cx', 250)
-      .attr('cy', function (d, i) {
-        return 20 + i * 25;
-      }) // 100 is where the first dot appears. 25 is the distance between dots
       .attr('r', 7)
       .style('fill', (d) => color(d));
 
-    // Add one dot in the legend for each name.
-    this.d3Svg
-      .selectAll('mylabels')
-      .data(legendKeys)
-      .enter()
+    legendItems
       .append('text')
-      .attr('x', 270)
-      .attr('y', function (d, i) {
-        return 20 + i * 25;
-      }) // 100 is where the first dot appears. 25 is the distance between dots
-      .style('fill', function (d) {
-        return color(d);
-      })
-      .text(function (d) {
-        return d;
-      })
+      .attr('x', 20)
+      .style('fill', (d) => color(d))
+      .text((d) => d)
       .attr('text-anchor', 'left')
       .style('alignment-baseline', 'middle');
 
@@ -148,6 +158,21 @@ export class FrameTimeGraph extends LitElement {
       .attr('d', this.line(this.drawTimeData));
 
     this.frameTimeRoot.appendChild(this.d3Svg.node()!);
+  }
+
+  /** Toggles focus on a series; re-clicking the focused key clears it. */
+  private _toggleFocus(key: string) {
+    this._focusedKey = this._focusedKey === key ? null : key;
+    for (const [legendKey, pathId] of Object.entries(FrameTimeGraph._PATH_IDS)) {
+      const focused = this._focusedKey === null || this._focusedKey === legendKey;
+      this.d3Svg
+        .select('path#' + pathId)
+        .attr('stroke-opacity', focused ? 1 : 0.15)
+        .attr('stroke-width', this._focusedKey === legendKey ? 2.5 : 1.5);
+    }
+    this.d3Svg
+      .selectAll<SVGGElement, string>('g.legend-item')
+      .attr('opacity', (d) => (this._focusedKey === null || this._focusedKey === d ? 1 : 0.35));
   }
 
   draw(frameTime: number, updateTime: number, drawTime: number) {
