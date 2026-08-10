@@ -9,6 +9,7 @@ const tickWidth = 1; // px
 
 const nTicks = Math.floor(totalWidth / tickWidth);
 const zeroes = () => 0;
+const defaultYMax = 16; // ms
 
 /** Slugifies a string for use as a CSS class or id. */
 function slugify(str: string) {
@@ -49,6 +50,8 @@ export class SystemTimeGraph extends LitElement {
   private _color = d3.scaleOrdinal<string>().range([...d3.schemeDark2, ...d3.schemeAccent]);
   private _focusedKey: string | null = null;
   private _legendKeys = ''; // joined key list; guards legend re-join
+  private _y!: d3.ScaleLinear<number, number>;
+  private _yMax = defaultYMax;
 
   timeData: Record<string, number[]> = {};
 
@@ -62,7 +65,7 @@ export class SystemTimeGraph extends LitElement {
 
     const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
 
-    const y = d3.scaleLinear([0, 16], [totalHeight - marginBottom, marginTop]);
+    const y = this._y = d3.scaleLinear([0, defaultYMax], [totalHeight - marginBottom, marginTop]);
 
     this.d3Svg = d3
       .create('svg')
@@ -91,11 +94,12 @@ export class SystemTimeGraph extends LitElement {
     this.line = d3
       .line<number>()
       .x((_, index) => x(index))
-      .y((d) => y(d));
+      .y((d) => this._y(d));
 
     // draw max line
     this.d3Svg
       .append('line')
+      .attr('id', 'budget-line')
       .style('stroke-dasharray', '3, 3')
       .attr('stroke', 'currentColor')
       .attr('x1', x(0))
@@ -141,8 +145,11 @@ export class SystemTimeGraph extends LitElement {
       }
       this.timeData[key].push(systemDuration[key]);
       this.timeData[key].shift();
+    }
 
-      // Append a path for the line.
+    this._rescaleY();
+
+    for (const key in systemDuration) {
       this.d3Svg.select('path#' + slugify(key)).attr('d', this.line(this.timeData[key]));
     }
 
@@ -209,7 +216,37 @@ export class SystemTimeGraph extends LitElement {
   /** Toggles focus on a series; re-clicking the focused key clears it. */
   private _toggleFocus(key: string) {
     this._focusedKey = this._focusedKey === key ? null : key;
+    this._rescaleY();
     this._applyFocus();
+  }
+
+  /**
+   * Zooms the y axis to fit the focused series (nice-rounded), or restores
+   * the default range when nothing is focused; redraws axis, budget line,
+   * and series paths only when the domain actually changes.
+   */
+  private _rescaleY() {
+    let max = defaultYMax;
+    if (this._focusedKey !== null && this.timeData[this._focusedKey]) {
+      max = Math.max(1, ...this.timeData[this._focusedKey]);
+    }
+    this._y.domain([0, max]);
+    if (this._focusedKey !== null) {
+      this._y.nice(5);
+    }
+    const domainMax = this._y.domain()[1];
+    if (domainMax === this._yMax) {
+      return;
+    }
+    this._yMax = domainMax;
+    this.d3Svg.select<SVGGElement>('g#yAxis').call(d3.axisLeft(this._y).tickArguments([5]));
+    this.d3Svg
+      .select('line#budget-line')
+      .attr('y1', this._y(16.6))
+      .attr('y2', this._y(16.6));
+    for (const key of Object.keys(this.timeData)) {
+      this.d3Svg.select('path#' + slugify(key)).attr('d', this.line(this.timeData[key]));
+    }
   }
 
   /** Applies the focus dim/highlight state to series paths and legend items. */
@@ -239,6 +276,7 @@ export class SystemTimeGraph extends LitElement {
     this.d3Svg.select('g#legend').selectAll('*').remove();
     this._focusedKey = null;
     this._legendKeys = '';
+    this._rescaleY();
   }
 
   override render() {

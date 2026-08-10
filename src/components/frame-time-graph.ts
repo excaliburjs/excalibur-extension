@@ -37,7 +37,16 @@ export class FrameTimeGraph extends LitElement {
     Draw: 'line-draw'
   };
 
+  private static readonly _DEFAULT_Y_MAX = 33.333; // ms
+
   private _focusedKey: string | null = null;
+  private _y!: d3.ScaleLinear<number, number>;
+  private _yMax = FrameTimeGraph._DEFAULT_Y_MAX;
+
+  /** Maps each legend key to its ring buffer of samples. */
+  private _seriesData(): Record<string, number[]> {
+    return { Total: this.frameTimeData, Update: this.updateTimeData, Draw: this.drawTimeData };
+  }
 
   override firstUpdated(): void {
     this.frameTimeRoot = this.renderRoot.querySelector('#frame-time-graph') as HTMLElement;
@@ -62,7 +71,7 @@ export class FrameTimeGraph extends LitElement {
 
     const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
 
-    const y = d3.scaleLinear([0, 33.333], [totalHeight - marginBottom, marginTop]);
+    const y = this._y = d3.scaleLinear([0, FrameTimeGraph._DEFAULT_Y_MAX], [totalHeight - marginBottom, marginTop]);
 
     this.d3Svg = d3
       .create('svg')
@@ -121,11 +130,12 @@ export class FrameTimeGraph extends LitElement {
     this.line = d3
       .line<number>()
       .x((_, index) => x(index))
-      .y((d) => y(d));
+      .y((d) => this._y(d));
 
     // draw max line
     this.d3Svg
       .append('line')
+      .attr('id', 'budget-line')
       .style('stroke-dasharray', '3, 3')
       .attr('stroke', 'currentColor')
       .attr('x1', x(0))
@@ -160,9 +170,42 @@ export class FrameTimeGraph extends LitElement {
     this.frameTimeRoot.appendChild(this.d3Svg.node()!);
   }
 
+  /**
+   * Zooms the y axis to fit the focused series (nice-rounded), or restores
+   * the default range when nothing is focused; redraws axis, budget line,
+   * and series paths only when the domain actually changes.
+   */
+  private _rescaleY() {
+    let max = FrameTimeGraph._DEFAULT_Y_MAX;
+    if (this._focusedKey !== null) {
+      const data = this._seriesData()[this._focusedKey];
+      if (data) {
+        max = Math.max(1, ...data);
+      }
+    }
+    this._y.domain([0, max]);
+    if (this._focusedKey !== null) {
+      this._y.nice(5);
+    }
+    const domainMax = this._y.domain()[1];
+    if (domainMax === this._yMax) {
+      return;
+    }
+    this._yMax = domainMax;
+    this.d3Svg.select<SVGGElement>('g#yAxis').call(d3.axisLeft(this._y).tickArguments([5]));
+    this.d3Svg
+      .select('line#budget-line')
+      .attr('y1', this._y(16.6))
+      .attr('y2', this._y(16.6));
+    for (const [legendKey, pathId] of Object.entries(FrameTimeGraph._PATH_IDS)) {
+      this.d3Svg.select('path#' + pathId).attr('d', this.line(this._seriesData()[legendKey]));
+    }
+  }
+
   /** Toggles focus on a series; re-clicking the focused key clears it. */
   private _toggleFocus(key: string) {
     this._focusedKey = this._focusedKey === key ? null : key;
+    this._rescaleY();
     for (const [legendKey, pathId] of Object.entries(FrameTimeGraph._PATH_IDS)) {
       const focused = this._focusedKey === null || this._focusedKey === legendKey;
       this.d3Svg
@@ -185,6 +228,8 @@ export class FrameTimeGraph extends LitElement {
     this.updateTimeData.shift();
     this.drawTimeData.push(drawTime);
     this.drawTimeData.shift();
+
+    this._rescaleY();
 
     // Append a path for the line.
     this.d3Svg.select('path#line').attr('d', this.line(this.frameTimeData));
