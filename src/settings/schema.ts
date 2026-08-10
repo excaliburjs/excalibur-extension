@@ -1,4 +1,4 @@
-import { black, transparent, red, green, white } from './utils';
+import { black, transparent, red, green, blue, yellow, white } from './utils';
 
 export type SettingType = 'boolean' | 'number' | 'color';
 
@@ -67,7 +67,7 @@ export const settingsSchema = {
   },
   posColor: {
     type: 'color',
-    default: black,
+    default: yellow,
     label: 'Position Color',
     gamePath: 'debug.transform.positionColor',
   },
@@ -111,7 +111,7 @@ export const settingsSchema = {
   },
   graphicsBoundsColor: {
     type: 'color',
-    default: black,
+    default: yellow,
     label: 'Graphics Bounds Color',
     gamePath: 'debug.graphics.boundsColor',
   },
@@ -125,19 +125,21 @@ export const settingsSchema = {
   },
   colliderBoundsColor: {
     type: 'color',
-    default: black,
+    default: blue,
     label: 'Collider Bounds Color',
     gamePath: 'debug.collider.boundsColor',
   },
+  // Geometry defaults on (matching the engine's collider debug defaults) so
+  // Toggle Debug Draw shows collision geometry without extra clicks
   showGeometryBounds: {
     type: 'boolean',
-    default: false,
+    default: true,
     label: 'Show Geometry',
     gamePath: 'debug.collider.showGeometry',
   },
   geometryBoundsColor: {
     type: 'color',
-    default: black,
+    default: green,
     label: 'Geometry Color',
     gamePath: 'debug.collider.geometryColor',
   },

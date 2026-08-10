@@ -81,9 +81,6 @@ interface ScreenState {
 
 interface InitEvent {
   name: 'ex-debug:init';
-  data: {
-    settings: Settings & { toggleDebug?: boolean };
-  };
 }
 
 interface MaterialDetailEvent {
@@ -432,13 +429,32 @@ export class App extends LitElement {
   private _handleMessage(message: EventDispatchEvents) {
     switch (message.name) {
       case 'ex-debug:init': {
+        // A (re)started background begins from factory defaults; the panel's
+        // persisted settingsStore is the source of truth, so push it down.
+        // toggleDebug is only included once the user has explicitly set it —
+        // pushing the panel default would destroy the background's undefined
+        // (don't-touch) sentinel and clobber a debug overlay the game
+        // enabled on its own.
+        this._post({
+          name: 'ex-debug:command',
+          tabId: browser.devtools.inspectedWindow.tabId,
+          dispatch: 'ex-debug:update-debug',
+          debug: {
+            ...settingsStore.getAll(),
+            ...(this._toggleDebugUserSet ? { toggleDebug: this.toggleDebug } : {})
+          }
+        });
         if (this._hasInitialized) {
-          this._post({
-            name: 'ex-debug:command',
-            tabId: browser.devtools.inspectedWindow.tabId,
-            dispatch: 'ex-debug:update-debug',
-            debug: { ...settingsStore.getAll(), toggleDebug: this.toggleDebug }
-          });
+          // a restarted service worker reverts to the top frame; restore the
+          // selection first so the restores below target the right frame
+          if (this.selectedFrameId !== null) {
+            this._post({
+              name: 'ex-debug:command',
+              tabId: browser.devtools.inspectedWindow.tabId,
+              dispatch: 'ex-debug:select-frame',
+              frameId: this.selectedFrameId
+            });
+          }
           this._syncMaterialsActive();
           // a restarted background starts with a cleared inspect flag; restore it
           this._syncInspectEntity();
@@ -447,12 +463,8 @@ export class App extends LitElement {
           if (this.pickerArmed) {
             this._syncPicker();
           }
-          break;
         }
         this._hasInitialized = true;
-        const { settings } = message.data;
-        settingsStore.setAll(settings);
-        this.toggleDebug = settings.toggleDebug ?? false;
         break;
       }
       case 'ex-debug:heartbeat': {

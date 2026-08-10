@@ -12,6 +12,8 @@ export const black: Color = { r: 0, g: 0, b: 0, a: 1.0 };
 export const transparent: Color = { r: 0, g: 0, b: 0, a: 0.0 };
 export const red: Color = { r: 255, g: 0, b: 0, a: 1.0 };
 export const green: Color = { r: 0, g: 255, b: 0, a: 1.0 };
+export const blue: Color = { r: 0, g: 0, b: 255, a: 1.0 };
+export const yellow: Color = { r: 255, g: 255, b: 0, a: 1.0 };
 export const white: Color = { r: 255, g: 255, b: 255, a: 1.0 };
 
 /**

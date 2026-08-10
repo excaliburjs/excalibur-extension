@@ -1,4 +1,6 @@
-import { settingsMappings } from './settings';
+// Import from the schema module directly: './settings' re-exports the panel's
+// settingsStore, which must never be pulled into the service-worker bundle
+import { DefaultSettings, settingsMappings } from './settings/schema';
 import type { Engine, TestClock } from './@types/excalibur';
 import type { ExInstance } from './protocol';
 
@@ -1843,6 +1845,11 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
  * Creates the default debug settings for a panel connection. Each connection
  * gets its own copy so panels on different tabs never share state and a
  * closed panel's settings (e.g. collectMaterials) can't leak into the next.
+ *
+ * Every schema-defined setting is derived from `DefaultSettings` — the schema
+ * in src/settings/schema.ts is the single source of truth, so a setting added
+ * there is automatically known to the background and applied by `inject`.
+ * Only the connection-lifecycle fields below live outside the schema.
  */
 const createDefaultDebugSettings = () => ({
   // Not part of settingsMappings so it is never patched onto the game;
@@ -1861,57 +1868,9 @@ const createDefaultDebugSettings = () => ({
   // reopened. The panel adopts the game's actual `isDebug` from the first
   // heartbeat (see app-main) and then drives this field explicitly.
   toggleDebug: undefined as boolean | undefined,
-  debugTextForegroundColor: { r: 0, g: 0, b: 0, a: 1 },
-  debugTextBackgroundColor: { r: 0, g: 0, b: 0, a: 0 },
-  debugTextBorderColor: { r: 0, g: 0, b: 0, a: 0 },
-  showNames: false,
-  showIds: false,
-  showPos: false,
-  showPosLabel: false,
-  posColor: { r: 255, g: 255, b: 0, a: 1 },
-
-  showScale: false,
-  scaleColor: { r: 0, g: 0, b: 0, a: 1 },
-
-  showRotation: false,
-  rotationColor: { r: 0, g: 0, b: 0, a: 1 },
-
-  showZIndex: false,
-
-  showGraphicsBounds: false,
-  graphicsBoundsColor: { r: 255, g: 255, b: 0, a: 1 },
-  showColliderBounds: false,
-  colliderBoundsColor: { r: 0, g: 0, b: 255, a: 1 },
-  showGeometryBounds: true,
-  geometryBoundsColor: { r: 0, g: 255, b: 0, a: 1 },
-  showCollisionGroup: false,
-  showCollisionType: false,
-  showMotion: false,
-  showSleeping: false,
-  showMass: false,
-
-  showContact: false,
-  contactColor: { r: 255, g: 0, b: 0, a: 1 },
-  showContactNormal: false,
-  contactNormalColor: { r: 255, g: 0, b: 0, a: 1 },
-
-  showSpacePartition: false,
-
-  showTileMapGrid: false,
-  tileMapGridColor: { r: 0, g: 0, b: 0, a: 1 },
-  showIsometricGrid: false,
-  isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
-
-  // Screen debug settings (v0.33+); mirrors the engine's DebugConfig.screen
-  // defaults so the panel starts in sync with the running game. patchByPath
-  // silently skips these on older engines where game.debug.screen is absent.
-  screenDebugShowAll: false,
-  screenDebugShowContentArea: true,
-  screenContentAreaColor: { r: 0, g: 255, b: 0, a: 1 },
-  screenDebugShowUnsafeArea: true,
-  screenUnsafeAreaColor: { r: 255, g: 0, b: 0, a: 1 },
-  screenDebugShowLegend: true,
-  screenLegendColor: { r: 255, g: 255, b: 255, a: 1 },
+  // Deep-copied so a connection mutating a color can never bleed into the
+  // shared schema default objects
+  ...(JSON.parse(JSON.stringify(DefaultSettings)) as typeof DefaultSettings)
 });
 
 /**
@@ -2127,11 +2086,11 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
     }
   });
 
+  // Pure signal that a (possibly restarted) background accepted the
+  // connection; the panel responds by pushing its persisted settings and
+  // restoring per-session state (frame selection, inspector, picker)
   safePostMessage({
-    name: 'ex-debug:init',
-    data: {
-      settings: debugSettings
-    }
+    name: 'ex-debug:init'
   });
 
   // Poll the inspected tab every 200ms once the panel has said hello
