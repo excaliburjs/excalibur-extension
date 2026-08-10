@@ -22,6 +22,8 @@ export interface Entity {
 
 /**
  * @event kill-actor
+ * @event identify-actor
+ * @event inspect-entity
  */
 @customElement('entity-list')
 export class EntityList extends LitElement {
@@ -126,6 +128,16 @@ export class EntityList extends LitElement {
     };
   }
 
+  private _inspectEntity(id: number) {
+    return () => {
+      this.dispatchEvent(
+        new CustomEvent('inspect-entity', {
+          detail: id,
+        }),
+      );
+    };
+  }
+
   render() {
     let entities = this.entities.slice();
     if (!this.showOffscreen) {
@@ -152,6 +164,7 @@ export class EntityList extends LitElement {
                   <div slot="header">
                     <span class="entity-name">${entity.name} | ${entity.ctor}</span>
                     <div class="actions">
+                      <sl-icon-button name="zoom-in" label="Inspect entity ${entity.id}" @click="${this._inspectEntity(entity.id)}"></sl-icon-button>
                       <sl-icon-button name="search" label="Identify entity ${entity.id}" @click="${this._identifyEntity(entity.id)}"></sl-icon-button>
                       <sl-icon-button name="trash" label="kill" @click=${this.handleKill(entity.id)}></sl-icon-button>
                     </div>

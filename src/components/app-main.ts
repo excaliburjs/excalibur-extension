@@ -16,6 +16,7 @@ import './screen-camera';
 import './materials-panel';
 import './no-excalibur-overlay';
 import './screen-debug-settings';
+import './entity-inspector';
 import { colors } from '../colors';
 import { common } from '../common';
 import { Settings } from './debug-settings';
@@ -32,7 +33,13 @@ import { SystemTimeGraph } from './system-time-graph';
 import { SystemStatsList } from './system-stats-list';
 import { MaterialDetail, MaterialsState, UniformChange } from './material-detail';
 import { MaterialSelected } from './materials-panel';
-import type { ExInstance, HeartbeatMessage } from '../protocol';
+import type {
+  EntityGraphicsDetail,
+  EntityPropertyUpdate,
+  ExInstance,
+  HeartbeatMessage,
+  InspectedEntity
+} from '../protocol';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -83,7 +90,12 @@ interface MaterialDetailEvent {
   data: string | null;
 }
 
-type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent;
+interface EntityGraphicsEvent {
+  name: 'ex-debug:entity-graphics';
+  data: string | null;
+}
+
+type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent | EntityGraphicsEvent;
 
 @customElement('app-main')
 export class App extends LitElement {
@@ -213,6 +225,27 @@ export class App extends LitElement {
 
   @state()
   materialDetails: Record<string, MaterialDetail> = {};
+
+  /** Entity currently open in the inspector dialog, null when closed */
+  @state()
+  inspectedEntityId: number | null = null;
+
+  /** Live deep-serialized entity from the heartbeat while inspecting */
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  inspectedEntity: InspectedEntity | null = null;
+
+  /** On-demand graphics detail (thumbnails + registry) for the inspected entity */
+  @state()
+  entityGraphics: EntityGraphicsDetail | null = null;
+
+  /**
+   * graphicsKey the graphics detail was last fetched at; a change (graphic
+   * switched or added) triggers a re-fetch, mirroring the materials
+   * sourceHash pattern.
+   */
+  private _fetchedGraphicsKey: string | null = null;
 
   @state()
   worldPos: string = '???';
@@ -392,6 +425,8 @@ export class App extends LitElement {
             debug: { ...settingsStore.getAll(), toggleDebug: this.toggleDebug }
           });
           this._syncMaterialsActive();
+          // a restarted background starts with a cleared inspect flag; restore it
+          this._syncInspectEntity();
           break;
         }
         this._hasInitialized = true;
@@ -443,6 +478,16 @@ export class App extends LitElement {
         // only present while the Materials tab is active
         if (materials) {
           this.materials = materials;
+        }
+
+        // only present while the entity inspector dialog is open; null means
+        // the inspected entity no longer exists in the scene
+        if (data.inspectedEntity !== undefined) {
+          this.inspectedEntity = data.inspectedEntity;
+          if (data.inspectedEntity && data.inspectedEntity.graphicsKey !== this._fetchedGraphicsKey) {
+            this._fetchedGraphicsKey = data.inspectedEntity.graphicsKey;
+            this._requestEntityGraphics(data.inspectedEntity.id);
+          }
         }
 
         this.config = config;
@@ -535,6 +580,16 @@ export class App extends LitElement {
         }
         break;
       }
+      case 'ex-debug:entity-graphics': {
+        if (message.data) {
+          const detail: EntityGraphicsDetail | null = JSON.parse(message.data);
+          // ignore stale replies after navigating to a different entity
+          if (detail && detail.entityId === this.inspectedEntityId) {
+            this.entityGraphics = detail;
+          }
+        }
+        break;
+      }
     }
   }
 
@@ -567,6 +622,14 @@ export class App extends LitElement {
     this.worldPos = '???';
     this.screenPos = '???';
     this.pagePos = '???';
+    if (this.inspectedEntityId !== null) {
+      this.inspectedEntityId = null;
+      this.inspectedEntity = null;
+      this.entityGraphics = null;
+      this._fetchedGraphicsKey = null;
+      // clear the flag on the background so the new frame isn't inspected
+      this._syncInspectEntity();
+    }
   }
 
   selectFrame(evt: SlChangeEvent) {
@@ -753,6 +816,76 @@ export class App extends LitElement {
     });
   }
 
+  /**
+   * Tells the background which entity (if any) to deep-serialize each
+   * heartbeat; posting null clears the flag when the inspector closes.
+   */
+  private _syncInspectEntity() {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:inspect-entity',
+      entityId: this.inspectedEntityId
+    });
+  }
+
+  /**
+   * Fetches the heavy graphics detail (thumbnails + registry pool) for the
+   * inspected entity on demand.
+   */
+  private _requestEntityGraphics(entityId: number) {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:get-entity-graphics',
+      entityId
+    });
+  }
+
+  /**
+   * Opens the inspector dialog for an entity (from the entity list button or
+   * parent/child navigation inside the dialog). The next heartbeat delivers
+   * the serialized entity and triggers the graphics fetch via graphicsKey.
+   */
+  inspectEntity(evt: CustomEvent<number>) {
+    this.inspectedEntityId = evt.detail;
+    this.inspectedEntity = null;
+    this.entityGraphics = null;
+    this._fetchedGraphicsKey = null;
+    this._syncInspectEntity();
+  }
+
+  /**
+   * Closes the inspector dialog and stops per-heartbeat entity serialization.
+   */
+  inspectorClosed() {
+    this.inspectedEntityId = null;
+    this.inspectedEntity = null;
+    this.entityGraphics = null;
+    this._fetchedGraphicsKey = null;
+    this._syncInspectEntity();
+  }
+
+  updateEntityProperty(evt: CustomEvent<EntityPropertyUpdate>) {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:update-entity-property',
+      update: evt.detail
+    });
+  }
+
+  useEntityGraphic(evt: CustomEvent<{ entityId: number; graphicName: string; source: 'local' | 'registry' }>) {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:use-entity-graphic',
+      entityId: evt.detail.entityId,
+      graphicName: evt.detail.graphicName,
+      source: evt.detail.source
+    });
+  }
+
   goToScene(evt: CustomEvent<string>) {
     const scene = evt.detail;
     this._post({
@@ -789,7 +922,15 @@ export class App extends LitElement {
             </sl-select>`
           : ''}
       </div>
-      <entity-inspector></entity-inspector>
+      <entity-inspector
+        .open=${this.inspectedEntityId !== null}
+        .entity=${this.inspectedEntity}
+        .graphics=${this.entityGraphics}
+        @inspect-entity=${this.inspectEntity}
+        @entity-property-change=${this.updateEntityProperty}
+        @use-graphic=${this.useEntityGraphic}
+        @inspector-closed=${this.inspectorClosed}
+      ></entity-inspector>
 
       <sl-tab-group @sl-tab-show=${this.handleTabShow}>
         <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
@@ -861,7 +1002,7 @@ export class App extends LitElement {
           <div class="row">
             <div class="widget">
               <h2>Entities</h2>
-              <entity-list .entities=${this.engine.entities} @kill-actor=${this.killActor} @identify-actor=${this.identifyActor}></entity-list>
+              <entity-list .entities=${this.engine.entities} @kill-actor=${this.killActor} @identify-actor=${this.identifyActor} @inspect-entity=${this.inspectEntity}></entity-list>
             </div>
             <div class="widget">
               <h2>Scene</h2>
