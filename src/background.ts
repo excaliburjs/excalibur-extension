@@ -2000,11 +2000,6 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
             execInFrame(message.tabId, state.selectedFrameId, identifyEntity, [message.actorId]);
           }
           break;
-        case 'ex-debug:toggle-debug':
-          {
-            debugSettings.toggleDebug = !debugSettings.toggleDebug;
-          }
-          break;
         case 'ex-debug:update-debug':
           {
             // Simply merge all settings from the message

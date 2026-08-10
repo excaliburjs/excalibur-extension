@@ -160,19 +160,19 @@ export const settingsSchema = {
   showMass: {
     type: 'boolean',
     default: false,
-    label: 'Show Mass',
+    label: 'Show Body Mass',
     gamePath: 'debug.body.showMass',
   },
   showMotion: {
     type: 'boolean',
     default: false,
-    label: 'Show Motion',
+    label: 'Show Body Motion',
     gamePath: 'debug.body.showMotion',
   },
   showSleeping: {
     type: 'boolean',
     default: false,
-    label: 'Show Sleeping',
+    label: 'Show Body Sleeping',
     gamePath: 'debug.body.showSleeping',
   },
 

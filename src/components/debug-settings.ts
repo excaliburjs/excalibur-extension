@@ -128,7 +128,7 @@ export class DebugSettings extends LitElement {
               .checked=${settingsStore.get('showPosLabel')}
               @sl-change=${this._handleSwitchChange('showPosLabel')}
             ></sl-switch>
-            <label for="show-pos-label">Show Coordinates</label>
+            <label for="show-pos-label">${settingsSchema.showPosLabel.label}</label>
           </div>
           <div>
             <sl-color-picker
@@ -401,7 +401,7 @@ export class DebugSettings extends LitElement {
               .checked=${settingsStore.get('showContact')}
               @sl-change=${this._handleSwitchChange('showContact')}
             ></sl-switch>
-            <label for="show-contact">Show Contact</label>
+            <label for="show-contact">${settingsSchema.showContact.label}</label>
           </div>
           <sl-color-picker
             id="debug-contact-color"
@@ -432,7 +432,7 @@ export class DebugSettings extends LitElement {
               .checked=${settingsStore.get('showMass')}
               @sl-change=${this._handleSwitchChange('showMass')}
             ></sl-switch>
-            <label for="show-body-mass">Show Body Mass</label>
+            <label for="show-body-mass">${settingsSchema.showMass.label}</label>
           </div>
           <div>
           </div>
@@ -445,7 +445,7 @@ export class DebugSettings extends LitElement {
               .checked=${settingsStore.get('showMotion')}
               @sl-change=${this._handleSwitchChange('showMotion')}
             ></sl-switch>
-            <label for="show-body-motion">Show Body Motion</label>
+            <label for="show-body-motion">${settingsSchema.showMotion.label}</label>
           </div>
           <div>
           </div>
@@ -458,7 +458,7 @@ export class DebugSettings extends LitElement {
               .checked=${settingsStore.get('showSleeping')}
               @sl-change=${this._handleSwitchChange('showSleeping')}
             ></sl-switch>
-            <label for="show-body-sleeping">Show Body Sleeping</label>
+            <label for="show-body-sleeping">${settingsSchema.showSleeping.label}</label>
           </div>
           <div>
           </div>
