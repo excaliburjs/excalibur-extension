@@ -12,8 +12,6 @@ declare global {
       pickedId: number | null;
       hovered: { id: number; name: string; ctor: string } | null;
       teardown: () => void;
-      /** Hit-test diagnostics readable from the page console */
-      debug?: Record<string, unknown>;
     };
   }
 }
@@ -208,24 +206,30 @@ function startEntityPicker() {
     canvas.style.cursor = 'crosshair';
   }
 
-  // Vectors must be constructed in the page realm. camera.pos is a
-  // WatchVector whose constructor is (original, callback) — NOT (x, y) —
-  // so normalize via clone(), which always returns a base Vector, and
-  // validate the ctor actually round-trips (x, y) before trusting it.
+  // The engine's coordinate converters need a page-realm Vector instance
+  // (AffineMatrix.multiply dispatches on `instanceof Vector`), but there is
+  // no reliable Vector constructor to reach: `camera.pos.constructor` is a
+  // WatchVector whose signature is (original, callback), not (x, y).
+  // Vector.clone() always returns a base Vector, so clone one and reuse it
+  // as a mutable scratch input — the converters only read x/y and return
+  // new vectors, so a single scratch instance is safe.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let VecCtor: any = null;
+  let scratchVec: any = null;
   try {
-    const Ctor = game.currentScene.camera.pos.clone().constructor;
-    const probe = new Ctor(1, 2);
-    if (probe.x === 1 && probe.y === 2) {
-      VecCtor = Ctor;
-    }
+    scratchVec = game.currentScene.camera.pos.clone();
   } catch {
-    VecCtor = null;
+    scratchVec = null;
   }
 
-  /** Builds a page-realm vector, falling back to a plain point */
-  const makeVec = (x: number, y: number) => (VecCtor ? new VecCtor(x, y) : { x, y });
+  /** Loads (x, y) into the scratch vector, falling back to a plain point */
+  const makeVec = (x: number, y: number) => {
+    if (scratchVec) {
+      scratchVec.x = x;
+      scratchVec.y = y;
+      return scratchVec;
+    }
+    return { x, y };
+  };
 
   /** Resolves an entity's z the same way the heartbeat entity list does */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -245,21 +249,6 @@ function startEntityPicker() {
     return -Infinity;
   };
 
-  // Hit-test diagnostics: readable in the page console via
-  // window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER.debug when picking misbehaves
-  const dbg: Record<string, unknown> = {
-    moves: 0,
-    lastPage: null,
-    lastWorld: null,
-    entities: 0,
-    colliderHits: 0,
-    graphicsHits: 0,
-    err: null,
-    colliderErr: null,
-    graphicsErr: null
-  };
-  state.debug = dbg;
-
   /**
    * Finds the topmost entity under a page coordinate: collider hits via
    * physics.query refined by collider.contains (broadphase-only on engines
@@ -268,7 +257,6 @@ function startEntityPicker() {
    */
   const pickAt = (pageX: number, pageY: number) => {
     try {
-      dbg.lastPage = [pageX, pageY];
       const scene = game.currentScene;
       if (!scene) {
         return null;
@@ -278,10 +266,8 @@ function startEntityPicker() {
           ? game.screen.pageToWorldCoordinates(makeVec(pageX, pageY))
           : game.input?.pointers?.primary?.lastWorldPos;
       if (!worldVec) {
-        dbg.lastWorld = null;
         return null;
       }
-      dbg.lastWorld = [worldVec.x, worldVec.y];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hits = new Map<number, any>();
@@ -298,14 +284,11 @@ function startEntityPicker() {
             hits.set(owner.id, owner);
           }
         }
-        dbg.colliderHits = hits.size;
-      } catch (e) {
-        dbg.colliderErr = String(e);
+      } catch {
+        // collider path is optional; graphics path still runs
       }
       try {
-        const all = scene.entities ?? [];
-        dbg.entities = all.length;
-        for (const entity of all) {
+        for (const entity of scene.entities ?? []) {
           if (hits.has(entity.id) || (typeof entity.isKilled === 'function' && entity.isKilled())) {
             continue;
           }
@@ -314,13 +297,12 @@ function startEntityPicker() {
             if (bounds && typeof bounds.contains === 'function' && bounds.contains(worldVec)) {
               hits.set(entity.id, entity);
             }
-          } catch (e) {
-            dbg.graphicsErr = String(e);
+          } catch {
+            // bounds getter can throw mid-initialization
           }
         }
-        dbg.graphicsHits = hits.size;
-      } catch (e) {
-        dbg.graphicsErr = String(e);
+      } catch {
+        // scene.entities unavailable
       }
       if (hits.size === 0) {
         return null;
@@ -356,8 +338,7 @@ function startEntityPicker() {
         ctor: String(top.constructor?.name ?? ''),
         bounds
       };
-    } catch (e) {
-      dbg.err = String(e);
+    } catch {
       return null;
     }
   };
@@ -373,9 +354,9 @@ function startEntityPicker() {
       return;
     }
     label.textContent = `${hovered.name} | ${hovered.ctor} #${hovered.id}`;
-    // worldToPageCoordinates dispatches on `instanceof Vector` internally, so
-    // the rect projection is only usable with a real page-realm Vector ctor
-    if (hovered.bounds && VecCtor && game.screen && typeof game.screen.worldToPageCoordinates === 'function') {
+    // worldToPageCoordinates dispatches on `instanceof Vector` internally,
+    // so the rect projection is only usable with the real scratch Vector
+    if (hovered.bounds && scratchVec && game.screen && typeof game.screen.worldToPageCoordinates === 'function') {
       try {
         const tl = game.screen.worldToPageCoordinates(makeVec(hovered.bounds.left, hovered.bounds.top));
         const br = game.screen.worldToPageCoordinates(makeVec(hovered.bounds.right, hovered.bounds.bottom));
@@ -403,7 +384,6 @@ function startEntityPicker() {
 
   /** Tracks the cursor and updates the hovered entity + highlight */
   const onMove = (e: PointerEvent) => {
-    dbg.moves = (dbg.moves as number) + 1;
     lastPageX = e.pageX;
     lastPageY = e.pageY;
     if (state.pickedId === null) {
