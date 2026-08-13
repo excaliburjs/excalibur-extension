@@ -6,25 +6,15 @@ import { common } from '../common';
 import type { EntityGraphicsDetail, EntityPropertyUpdate, InspectedComponent, InspectedEntity } from '../protocol';
 import type { SlInput, SlRange, SlSelect, SlSwitch } from '@shoelace-style/shoelace';
 
-/**
- * Reads a number out of sanitized serialized data; non-finite numbers arrive
- * as strings ('Infinity') and fall back like any other non-number.
- */
 function asNumber(value: unknown, fallback = 0): number {
   return typeof value === 'number' ? value : fallback;
 }
 
-/**
- * Reads an {x, y} vector out of sanitized serialized data.
- */
 function asVector(value: unknown): { x: number; y: number } {
   const vec = value as { x?: unknown; y?: unknown } | null | undefined;
   return { x: asNumber(vec?.x), y: asNumber(vec?.y) };
 }
 
-/**
- * Formats a number for display, trimming float noise to 4 decimal places.
- */
 function formatNumber(n: number): string {
   if (Number.isInteger(n)) {
     return n.toString();
@@ -32,10 +22,6 @@ function formatNumber(n: number): string {
   return (Math.round(n * 10000) / 10000).toString();
 }
 
-/**
- * Formats any sanitized serialized value for read-only display; the sanitizer
- * turns non-finite numbers into 'Infinity'/'-Infinity'/'NaN' strings.
- */
 function formatLoose(value: unknown): string {
   if (value === null || value === undefined) {
     return '—';
@@ -256,29 +242,18 @@ export class EntityInspector extends LitElement {
     `
   ];
 
-  /** Whether the dialog is shown */
   @property({ type: Boolean })
   open = false;
 
-  /** Live deep-serialized entity from the heartbeat; null when the entity is gone */
   @property({ type: Object })
   entity: InspectedEntity | null = null;
 
-  /** On-demand graphics detail (thumbnails + registry pool) */
   @property({ type: Object })
   graphics: EntityGraphicsDetail | null = null;
 
-  /**
-   * While an editor input inside this component has focus, freeze re-renders so
-   * the 5Hz heartbeat doesn't clobber in-progress typing.
-   */
   @state()
   private _editorFocused = false;
 
-  /**
-   * Freeze re-renders briefly after dispatching an edit so the value doesn't
-   * snap back for the one heartbeat that raced the write into the page.
-   */
   private _freezeUntil = 0;
 
   private _freezeTimer = 0;

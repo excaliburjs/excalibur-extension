@@ -38,11 +38,8 @@ export interface EntityPropertyUpdate {
 export interface InspectedComponent {
   /** Constructor name, e.g. 'TransformComponent' */
   type: string;
-  /** Duck-typed classification used to pick a purpose-built editor */
   kind: 'transform' | 'motion' | 'graphics' | 'body' | 'collider' | 'unknown';
-  /** Sanitized serialized data (non-finite numbers become strings) */
   data: Record<string, unknown>;
-  /** True when serialization threw for this component */
   error?: boolean;
 }
 
@@ -59,13 +56,9 @@ export interface InspectedEntity {
   parent: { id: number; name: string } | null;
   children: { id: number; name: string; ctor: string }[];
   components: InspectedComponent[];
-  /** Graphic names available on the entity's GraphicsComponent */
   graphicsNames: string[];
-  /** Name of the currently shown graphic ('' when none) */
   graphicsCurrent: string;
-  /** Cheap change-detection key; a change triggers a graphics detail re-fetch */
   graphicsKey: string;
-  /** Which serialization path produced the component data */
   serializerSource: 'serialize' | 'reflection';
 }
 
@@ -74,11 +67,9 @@ export interface InspectedEntity {
  */
 export interface GraphicThumb {
   name: string;
-  /** Graphic constructor name, e.g. 'Sprite', 'Animation' */
   type: string;
   width: number;
   height: number;
-  /** Data URL of a capped-size thumbnail, null when unavailable */
   dataUrl: string | null;
 }
 
@@ -90,11 +81,8 @@ export interface EntityGraphicsDetail {
   entityId: number;
   graphicsKey: string;
   current: string;
-  /** Graphics registered on the entity's own GraphicsComponent */
   local: GraphicThumb[];
-  /** False when window.ex.Serializer is unreachable in the page */
   registryAvailable: boolean;
-  /** Graphics from the Serializer global graphics registry */
   registry: GraphicThumb[];
 }
 
@@ -106,11 +94,8 @@ export interface EntityGraphicsDetail {
  */
 export interface PickerState {
   active: boolean;
-  /** Topmost entity currently under the cursor, null when over empty space */
   hovered: { id: number; name: string; ctor: string } | null;
-  /** Entity id committed by the last pick click, null before any pick */
   pickedId: number | null;
-  /** Increments on each pick; the panel commits when it sees a new value */
   pickSeq: number;
 }
 
@@ -119,10 +104,7 @@ export interface PickerState {
  */
 export interface HeartbeatMessage {
   name: 'ex-debug:heartbeat';
-  /** Excalibur instances detected across all frames of the inspected tab */
   instances: ExInstance[];
-  /** Frame currently being inspected, null when no instance exists */
   selectedFrameId: number | null;
-  /** JSON-serialized game state from the selected frame, null when unavailable */
   data: string | null;
 }

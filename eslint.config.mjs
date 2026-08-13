@@ -9,7 +9,6 @@ export default [
     ignores: [
       'dist-chrome/**',
       'dist-firefox/**',
-      // Vendored Excalibur engine type declarations — upstream `.d.ts` dump, not hand-edited source
       'src/@types/**/*.d.ts'
     ]
   },

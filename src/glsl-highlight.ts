@@ -147,7 +147,6 @@ const BUILTINS = new Set([
   'unpackHalf2x16'
 ]);
 
-// groups: 1 = comment, 2 = preprocessor line, 3 = number, 4 = identifier
 const TOKEN_REGEX =
   /(\/\*[\s\S]*?\*\/|\/\/[^\n]*)|(^[ \t]*#[^\n]*)|(0[xX][\da-fA-F]+[uU]?|\d+\.\d*(?:[eE][+-]?\d+)?[fF]?|\.\d+(?:[eE][+-]?\d+)?[fF]?|\d+(?:[eE][+-]?\d+)?(?:[uU]|[fF])?)|([A-Za-z_]\w*)/gm;
 

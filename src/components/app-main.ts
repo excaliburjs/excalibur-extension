@@ -224,45 +224,31 @@ export class App extends LitElement {
   @state()
   materialDetails: Record<string, MaterialDetail> = {};
 
-  /** Entity currently open in the inspector dialog, null when closed */
   @state()
   inspectedEntityId: number | null = null;
 
-  /** Live deep-serialized entity from the heartbeat while inspecting */
   @state({
     hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
   })
   inspectedEntity: InspectedEntity | null = null;
 
-  /** On-demand graphics detail (thumbnails + registry) for the inspected entity */
   @state()
   entityGraphics: EntityGraphicsDetail | null = null;
 
-  /**
-   * graphicsKey the graphics detail was last fetched at; a change (graphic
-   * switched or added) triggers a re-fetch, mirroring the materials
-   * sourceHash pattern.
-   */
   private _fetchedGraphicsKey: string | null = null;
 
-  /** True while the page-side entity picker is armed */
   @state()
   pickerArmed = false;
 
-  /**
-   * When the picker was armed; heartbeats reporting the page-side picker as
-   * missing are ignored inside this grace window so the arm round-trip
-   * (command → install → flag set) can't disarm the toggle it just turned on.
-   */
   private _pickerArmedAt = 0;
-
-  /** Last pickSeq committed, so one pick is only inspected once */
   private _lastPickSeq = 0;
 
   @state()
   worldPos: string = '???';
+
   @state()
   screenPos: string = '???';
+  
   @state()
   pagePos: string = '???';
 
@@ -282,12 +268,6 @@ export class App extends LitElement {
 
   toggleDebug: boolean = false;
 
-  /**
-   * Tracks whether the user has explicitly toggled debug draw (or the panel
-   * has already synced from the game). Until true, the first heartbeat that
-   * carries the game's `isDebug` state is adopted into `toggleDebug`, so
-   * reopening devtools doesn't clobber a previously-enabled debug overlay.
-   */
   private _toggleDebugUserSet: boolean = false;
 
   private _currentTabName: string = 'inspector';
@@ -323,7 +303,8 @@ export class App extends LitElement {
     // If heartbeats stop arriving without the port firing onDisconnect
     // (a wedged service worker), tear the port down and reconnect
     this._stalenessIntervalId = setInterval(() => {
-      if (this.hasReceivedHeartbeat && Date.now() - this._lastHeartbeatAt > 1500 && this._reconnectTimerId === undefined) {
+      if (this.hasReceivedHeartbeat && Date.now() - this._lastHeartbeatAt > 1500 && 
+          this._reconnectTimerId === undefined) {
         this.connectionLost = true;
         this._teardownPort();
         this._scheduleReconnect();
@@ -429,12 +410,6 @@ export class App extends LitElement {
   private _handleMessage(message: EventDispatchEvents) {
     switch (message.name) {
       case 'ex-debug:init': {
-        // A (re)started background begins from factory defaults; the panel's
-        // persisted settingsStore is the source of truth, so push it down.
-        // toggleDebug is only included once the user has explicitly set it —
-        // pushing the panel default would destroy the background's undefined
-        // (don't-touch) sentinel and clobber a debug overlay the game
-        // enabled on its own.
         this._post({
           name: 'ex-debug:command',
           tabId: browser.devtools.inspectedWindow.tabId,
@@ -445,8 +420,6 @@ export class App extends LitElement {
           }
         });
         if (this._hasInitialized) {
-          // a restarted service worker reverts to the top frame; restore the
-          // selection first so the restores below target the right frame
           if (this.selectedFrameId !== null) {
             this._post({
               name: 'ex-debug:command',
@@ -456,10 +429,7 @@ export class App extends LitElement {
             });
           }
           this._syncMaterialsActive();
-          // a restarted background starts with a cleared inspect flag; restore it
           this._syncInspectEntity();
-          // likewise re-arm the picker; startEntityPicker is idempotent
-          // against a page global that survived the service-worker restart
           if (this.pickerArmed) {
             this._syncPicker();
           }
@@ -507,13 +477,10 @@ export class App extends LitElement {
           this.toggleDebug = !!isDebug;
         }
 
-        // only present while the Materials tab is active
         if (materials) {
           this.materials = materials;
         }
 
-        // only present while the entity inspector dialog is open; null means
-        // the inspected entity no longer exists in the scene
         if (data.inspectedEntity !== undefined) {
           this.inspectedEntity = data.inspectedEntity;
           if (data.inspectedEntity && data.inspectedEntity.graphicsKey !== this._fetchedGraphicsKey) {
@@ -522,12 +489,9 @@ export class App extends LitElement {
           }
         }
 
-        // only present while the entity picker is armed
         if (data.picker !== undefined && this.pickerArmed) {
           const picker: PickerState = data.picker;
           if (!picker.active) {
-            // The page-side picker is gone (Escape or navigation). The grace
-            // window covers the arm round-trip; see _pickerArmedAt.
             if (Date.now() - this._pickerArmedAt > 1000) {
               this.pickerArmed = false;
               this._syncPicker();
@@ -571,8 +535,6 @@ export class App extends LitElement {
         }
         this.isV33OrLater = versionRank >= 33e3;
 
-        // Guard each section independently: a missing field on one engine
-        // version must not freeze every panel that follows it
         try {
           const fps = stats.currFrame._fps;
           const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
@@ -680,11 +642,8 @@ export class App extends LitElement {
       this.inspectedEntity = null;
       this.entityGraphics = null;
       this._fetchedGraphicsKey = null;
-      // clear the flag on the background so the new frame isn't inspected
       this._syncInspectEntity();
     }
-    // the background already tore down the old frame's picker, both on
-    // explicit select-frame and on automatic frame reconciliation
     this.pickerArmed = false;
   }
 
@@ -787,7 +746,6 @@ export class App extends LitElement {
     });
   }
 
-  // clock
   clockStepMs: number = 16;
   handleStepChange(evt: SlChangeEvent) {
     this.clockStepMs = +(evt.target as SlInput).value;
@@ -939,8 +897,6 @@ export class App extends LitElement {
     this.pickerArmed = !this.pickerArmed;
     if (this.pickerArmed) {
       this._pickerArmedAt = Date.now();
-      // stopEntityPicker cleared the page global, so a fresh install restarts
-      // its pick sequence at 0
       this._lastPickSeq = 0;
     }
     this._syncPicker();
@@ -1093,7 +1049,14 @@ export class App extends LitElement {
           <div class="row">
             <div class="widget">
               <h2>Entities</h2>
-              <entity-list .entities=${this.engine.entities} .pickerArmed=${this.pickerArmed} @kill-actor=${this.killActor} @identify-actor=${this.identifyActor} @inspect-entity=${this.inspectEntity} @toggle-picker=${this.togglePicker}></entity-list>
+              <entity-list
+                .entities=${this.engine.entities}
+                .pickerArmed=${this.pickerArmed}
+                @kill-actor=${this.killActor}
+                @identify-actor=${this.identifyActor}
+                @inspect-entity=${this.inspectEntity}
+                @toggle-picker=${this.togglePicker}
+              ></entity-list>
             </div>
             <div class="widget">
               <h2>Scene</h2>

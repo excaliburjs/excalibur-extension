@@ -1,5 +1,3 @@
-// Import from the schema module directly: './settings' re-exports the panel's
-// settingsStore, which must never be pulled into the service-worker bundle
 import { DefaultSettings, settingsMappings } from './settings/schema';
 import type { Engine, TestClock } from './@types/excalibur';
 import type { ExInstance } from './protocol';
@@ -142,7 +140,11 @@ function identifyEntity(entityId: number) {
    * @type {Engine}
    */
   const game = window.___EXCALIBUR_DEVTOOL;
-  const actor = game.currentScene.world.entityManager.getById(entityId) as { actions: { repeat(fn: (ctx: { fade(opacity: number, duration: number): void }) => void, times: number): void } } | undefined;
+  const actor = game.currentScene.world.entityManager.getById(entityId) as {
+    actions: {
+      repeat(fn: (ctx: { fade(opacity: number, duration: number): void }) => void, times: number): void;
+    };
+  } | undefined;
   if (actor === undefined) {
     throw new Error(`No entity found for id ${entityId}`)
   }
@@ -172,12 +174,12 @@ function startEntityPicker() {
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   /**
    * @typedef {import('./@types/excalibur').Engine} Engine
    * @type {Engine}
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const game = window.___EXCALIBUR_DEVTOOL as any;
+  const game = window.___EXCALIBUR_DEVTOOL;
 
   const state: NonNullable<Window['___EXCALIBUR_DEVTOOL_EXTENSION_PICKER']> = {
     seq: 0,
@@ -195,10 +197,12 @@ function startEntityPicker() {
   highlight.style.cssText =
     'position:absolute;pointer-events:none;z-index:2147483647;' +
     'background:rgba(255,213,46,0.15);box-sizing:border-box;display:none;';
+
   const label = document.createElement('div');
   label.style.cssText =
     'position:absolute;left:0;top:-22px;padding:2px 6px;background:#222;' +
     'color:#ffd52e;font:11px monospace;border-radius:3px;white-space:nowrap;';
+
   highlight.appendChild(label);
   document.body.appendChild(highlight);
 
@@ -208,13 +212,7 @@ function startEntityPicker() {
     canvas.style.cursor = 'crosshair';
   }
 
-  // The engine's coordinate converters need a page-realm Vector instance
-  // (AffineMatrix.multiply dispatches on `instanceof Vector`), but there is
-  // no reliable Vector constructor to reach: `camera.pos.constructor` is a
-  // WatchVector whose signature is (original, callback), not (x, y).
-  // Vector.clone() always returns a base Vector, so clone one and reuse it
-  // as a mutable scratch input — the converters only read x/y and return
-  // new vectors, so a single scratch instance is safe.
+  // Magic to grab a vector ctor
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let scratchVec: any = null;
   try {
@@ -223,7 +221,6 @@ function startEntityPicker() {
     scratchVec = null;
   }
 
-  /** Loads (x, y) into the scratch vector, falling back to a plain point */
   const makeVec = (x: number, y: number) => {
     if (scratchVec) {
       scratchVec.x = x;
@@ -233,9 +230,8 @@ function startEntityPicker() {
     return { x, y };
   };
 
-  /** Resolves an entity's z the same way the heartbeat entity list does */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const zOf = (entity: any): number => {
+  const getEntityZ = (entity: any): number => {
     if (typeof entity.z === 'number') {
       return entity.z;
     }
@@ -245,18 +241,11 @@ function startEntityPicker() {
           return c.z;
         }
       }
-    } catch {
-      // no transform — treat as bottom
-    }
+    } catch { }
+
     return -Infinity;
   };
 
-  /**
-   * Finds the topmost entity under a page coordinate: collider hits via
-   * physics.query refined by collider.contains (broadphase-only on engines
-   * without contains), plus graphics world-bounds hits; highest z wins with
-   * later-added (higher id) breaking ties, matching engine draw order.
-   */
   const pickAt = (pageX: number, pageY: number) => {
     try {
       const scene = game.currentScene;
@@ -286,26 +275,24 @@ function startEntityPicker() {
             hits.set(owner.id, owner);
           }
         }
-      } catch {
-        // collider path is optional; graphics path still runs
-      }
+      } catch { }
+
       try {
         for (const entity of scene.entities ?? []) {
           if (hits.has(entity.id) || (typeof entity.isKilled === 'function' && entity.isKilled())) {
             continue;
           }
           try {
-            const bounds = entity.graphics?.bounds;
-            if (bounds && typeof bounds.contains === 'function' && bounds.contains(worldVec)) {
-              hits.set(entity.id, entity);
+            if (entity.graphics) {
+              const bounds = entity.graphics?.bounds;
+              if (bounds && typeof bounds.contains === 'function' && bounds.contains(worldVec)) {
+                hits.set(entity.id, entity);
+              }
             }
-          } catch {
-            // bounds getter can throw mid-initialization
-          }
+          } catch { }
         }
-      } catch {
-        // scene.entities unavailable
-      }
+      } catch { }
+
       if (hits.size === 0) {
         return null;
       }
@@ -314,7 +301,7 @@ function startEntityPicker() {
       let top: any = null;
       let topZ = -Infinity;
       for (const entity of hits.values()) {
-        const z = zOf(entity);
+        const z = getEntityZ(entity);
         if (top === null || z > topZ || (z === topZ && entity.id > top.id)) {
           top = entity;
           topZ = z;
@@ -356,9 +343,11 @@ function startEntityPicker() {
       return;
     }
     label.textContent = `${hovered.name} | ${hovered.ctor} #${hovered.id}`;
-    // worldToPageCoordinates dispatches on `instanceof Vector` internally,
-    // so the rect projection is only usable with the real scratch Vector
-    if (hovered.bounds && scratchVec && game.screen && typeof game.screen.worldToPageCoordinates === 'function') {
+    if (hovered.bounds &&
+        scratchVec &&
+        game.screen &&
+        typeof game.screen.worldToPageCoordinates === 'function') {
+
       try {
         const tl = game.screen.worldToPageCoordinates(makeVec(hovered.bounds.left, hovered.bounds.top));
         const br = game.screen.worldToPageCoordinates(makeVec(hovered.bounds.right, hovered.bounds.bottom));
@@ -369,10 +358,9 @@ function startEntityPicker() {
         highlight.style.border = '1px solid #ffd52e';
         highlight.style.display = 'block';
         return;
-      } catch {
-        // fall through to the degraded label
-      }
+      } catch {}
     }
+
     highlight.style.left = `${pageX + 14}px`;
     highlight.style.top = `${pageY + 14}px`;
     highlight.style.width = '0px';
@@ -393,14 +381,14 @@ function startEntityPicker() {
       positionOverlay(state.hovered, e.pageX, e.pageY);
     }
   };
-  /** Swallows canvas clicks so the pick never reaches the game */
+
   const swallow = (e: Event) => {
     if (canvas && e.target === canvas) {
       e.preventDefault();
       e.stopImmediatePropagation();
     }
   };
-  /** Commits the hovered entity as the pick and freezes the overlay */
+
   const onDown = (e: PointerEvent) => {
     if (canvas && e.target === canvas) {
       e.preventDefault();
@@ -412,7 +400,7 @@ function startEntityPicker() {
       }
     }
   };
-  /** Escape cancels page-side; the panel disarms on the next heartbeat */
+
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -428,7 +416,6 @@ function startEntityPicker() {
   window.addEventListener('keydown', onKey, true);
 
   let rafId = 0;
-  /** Re-projects the highlight each frame so it tracks camera/entity motion */
   const tick = () => {
     if (lastPageX >= 0 && state.pickedId === null) {
       state.hovered = pickAt(lastPageX, lastPageY);
@@ -460,18 +447,12 @@ function startEntityPicker() {
   window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER = state;
 }
 
-/**
- * Tears down the page-side entity picker if installed. DOM-only and
- * idempotent, so it works even when the game itself is gone.
- */
 function stopEntityPicker() {
   const picker = window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER;
   if (picker && typeof picker.teardown === 'function') {
     try {
       picker.teardown();
-    } catch {
-      // injected code never throws
-    }
+    } catch {}
   }
   window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER = undefined;
 }
@@ -584,7 +565,6 @@ function updateMaterialUniform(update: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyGame = game as any;
 
-  /** Resolves the target material by registry/devtools id, falling back to name. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function findMaterial(): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -715,8 +695,6 @@ function getMaterialDetail(query: { materialId: number; materialName: string }) 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const textures: any[] = [];
 
-  // default filtering/wrapping the TextureLoader applies when an image source
-  // doesn't specify its own (statics on the TextureLoader class)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const loaderCtor: any = anyGame.graphicsContext?.textureLoader?.constructor;
   const defaultFiltering: string | null = loaderCtor?.filtering ?? null;
@@ -1400,8 +1378,15 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
       }
 
       const builtInFallback = [
-        'u_time_ms', 'u_opacity', 'u_resolution', 'u_graphic_resolution',
-        'u_size', 'u_matrix', 'u_transform', 'u_graphic', 'u_screen_texture'
+        'u_time_ms', 
+        'u_opacity',
+        'u_resolution',
+        'u_graphic_resolution',
+        'u_size',
+        'u_matrix',
+        'u_transform',
+        'u_graphic',
+        'u_screen_texture'
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1852,21 +1837,9 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
  * Only the connection-lifecycle fields below live outside the schema.
  */
 const createDefaultDebugSettings = () => ({
-  // Not part of settingsMappings so it is never patched onto the game;
-  // gates material collection to when the Materials tab is visible
   collectMaterials: false,
-  // Also not part of settingsMappings; set while the entity inspector dialog
-  // is open so the heartbeat includes a deep-serialized `inspectedEntity`
   inspectEntityId: null as number | null,
-  // Also not part of settingsMappings; set while the page-side entity picker
-  // is armed so the heartbeat includes its live `picker` state
   pickerActive: false,
-  // toggleDebug starts undefined: the background does not know the game's
-  // current debug state when a panel connects. Leaving it undefined makes
-  // `inject` skip the force-on/off branches on the first heartbeat, so a
-  // previously-enabled debug overlay isn't clobbered when devtools is
-  // reopened. The panel adopts the game's actual `isDebug` from the first
-  // heartbeat (see app-main) and then drives this field explicitly.
   toggleDebug: undefined as boolean | undefined,
   // Deep-copied so a connection mutating a color can never bleed into the
   // shared schema default objects
@@ -1901,8 +1874,6 @@ function execInFrame(
 globalThis.browser.runtime.onConnect.addListener((port) => {
   console.info('Connected:', port.name);
 
-  // Per-connection state: which tab the panel inspects (from the hello
-  // handshake) and which frame's Excalibur instance is selected
   const state: { tabId: number | null; selectedFrameId: number | null } = {
     tabId: null,
     selectedFrameId: null
@@ -1911,10 +1882,6 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
   // Per-connection settings: panels on different tabs must not share state
   const debugSettings = createDefaultDebugSettings();
 
-  // Monotonic token for picker arm/disarm operations. A picker-start install
-  // resolves asynchronously; if a stop (or frame switch, or disconnect)
-  // happened in the meantime, the stale install must not re-arm the flag and
-  // must tear down the picker it just put on the page.
   let pickerOpSeq = 0;
 
   let disconnected = false;
@@ -2097,16 +2064,10 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
     }
   });
 
-  // Pure signal that a (possibly restarted) background accepted the
-  // connection; the panel responds by pushing its persisted settings and
-  // restoring per-session state (frame selection, inspector, picker)
   safePostMessage({
     name: 'ex-debug:init'
   });
 
-  // Consecutive failed heartbeat ticks; a single transient executeScript
-  // rejection (e.g. an unrelated iframe navigating mid-tick) must not be
-  // reported as "no game" — the panel would fully reset its state
   let failedHeartbeatTicks = 0;
 
   // Poll the inspected tab every 200ms once the panel has said hello
