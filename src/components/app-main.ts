@@ -13,19 +13,34 @@ import './system-stats-list';
 import './scene-list';
 import './physics-settings';
 import './screen-camera';
+import './materials-panel';
+import './no-excalibur-overlay';
+import './screen-debug-settings';
+import './entity-inspector';
 import { colors } from '../colors';
 import { common } from '../common';
-import { DefaultSettings, Settings } from './debug-settings';
+import { Settings } from './debug-settings';
+import { settingsStore } from '../settings';
 import { FpsGraph } from './fps-graph';
 import { FrameTimeGraph } from './frame-time-graph';
 import { Stats } from './stats-list';
 import { FlameChart } from './flame-chart';
-import { SlChangeEvent, SlInput, SlRadioGroup } from '@shoelace-style/shoelace';
+import { SlChangeEvent, SlInput, SlRadioGroup, SlSelect } from '@shoelace-style/shoelace';
 import { Entity } from './entity-list';
 import { DefaultPhysicsSettings, Physics } from './physics-settings';
 import { BoundingBox, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';
 import { SystemTimeGraph } from './system-time-graph';
 import { SystemStatsList } from './system-stats-list';
+import { MaterialDetail, MaterialsState, UniformChange } from './material-detail';
+import { MaterialSelected } from './materials-panel';
+import type {
+  EntityGraphicsDetail,
+  EntityPropertyUpdate,
+  ExInstance,
+  HeartbeatMessage,
+  InspectedEntity,
+  PickerState
+} from '../protocol';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -55,19 +70,30 @@ interface Camera {
   strategies: { name: string }[];
 }
 
+interface ScreenState {
+  viewport: ViewportDimension;
+  resolution: Resolution;
+  displayMode: DisplayMode;
+  pixelRatio: number;
+  unsafeArea: BoundingBox;
+  contentArea: BoundingBox;
+}
+
 interface InitEvent {
   name: 'ex-debug:init';
-  data: {
-    settings: Settings;
-  };
 }
 
-interface HeartbeatEvent {
-  name: 'ex-debug:heartbeat';
-  data: string;
+interface MaterialDetailEvent {
+  name: 'ex-debug:material-detail';
+  data: string | null;
 }
 
-type EventDispatchEvents = InitEvent | HeartbeatEvent;
+interface EntityGraphicsEvent {
+  name: 'ex-debug:entity-graphics';
+  data: string | null;
+}
+
+type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent | EntityGraphicsEvent;
 
 @customElement('app-main')
 export class App extends LitElement {
@@ -122,6 +148,13 @@ export class App extends LitElement {
 
       .version {
         margin-left: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .version sl-select {
+        min-width: 300px;
       }
       sl-radio {
         margin-bottom: 5px;
@@ -156,10 +189,11 @@ export class App extends LitElement {
     pointer: null
   };
 
-  @state({
-    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
-  })
-  settings: Settings | null = DefaultSettings;
+  // Settings are now managed by settingsStore
+  // Kept for backward compatibility with the template binding
+  get settings(): Settings {
+    return settingsStore.getAll();
+  }
 
   @state({
     hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
@@ -182,12 +216,67 @@ export class App extends LitElement {
   })
   physics: Physics = DefaultPhysicsSettings;
 
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  materials: MaterialsState = { source: 'scan', list: [] };
+
+  @state()
+  materialDetails: Record<string, MaterialDetail> = {};
+
+  @state()
+  inspectedEntityId: number | null = null;
+
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  inspectedEntity: InspectedEntity | null = null;
+
+  @state()
+  entityGraphics: EntityGraphicsDetail | null = null;
+
+  private _fetchedGraphicsKey: string | null = null;
+
+  @state()
+  pickerArmed = false;
+
+  private _pickerArmedAt = 0;
+  private _lastPickSeq = 0;
+
   @state()
   worldPos: string = '???';
+
   @state()
   screenPos: string = '???';
+  
   @state()
   pagePos: string = '???';
+
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  instances: ExInstance[] = [];
+
+  @state()
+  selectedFrameId: number | null = null;
+
+  @state()
+  hasReceivedHeartbeat: boolean = false;
+
+  @state()
+  connectionLost: boolean = false;
+
+  toggleDebug: boolean = false;
+
+  private _toggleDebugUserSet: boolean = false;
+
+  private _currentTabName: string = 'inspector';
+
+  private _lastHeartbeatAt: number = 0;
+  private _stalenessIntervalId?: ReturnType<typeof setInterval>;
+  private _reconnectTimerId?: ReturnType<typeof setTimeout>;
+  private _reconnectDelayMs: number = 500;
+  private _hasInitialized: boolean = false;
 
   backgroundConnection!: browser.runtime.Port;
   camera: Camera = {
@@ -198,45 +287,177 @@ export class App extends LitElement {
   };
 
   config: EngineOptions = {};
-  screen: {
-      viewport: ViewportDimension,
-      resolution: Resolution,
-      displayMode: DisplayMode,
-      pixelRatio: number,
-      unsafeArea: BoundingBox,
-      contentArea: BoundingBox
-    } = {} as any;
+  screen: ScreenState = {} as unknown as ScreenState;
 
   isV31OrLater: boolean = false;
+  isV32OrLater: boolean = false;
+  isV33OrLater: boolean = false;
+
+  override shouldUpdate() {
+    return this.isConnected;
+  }
 
   override firstUpdated(): void {
     this.connectToExtension();
 
-    if (this.backgroundConnection) {
-      this.backgroundConnection.onMessage.addListener(this.backgroundMessageDispatch);
-    } else {
-      throw new Error('Could not connect to background page?');
-    }
+    // If heartbeats stop arriving without the port firing onDisconnect
+    // (a wedged service worker), tear the port down and reconnect
+    this._stalenessIntervalId = setInterval(() => {
+      if (this.hasReceivedHeartbeat && Date.now() - this._lastHeartbeatAt > 1500 && 
+          this._reconnectTimerId === undefined) {
+        this.connectionLost = true;
+        this._teardownPort();
+        this._scheduleReconnect();
+      }
+    }, 1000);
+  }
+
+  override disconnectedCallback(): void {
+    clearInterval(this._stalenessIntervalId);
+    clearTimeout(this._reconnectTimerId);
+    this._reconnectTimerId = undefined;
+    // Disconnect background connection BEFORE Lit tears down the component tree
+    // This prevents race conditions where messages arrive during teardown
+    this._teardownPort();
+    super.disconnectedCallback();
   }
 
   connectToExtension = () => {
     this.backgroundConnection = browser.runtime.connect({
       name: 'panel'
     });
+    this.backgroundConnection.onMessage.addListener(this.backgroundMessageDispatch);
+    this.backgroundConnection.onDisconnect.addListener(this._handleDisconnect);
+
+    // Tell the background which tab this panel inspects so the heartbeat
+    // polls the right tab instead of whichever tab is focused
+    this.backgroundConnection.postMessage({
+      name: 'ex-debug:hello',
+      tabId: browser.devtools.inspectedWindow.tabId
+    });
     return this.backgroundConnection;
   };
 
+  /**
+   * Removes port listeners and disconnects without triggering a reconnect.
+   */
+  private _teardownPort() {
+    if (this.backgroundConnection) {
+      this.backgroundConnection.onMessage.removeListener(this.backgroundMessageDispatch);
+      this.backgroundConnection.onDisconnect.removeListener(this._handleDisconnect);
+      try {
+        this.backgroundConnection.disconnect();
+      } catch {
+        // port already dead
+      }
+    }
+  }
+
+  /**
+   * Fired when the background service worker dies (extension reload, crash,
+   * idle reclaim). Flags the connection as lost and starts reconnecting.
+   */
+  private _handleDisconnect = () => {
+    this.connectionLost = true;
+    this._scheduleReconnect();
+  };
+
+  /**
+   * Reconnects to the background with backoff; the next heartbeat clears the
+   * connection-lost state and resets the backoff.
+   */
+  private _scheduleReconnect() {
+    if (this._reconnectTimerId !== undefined || !this.isConnected) {
+      return;
+    }
+    this._reconnectTimerId = setTimeout(() => {
+      this._reconnectTimerId = undefined;
+      this._reconnectDelayMs = Math.min(this._reconnectDelayMs * 2, 5000);
+      try {
+        this.connectToExtension();
+      } catch {
+        // extension context invalidated or background unavailable; keep trying
+        this._scheduleReconnect();
+      }
+    }, this._reconnectDelayMs);
+  }
+
+  /**
+   * Posts a message to the background, flagging a lost connection instead of
+   * throwing out of the calling event handler when the port is dead.
+   */
+  private _post(message: object) {
+    try {
+      this.backgroundConnection.postMessage(message);
+    } catch {
+      this._handleDisconnect();
+    }
+  }
+
   backgroundMessageDispatch = (message: EventDispatchEvents) => {
+    if (!this.isConnected) {
+      return;
+    }
+    try {
+      this._handleMessage(message);
+    } catch (e) {
+      if (this.isConnected) {
+        console.info('Error handling message:', e);
+      }
+    }
+  };
+
+  private _handleMessage(message: EventDispatchEvents) {
     switch (message.name) {
       case 'ex-debug:init': {
-        const { settings } = message.data;
-        this.settings = { ...settings };
+        this._post({
+          name: 'ex-debug:command',
+          tabId: browser.devtools.inspectedWindow.tabId,
+          dispatch: 'ex-debug:update-debug',
+          debug: {
+            ...settingsStore.getAll(),
+            ...(this._toggleDebugUserSet ? { toggleDebug: this.toggleDebug } : {})
+          }
+        });
+        if (this._hasInitialized) {
+          if (this.selectedFrameId !== null) {
+            this._post({
+              name: 'ex-debug:command',
+              tabId: browser.devtools.inspectedWindow.tabId,
+              dispatch: 'ex-debug:select-frame',
+              frameId: this.selectedFrameId
+            });
+          }
+          this._syncMaterialsActive();
+          this._syncInspectEntity();
+          if (this.pickerArmed) {
+            this._syncPicker();
+          }
+        }
+        this._hasInitialized = true;
         break;
       }
       case 'ex-debug:heartbeat': {
+        this._lastHeartbeatAt = Date.now();
+        this.hasReceivedHeartbeat = true;
+        this.connectionLost = false;
+        this._reconnectDelayMs = 500;
+        this.instances = message.instances;
+
+        if (message.selectedFrameId !== this.selectedFrameId) {
+          this.selectedFrameId = message.selectedFrameId;
+          this._resetInstanceState();
+        }
+
+        if (message.data == null) {
+          // no instance selected (or a transient miss) — keep the last state
+          break;
+        }
+
         const data = JSON.parse(message.data);
         const {
           version,
+          isDebug,
           config,
           screen,
           camera,
@@ -245,8 +466,44 @@ export class App extends LitElement {
           pointer,
           entities,
           stats,
-          physics
+          physics,
+          materials
         } = data;
+
+        // Adopt the game's actual debug state on the first heartbeat that
+        // carries data, so reopening devtools doesn't reset a previously-
+        // enabled overlay. Once the user explicitly toggles, stop adopting.
+        if (!this._toggleDebugUserSet) {
+          this.toggleDebug = !!isDebug;
+        }
+
+        if (materials) {
+          this.materials = materials;
+        }
+
+        if (data.inspectedEntity !== undefined) {
+          this.inspectedEntity = data.inspectedEntity;
+          if (data.inspectedEntity && data.inspectedEntity.graphicsKey !== this._fetchedGraphicsKey) {
+            this._fetchedGraphicsKey = data.inspectedEntity.graphicsKey;
+            this._requestEntityGraphics(data.inspectedEntity.id);
+          }
+        }
+
+        if (data.picker !== undefined && this.pickerArmed) {
+          const picker: PickerState = data.picker;
+          if (!picker.active) {
+            if (Date.now() - this._pickerArmedAt > 1000) {
+              this.pickerArmed = false;
+              this._syncPicker();
+            }
+          } else if (picker.pickSeq > this._lastPickSeq && picker.pickedId !== null) {
+            this._lastPickSeq = picker.pickSeq;
+            // single-pick: disarm, tear down the page state, open the inspector
+            this.pickerArmed = false;
+            this._syncPicker();
+            this._inspectEntityById(picker.pickedId);
+          }
+        }
 
         this.config = config;
         this.screen = screen;
@@ -268,59 +525,198 @@ export class App extends LitElement {
           this.pagePos = `(${currentPointer.pagePos._x.toFixed(2)},${currentPointer.pagePos._y.toFixed(2)})`;
         }
 
-        const fps = stats.currFrame._fps;
-        const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
+        const v = this.engine.version.split('.');
+        const versionRank = (+v[0] || 0) * 1e6 + (+v[1] || 0) * 1e3 + (+v[2] || 0);
+        this.isV31OrLater = versionRank >= 31e3;
+        const wasV32OrLater = this.isV32OrLater;
+        this.isV32OrLater = versionRank >= 32e3;
+        if (this.isV32OrLater !== wasV32OrLater) {
+          this._syncMaterialsActive();
+        }
+        this.isV33OrLater = versionRank >= 33e3;
 
-        const versionTuple = this.engine.version.split('.');
-        const majorVersion = +(versionTuple[0] || 0);
-        const minorVersion = +(versionTuple[1] || 0);
-        this.isV31OrLater = minorVersion >= 31 || majorVersion > 0;
+        try {
+          const fps = stats.currFrame._fps;
+          const elapsedMs = stats.currFrame._delta ?? stats.currFrame._elapsedMs;
 
-        this.stats = {
-          fps,
-          delta: elapsedMs,
-          frameBudget: elapsedMs - stats.currFrame._durationStats.total,
-          frameTime: stats.currFrame._durationStats.total,
-          updateTime: stats.currFrame._durationStats.update,
-          systemDuration: this.isV31OrLater ? stats.currFrame.systemDuration: {},
-          drawTime: stats.currFrame._durationStats.draw,
-          drawCalls: stats.currFrame._graphicsStats.drawCalls,
-          numActors: stats.currFrame._actorStats.total,
-          rendererSwaps: this.isV31OrLater ? 
-            stats.currFrame._graphicsStats.rendererSwaps :
-            'Upgrade to v0.32+ to see'
-        };
+          this.stats = {
+            fps,
+            delta: elapsedMs,
+            frameBudget: elapsedMs - stats.currFrame._durationStats.total,
+            frameTime: stats.currFrame._durationStats.total,
+            updateTime: stats.currFrame._durationStats.update,
+            systemDuration: this.isV31OrLater ? stats.currFrame.systemDuration: {},
+            drawTime: stats.currFrame._durationStats.draw,
+            drawCalls: stats.currFrame._graphicsStats.drawCalls,
+            numActors: stats.currFrame._actorStats.total,
+            rendererSwaps: this.isV31OrLater ?
+              stats.currFrame._graphicsStats.rendererSwaps :
+              'Upgrade to v0.32+ to see'
+          };
 
-        this.fpsGraph.draw(fps);
+          this.fpsGraph?.draw(fps);
 
-        this.frameTimeGraph.draw(
-          stats.currFrame._durationStats.total,
-          stats.currFrame._durationStats.update,
-          stats.currFrame._durationStats.draw
-        );
+          this.frameTimeGraph?.draw(
+            stats.currFrame._durationStats.total,
+            stats.currFrame._durationStats.update,
+            stats.currFrame._durationStats.draw
+          );
 
-        if (this.isV31OrLater) {
-          this.systemTimeGraph?.draw(this.stats.systemDuration);
-          this.systemStatsList?.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
+          if (this.isV31OrLater) {
+            this.systemTimeGraph?.draw(this.stats.systemDuration);
+            this.systemStatsList?.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
+          }
+        } catch (e) {
+          console.info('Error reading engine stats:', e);
         }
 
-        this.physics = {
-          enabled: physics.enabled,
-          maxFps: physics.maxFps,
-          fixedUpdateFps: physics.fixedUpdateFps,
-          fixedUpdateTimestep: physics.fixedUpdateTimestep,
-          gravity: { ...physics.gravity },
-          config: physics.config
-        };
+        try {
+          this.physics = {
+            enabled: physics.enabled,
+            maxFps: physics.maxFps,
+            fixedUpdateFps: physics.fixedUpdateFps,
+            fixedUpdateTimestep: physics.fixedUpdateTimestep,
+            gravity: { ...physics.gravity },
+            config: physics.config
+          };
+        } catch (e) {
+          console.info('Error reading physics settings:', e);
+        }
+        break;
+      }
+      case 'ex-debug:material-detail': {
+        if (message.data) {
+          const detail: MaterialDetail | null = JSON.parse(message.data);
+          if (detail) {
+            this.materialDetails = { ...this.materialDetails, [detail.key]: detail };
+          }
+        }
+        break;
+      }
+      case 'ex-debug:entity-graphics': {
+        if (message.data) {
+          const detail: EntityGraphicsDetail | null = JSON.parse(message.data);
+          // ignore stale replies after navigating to a different entity
+          if (detail && detail.entityId === this.inspectedEntityId) {
+            this.entityGraphics = detail;
+          }
+        }
         break;
       }
     }
-  };
+  }
+
+  /**
+   * Clears state derived from a specific Excalibur instance when the selected
+   * frame changes, so data from the previous instance doesn't linger.
+   */
+  private _resetInstanceState() {
+    this.engine = {
+      version: '???',
+      currentScene: 'root',
+      scenes: [],
+      entities: [],
+      pointer: null
+    };
+    this.stats = {
+      fps: 0,
+      delta: 0,
+      frameTime: 0,
+      updateTime: 0,
+      drawTime: 0,
+      frameBudget: 0,
+      drawCalls: 0,
+      numActors: 0,
+      rendererSwaps: 0,
+      systemDuration: {}
+    };
+    this.systemTimeGraph?.reset();
+    this.systemStatsList?.reset();
+    this.materials = { source: 'scan', list: [] };
+    this.materialDetails = {};
+    this.worldPos = '???';
+    this.screenPos = '???';
+    this.pagePos = '???';
+    if (this.inspectedEntityId !== null) {
+      this.inspectedEntityId = null;
+      this.inspectedEntity = null;
+      this.entityGraphics = null;
+      this._fetchedGraphicsKey = null;
+      this._syncInspectEntity();
+    }
+    this.pickerArmed = false;
+  }
+
+  selectFrame(evt: SlChangeEvent) {
+    const frameId = +String((evt.target as SlSelect).value);
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:select-frame',
+      frameId
+    });
+  }
+
+  /**
+   * Shortens a frame url to hostname + pathname for dropdown labels.
+   */
+  private _shortUrl(url: string) {
+    try {
+      const parsed = new URL(url);
+      return `${parsed.hostname}${parsed.pathname}`;
+    } catch {
+      return url;
+    }
+  }
+
+  /**
+   * Builds a human-readable label for an Excalibur instance in the dropdown.
+   */
+  private _instanceLabel(instance: ExInstance) {
+    const location = instance.frameId === 0
+      ? `Top frame — ${instance.title || this._shortUrl(instance.url)}`
+      : this._shortUrl(instance.url);
+    return `${location} (v${instance.version})`;
+  }
+
+  handleTabShow(evt: CustomEvent<{ name: string }>) {
+    this._currentTabName = evt.detail.name;
+    this._syncMaterialsActive();
+  }
+
+  private _syncMaterialsActive() {
+    const active = this._currentTabName === 'materials' && this.isV32OrLater;
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:materials-active',
+      active
+    });
+  }
+
+  materialSelected(evt: CustomEvent<MaterialSelected>) {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:get-material-detail',
+      materialId: evt.detail.materialId,
+      materialName: evt.detail.materialName
+    });
+  }
+
+  updateMaterialUniform(evt: CustomEvent<UniformChange>) {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:update-material-uniform',
+      update: evt.detail
+    });
+  }
 
   updatePhysicsSetting(evt: CustomEvent<Physics>) {
     const settings = evt.detail;
 
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-physics',
@@ -331,7 +727,7 @@ export class App extends LitElement {
   updateDebugSetting(evt: CustomEvent<Settings>) {
     const settings = evt.detail;
 
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-debug',
@@ -340,20 +736,22 @@ export class App extends LitElement {
   }
 
   toggleDebugDraw() {
-    this.backgroundConnection.postMessage({
+    this.toggleDebug = !this.toggleDebug;
+    this._toggleDebugUserSet = true;
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'ex-debug:toggle-debug'
+      dispatch: 'ex-debug:update-debug',
+      debug: { ...settingsStore.getAll(), toggleDebug: this.toggleDebug }
     });
   }
 
-  // clock
   clockStepMs: number = 16;
   handleStepChange(evt: SlChangeEvent) {
     this.clockStepMs = +(evt.target as SlInput).value;
   }
   toggleTestClock() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:toggle-test-clock'
@@ -361,7 +759,7 @@ export class App extends LitElement {
   }
 
   startClock() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:start-clock'
@@ -369,7 +767,7 @@ export class App extends LitElement {
   }
 
   stopClock() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:stop-clock'
@@ -377,7 +775,7 @@ export class App extends LitElement {
   }
 
   stepClock() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:step-clock',
@@ -386,7 +784,7 @@ export class App extends LitElement {
   }
 
   startProfiler() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:start-profiler',
@@ -395,7 +793,7 @@ export class App extends LitElement {
   }
 
   collectProfile() {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:collect-profiler'
@@ -404,7 +802,7 @@ export class App extends LitElement {
 
   killActor(evt: CustomEvent<number>) {
     const id = evt.detail;
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:kill',
@@ -415,7 +813,7 @@ export class App extends LitElement {
   setColorBlind() {
     const colorBlindRadioGroup = this.shadowRoot?.querySelector('#color-blind') as SlRadioGroup;
     const colorBlindMode = (colorBlindRadioGroup?.value) ?? 'Normal';
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:color-blind',
@@ -424,7 +822,7 @@ export class App extends LitElement {
   }
 
   identifyActor(evt: CustomEvent<number>) {
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:identify-actor',
@@ -432,9 +830,112 @@ export class App extends LitElement {
     });
   }
 
+  /**
+   * Tells the background which entity (if any) to deep-serialize each
+   * heartbeat; posting null clears the flag when the inspector closes.
+   */
+  private _syncInspectEntity() {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:inspect-entity',
+      entityId: this.inspectedEntityId
+    });
+  }
+
+  /**
+   * Fetches the heavy graphics detail (thumbnails + registry pool) for the
+   * inspected entity on demand.
+   */
+  private _requestEntityGraphics(entityId: number) {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:get-entity-graphics',
+      entityId
+    });
+  }
+
+  /**
+   * Opens the inspector dialog for an entity. The next heartbeat delivers
+   * the serialized entity and triggers the graphics fetch via graphicsKey.
+   */
+  private _inspectEntityById(id: number) {
+    this.inspectedEntityId = id;
+    this.inspectedEntity = null;
+    this.entityGraphics = null;
+    this._fetchedGraphicsKey = null;
+    this._syncInspectEntity();
+  }
+
+  /**
+   * Opens the inspector dialog for an entity (from the entity list button or
+   * parent/child navigation inside the dialog).
+   */
+  inspectEntity(evt: CustomEvent<number>) {
+    this._inspectEntityById(evt.detail);
+  }
+
+  /**
+   * Posts the picker command matching the current armed state: start installs
+   * the page-side picker (the background arms its flag once the install
+   * resolves), stop tears it down and clears the flag.
+   */
+  private _syncPicker() {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: this.pickerArmed ? 'ex-debug:picker-start' : 'ex-debug:picker-stop'
+    });
+  }
+
+  /**
+   * Toggles the page-side entity picker from the entity list button. A pick
+   * or a page-side Escape also disarms via the heartbeat's picker state.
+   */
+  togglePicker() {
+    this.pickerArmed = !this.pickerArmed;
+    if (this.pickerArmed) {
+      this._pickerArmedAt = Date.now();
+      this._lastPickSeq = 0;
+    }
+    this._syncPicker();
+  }
+
+  /**
+   * Closes the inspector dialog and stops per-heartbeat entity serialization.
+   */
+  inspectorClosed() {
+    this.inspectedEntityId = null;
+    this.inspectedEntity = null;
+    this.entityGraphics = null;
+    this._fetchedGraphicsKey = null;
+    this._syncInspectEntity();
+  }
+
+  updateEntityProperty(evt: CustomEvent<EntityPropertyUpdate>) {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:update-entity-property',
+      update: evt.detail
+    });
+  }
+
+  useEntityGraphic(evt: CustomEvent<{ entityId: number; graphicName: string; source: 'local' | 'registry' }>) {
+    this._post({
+      name: 'ex-debug:command',
+      tabId: browser.devtools.inspectedWindow.tabId,
+      dispatch: 'ex-debug:use-entity-graphic',
+      entityId: evt.detail.entityId,
+      graphicName: evt.detail.graphicName,
+      source: evt.detail.source
+    });
+  }
+
   goToScene(evt: CustomEvent<string>) {
     const scene = evt.detail;
-    this.backgroundConnection.postMessage({
+    this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:goto-scene',
@@ -444,16 +945,47 @@ export class App extends LitElement {
 
   override render() {
     return html`
+      ${this.connectionLost
+        ? html`<no-excalibur-overlay
+            .message=${'Connection to the extension was lost — reconnecting… (reopen DevTools if this persists)'}
+          ></no-excalibur-overlay>`
+        : this.instances.length === 0
+          ? html`<no-excalibur-overlay
+              .message=${this.hasReceivedHeartbeat ? 'No Excalibur detected on the page' : 'Connecting to page…'}
+            ></no-excalibur-overlay>`
+          : ''}
       <h1><img src=${logoImg} alt="Excalibur Dev Tools" />Dev Tools</h1>
-      <div class="version">Engine Version: <span id="excalibur-version">${this.engine.version}</span></div>
-      <entity-inspector></entity-inspector>
+      <div class="version">
+        <span>Engine Version: <span id="excalibur-version">${this.engine.version}</span></span>
+        ${this.instances.length > 1
+          ? html`<sl-select
+              size="small"
+              .value=${String(this.selectedFrameId ?? '')}
+              @sl-change=${this.selectFrame}
+            >
+              ${this.instances.map(
+                (instance) => html`<sl-option value=${String(instance.frameId)}>${this._instanceLabel(instance)}</sl-option>`
+              )}
+            </sl-select>`
+          : ''}
+      </div>
+      <entity-inspector
+        .open=${this.inspectedEntityId !== null}
+        .entity=${this.inspectedEntity}
+        .graphics=${this.entityGraphics}
+        @inspect-entity=${this.inspectEntity}
+        @entity-property-change=${this.updateEntityProperty}
+        @use-graphic=${this.useEntityGraphic}
+        @inspector-closed=${this.inspectorClosed}
+      ></entity-inspector>
 
-      <sl-tab-group>
+      <sl-tab-group @sl-tab-show=${this.handleTabShow}>
         <sl-tab slot="nav" panel="inspector">Inspector</sl-tab>
         <sl-tab slot="nav" panel="screen-camera">Screen & Camera</sl-tab>
         <sl-tab slot="nav" panel="perf">Performance</sl-tab>
         <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
         <sl-tab slot="nav" panel="physics">Physics</sl-tab>
+        <sl-tab slot="nav" panel="materials">Materials</sl-tab>
 
         <sl-tab-panel name="inspector">
           <div class="row">
@@ -517,7 +1049,14 @@ export class App extends LitElement {
           <div class="row">
             <div class="widget">
               <h2>Entities</h2>
-              <entity-list .entities=${this.engine.entities} @kill-actor=${this.killActor} @identify-actor=${this.identifyActor}></entity-list>
+              <entity-list
+                .entities=${this.engine.entities}
+                .pickerArmed=${this.pickerArmed}
+                @kill-actor=${this.killActor}
+                @identify-actor=${this.identifyActor}
+                @inspect-entity=${this.inspectEntity}
+                @toggle-picker=${this.togglePicker}
+              ></entity-list>
             </div>
             <div class="widget">
               <h2>Scene</h2>
@@ -533,7 +1072,13 @@ export class App extends LitElement {
         </sl-tab-panel>
 
         <sl-tab-panel name="screen-camera">
-          <screen-camera .config=${this.config} .screen=${this.screen} .camera=${this.camera}></screen-camera>
+          <screen-camera
+            .config=${this.config}
+            .screen=${this.screen}
+            .camera=${this.camera}
+            .isV33OrLater=${this.isV33OrLater}
+            @debug-settings-change=${this.updateDebugSetting}
+          ></screen-camera>
         </sl-tab-panel>
         <sl-tab-panel name="perf">
           <div class="row">
@@ -597,6 +1142,16 @@ export class App extends LitElement {
             .settings=${this.physics}
           >
           </physics-settings>
+        </sl-tab-panel>
+        <sl-tab-panel name="materials">
+          <materials-panel
+            @material-selected=${this.materialSelected}
+            @uniform-change=${this.updateMaterialUniform}
+            .materials=${this.materials}
+            .details=${this.materialDetails}
+            .unsupported=${!this.isV32OrLater}
+          >
+          </materials-panel>
         </sl-tab-panel>
       </sl-tab-group>
     `;

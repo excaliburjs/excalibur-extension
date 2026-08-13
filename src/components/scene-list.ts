@@ -20,6 +20,10 @@ export class SceneList extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   @property({ type: Array }) scenes: string[] = [];
 
   handleGoto(scene: string) {

@@ -2,7 +2,7 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
-import { SlChangeEvent, SlSwitch, SlSelect } from '@shoelace-style/shoelace';
+import { SlChangeEvent, SlSwitch } from '@shoelace-style/shoelace';
 import { PhysicsConfig } from '../@types/excalibur';
 
 declare module "../@types/excalibur" {
@@ -50,6 +50,10 @@ export class PhysicsSettings extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   @property({ type: Object })
   settings: Physics = {
     maxFps: 0,
@@ -61,6 +65,9 @@ export class PhysicsSettings extends LitElement {
   };
 
   updateSettings(settings: Physics) {
+    if (!this.isConnected) {
+      return;
+    }
     this.settings = settings;
     this.requestUpdate();
   }
@@ -85,14 +92,29 @@ export class PhysicsSettings extends LitElement {
   }
 
 
-  settingChangeHandler<TObj extends object, TSetting extends keyof TObj>(settingObj: TObj, setting: TSetting) {
+  /**
+   * Returns a change handler that writes the control's value onto the settings
+   * object and dispatches the change. Takes a getter so sub-objects that the
+   * engine hasn't populated (e.g. `config.bodies`) are created lazily on first
+   * edit instead of throwing.
+   */
+  settingChangeHandler<TObj extends object, TSetting extends keyof TObj>(getSettingObj: () => TObj, setting: TSetting) {
     return (
       evt: SlChangeEvent
     ) => {
-      if (settingObj[setting]) {
-        settingObj[setting] = (evt.target as any).value ?? !!(evt.target as SlSwitch).checked;
-        this.dispatchSettingsChange();
+      const settingObj = getSettingObj();
+      const target = evt.target as { value?: unknown; checked?: boolean };
+      // switches/checkboxes report state via `checked`; ranges/selects via `value`
+      let value: unknown = typeof target.checked === 'boolean' ? target.checked : target.value;
+      // ranges/inputs can report numeric strings; don't send strings to numeric engine settings
+      if (typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value))) {
+        value = Number(value);
       }
+      if (typeof value === 'number' && isNaN(value)) {
+        return;
+      }
+      settingObj[setting] = value as TObj[TSetting];
+      this.dispatchSettingsChange();
     };
   }
 
@@ -120,7 +142,7 @@ export class PhysicsSettings extends LitElement {
           <sl-switch
             id="enable-physics"
             .checked=${this.settings.config.enabled ?? false}
-            @sl-change=${this.settingChangeHandler(this.settings.config, 'enabled')}
+            @sl-change=${this.settingChangeHandler(() => this.settings.config, 'enabled')}
           ></sl-switch>
           <label for="enable-physics">Enable Physics*</label>
         </div>
@@ -129,7 +151,7 @@ export class PhysicsSettings extends LitElement {
           <sl-switch
             id="integration"
             .checked=${this.settings.config?.integration?.onScreenOnly ?? false}
-            @sl-change=${this.settingChangeHandler(this.settings.config.integration!, 'onScreenOnly')}
+            @sl-change=${this.settingChangeHandler(() => (this.settings.config.integration ??= { onScreenOnly: false }), 'onScreenOnly')}
           ></sl-switch>
           <label for="integration">On Screen Integration Only**</label>
         </div>
@@ -151,13 +173,13 @@ export class PhysicsSettings extends LitElement {
           max="10"
           step="1"
           .value=${this.settings.config?.substep ?? 1}
-          @sl-change=${this.settingChangeHandler(this.settings.config, 'substep')}
+          @sl-change=${this.settingChangeHandler(() => this.settings.config, 'substep')}
         ></sl-range>
 
         <label for="spatial-partition">Sparse Hash Grid</label>
         <sl-select id="spatial-partition"
           .value=${this.settings.config.spatialPartition} 
-          @sl-change=${this.settingChangeHandler(this.settings.config, 'spatialPartition')}>
+          @sl-change=${this.settingChangeHandler(() => this.settings.config, 'spatialPartition')}>
           <sl-option id="sparse-hash-grid" value="sparse-hash-grid">Sparse Hash Grid</sl-option>
           <sl-option id="dynamic-tree" value="dynamic-tree">Dynamic Tree (deprecated)</sl-option>
         </sl-select>
@@ -170,7 +192,7 @@ export class PhysicsSettings extends LitElement {
           max="500"
           step="10"
           .value=${this.settings.config.sparseHashGrid?.size ?? 100}
-          @sl-change=${this.settingChangeHandler(this.settings.config!.sparseHashGrid!, 'size')}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.sparseHashGrid ??= { size: 100 }), 'size')}
         ></sl-range>
 
       </div>
@@ -183,7 +205,7 @@ export class PhysicsSettings extends LitElement {
         <label for="physics-solver">Physics Solver</label>
         <sl-select id="physics-solver" 
           .value=${this.settings.config.solver} 
-          @sl-change=${this.settingChangeHandler(this.settings.config, 'solver')}>
+          @sl-change=${this.settingChangeHandler(() => this.settings.config, 'solver')}>
           <sl-option id="arcade" value="arcade">Arcade</sl-option>
           <sl-option id="realistic" value="realistic">Realistic</sl-option>
         </sl-select>
@@ -199,7 +221,7 @@ export class PhysicsSettings extends LitElement {
         <label for="arcade-bias">Contact Solve Bias</label>
         <sl-select id="arcade-bias" value="none"
           .value=${this.settings.config.arcade?.contactSolveBias ?? 'none'}
-          @sl-change=${this.settingChangeHandler(this.settings.config.arcade!, 'contactSolveBias')}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.arcade ??= {}), 'contactSolveBias')}
         >
           <sl-option id="none" value="none">None</sl-option>
           <sl-option id="vertical-first" value="vertical-first">Vertical First</sl-option>
@@ -217,7 +239,7 @@ export class PhysicsSettings extends LitElement {
         <label for="arcade-bias">Contact Solve Bias</label>
         <sl-select id="realistic-bias" value="none"
           .value=${this.settings.config.realistic?.contactSolveBias ?? 'none'}
-          @sl-change=${this.settingChangeHandler(this.settings.config.realistic!, 'contactSolveBias')}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.realistic ??= {}), 'contactSolveBias')}
         >
           <sl-option id="none" value="none">None</sl-option>
           <sl-option id="vertical-first" value="vertical-first">Vertical First</sl-option>
@@ -230,7 +252,7 @@ export class PhysicsSettings extends LitElement {
       <div class="widget">
         <sl-checkbox
           .checked=${this.settings.config.realistic?.warmStart ?? true}
-          @sl-change=${this.settingChangeHandler(this.settings.config.realistic!, 'warmStart')}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.realistic ??= {}), 'warmStart')}
         >Warm Start (improves stacks)</sl-checkbox><br>
         <label for="realistic-position-interations">Position Iterations ${this.settings.config.realistic?.positionIterations}</label>
         <sl-range 
@@ -239,8 +261,8 @@ export class PhysicsSettings extends LitElement {
           min="1" 
           max="30" 
           step="1"
-          .value=${this.settings.config.realistic?.positionIterations}
-          @sl-change=${this.settingChangeHandler(this.settings.config.realistic!, 'positionIterations')}
+          .value=${this.settings.config.realistic?.positionIterations ?? 3}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.realistic ??= {}), 'positionIterations')}
         ></sl-range>
 
         <label for="realistic-velocity-interations">Velocity Iterations ${this.settings.config.realistic?.velocityIterations}</label>
@@ -250,8 +272,8 @@ export class PhysicsSettings extends LitElement {
           min="1" 
           max="30" 
           step="1"
-          .value=${this.settings.config.realistic?.velocityIterations}
-          @sl-change=${this.settingChangeHandler(this.settings.config.realistic!, 'velocityIterations')}
+          .value=${this.settings.config.realistic?.velocityIterations ?? 8}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.realistic ??= {}), 'velocityIterations')}
         ></sl-range>
       </div>
     </div>
@@ -261,7 +283,7 @@ export class PhysicsSettings extends LitElement {
       <div class="widget">
         <sl-checkbox
           .checked=${this.settings.config.bodies?.canSleepByDefault ?? true}
-          @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'canSleepByDefault')}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.bodies ??= {}), 'canSleepByDefault')}
         >Can Sleep By Default</sl-checkbox><br>
         <label for="default-mass">Default Mass: ${this.settings.config.bodies?.defaultMass}</label>
         <sl-range 
@@ -270,8 +292,8 @@ export class PhysicsSettings extends LitElement {
           min="1" 
           max="100" 
           step="1"
-          .value=${this.settings.config.bodies?.defaultMass}
-          @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'defaultMass')}
+          .value=${this.settings.config.bodies?.defaultMass ?? 10}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.bodies ??= {}), 'defaultMass')}
         ></sl-range>
 
         <label for="sleep-bias">Sleep Bias ${this.settings.config.bodies?.sleepBias}</label>
@@ -281,8 +303,8 @@ export class PhysicsSettings extends LitElement {
           min=".1" 
           max="1" 
           step=".05"
-          .value=${this.settings.config.bodies?.sleepBias}
-          @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'sleepBias')}
+          .value=${this.settings.config.bodies?.sleepBias ?? 0.9}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.bodies ??= {}), 'sleepBias')}
         ></sl-range>
 
 
@@ -293,8 +315,8 @@ export class PhysicsSettings extends LitElement {
           min=".01" 
           max=".1" 
           step=".01"
-          .value=${this.settings.config.bodies?.sleepEpsilon}
-          @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'sleepEpsilon')}
+          .value=${this.settings.config.bodies?.sleepEpsilon ?? 0.07}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.bodies ??= {}), 'sleepEpsilon')}
         ></sl-range>
 
 
@@ -305,8 +327,8 @@ export class PhysicsSettings extends LitElement {
           min=".1" 
           max=".5" 
           step=".01"
-          .value=${this.settings.config.bodies?.wakeThreshold}
-          @sl-change=${this.settingChangeHandler(this.settings.config.bodies!, 'wakeThreshold')}
+          .value=${this.settings.config.bodies?.wakeThreshold ?? 0.3}
+          @sl-change=${this.settingChangeHandler(() => (this.settings.config.bodies ??= {}), 'wakeThreshold')}
         ></sl-range>
       </div>
     </div>

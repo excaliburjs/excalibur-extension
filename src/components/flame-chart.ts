@@ -11,6 +11,10 @@ export class FlameChart extends LitElement {
     `
   ];
 
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
   @query('canvas')
   flameCanvas!: HTMLCanvasElement;
 

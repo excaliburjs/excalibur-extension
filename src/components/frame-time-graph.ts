@@ -12,8 +12,15 @@ export class FrameTimeGraph extends LitElement {
         background-color: var(--panel-color);
         margin-bottom: 10px;
       }
+      .legend-item {
+        cursor: pointer;
+      }
     `
   ];
+
+  override shouldUpdate() {
+    return this.isConnected;
+  }
 
   line!: d3.Line<number>;
   frameTimeRoot!: HTMLElement;
@@ -23,6 +30,23 @@ export class FrameTimeGraph extends LitElement {
   frameTimeData: number[] = [];
   updateTimeData: number[] = [];
   drawTimeData: number[] = [];
+
+  private static readonly _PATH_IDS: Record<string, string> = {
+    Total: 'line',
+    Update: 'line-update',
+    Draw: 'line-draw'
+  };
+
+  private static readonly _DEFAULT_Y_MAX = 33.333; // ms
+
+  private _focusedKey: string | null = null;
+  private _y!: d3.ScaleLinear<number, number>;
+  private _yMax = FrameTimeGraph._DEFAULT_Y_MAX;
+
+  /** Maps each legend key to its ring buffer of samples. */
+  private _seriesData(): Record<string, number[]> {
+    return { Total: this.frameTimeData, Update: this.updateTimeData, Draw: this.drawTimeData };
+  }
 
   override firstUpdated(): void {
     this.frameTimeRoot = this.renderRoot.querySelector('#frame-time-graph') as HTMLElement;
@@ -47,7 +71,7 @@ export class FrameTimeGraph extends LitElement {
 
     const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
 
-    const y = d3.scaleLinear([0, 33.333], [totalHeight - marginBottom, marginTop]);
+    const y = this._y = d3.scaleLinear([0, FrameTimeGraph._DEFAULT_Y_MAX], [totalHeight - marginBottom, marginTop]);
 
     this.d3Svg = d3
       .create('svg')
@@ -56,34 +80,33 @@ export class FrameTimeGraph extends LitElement {
       .attr('viewBox', [0, 0, totalWidth, totalHeight + 20]) // -10,-10,310,140
       .attr('style', 'max-width: 100%; height: auto; height: intrinsic;');
 
-    this.d3Svg
-      .selectAll('mydots')
+    const legendItems = this.d3Svg
+      .selectAll('g.legend-item')
       .data(legendKeys)
       .enter()
+      .append('g')
+      .attr('class', 'legend-item')
+      .attr('transform', (_, i) => `translate(250, ${20 + i * 25})`) // 25 is the distance between dots
+      .on('click', (_event, d) => this._toggleFocus(d));
+
+    legendItems
+      .append('rect')
+      .attr('x', -10)
+      .attr('y', -10)
+      .attr('width', 60)
+      .attr('height', 20)
+      .attr('fill', 'transparent');
+
+    legendItems
       .append('circle')
-      .attr('cx', 250)
-      .attr('cy', function (d, i) {
-        return 20 + i * 25;
-      }) // 100 is where the first dot appears. 25 is the distance between dots
       .attr('r', 7)
       .style('fill', (d) => color(d));
 
-    // Add one dot in the legend for each name.
-    this.d3Svg
-      .selectAll('mylabels')
-      .data(legendKeys)
-      .enter()
+    legendItems
       .append('text')
-      .attr('x', 270)
-      .attr('y', function (d, i) {
-        return 20 + i * 25;
-      }) // 100 is where the first dot appears. 25 is the distance between dots
-      .style('fill', function (d) {
-        return color(d);
-      })
-      .text(function (d) {
-        return d;
-      })
+      .attr('x', 20)
+      .style('fill', (d) => color(d))
+      .text((d) => d)
       .attr('text-anchor', 'left')
       .style('alignment-baseline', 'middle');
 
@@ -107,11 +130,12 @@ export class FrameTimeGraph extends LitElement {
     this.line = d3
       .line<number>()
       .x((_, index) => x(index))
-      .y((d) => y(d));
+      .y((d) => this._y(d));
 
     // draw max line
     this.d3Svg
       .append('line')
+      .attr('id', 'budget-line')
       .style('stroke-dasharray', '3, 3')
       .attr('stroke', 'currentColor')
       .attr('x1', x(0))
@@ -146,13 +170,66 @@ export class FrameTimeGraph extends LitElement {
     this.frameTimeRoot.appendChild(this.d3Svg.node()!);
   }
 
+  /**
+   * Zooms the y axis to fit the focused series (nice-rounded), or restores
+   * the default range when nothing is focused; redraws axis, budget line,
+   * and series paths only when the domain actually changes.
+   */
+  private _rescaleY() {
+    let max = FrameTimeGraph._DEFAULT_Y_MAX;
+    if (this._focusedKey !== null) {
+      const data = this._seriesData()[this._focusedKey];
+      if (data) {
+        max = Math.max(1, ...data);
+      }
+    }
+    this._y.domain([0, max]);
+    if (this._focusedKey !== null) {
+      this._y.nice(5);
+    }
+    const domainMax = this._y.domain()[1];
+    if (domainMax === this._yMax) {
+      return;
+    }
+    this._yMax = domainMax;
+    this.d3Svg.select<SVGGElement>('g#yAxis').call(d3.axisLeft(this._y).tickArguments([5]));
+    this.d3Svg
+      .select('line#budget-line')
+      .attr('y1', this._y(16.6))
+      .attr('y2', this._y(16.6));
+    for (const [legendKey, pathId] of Object.entries(FrameTimeGraph._PATH_IDS)) {
+      this.d3Svg.select('path#' + pathId).attr('d', this.line(this._seriesData()[legendKey]));
+    }
+  }
+
+  /** Toggles focus on a series; re-clicking the focused key clears it. */
+  private _toggleFocus(key: string) {
+    this._focusedKey = this._focusedKey === key ? null : key;
+    this._rescaleY();
+    for (const [legendKey, pathId] of Object.entries(FrameTimeGraph._PATH_IDS)) {
+      const focused = this._focusedKey === null || this._focusedKey === legendKey;
+      this.d3Svg
+        .select('path#' + pathId)
+        .attr('stroke-opacity', focused ? 1 : 0.15)
+        .attr('stroke-width', this._focusedKey === legendKey ? 2.5 : 1.5);
+    }
+    this.d3Svg
+      .selectAll<SVGGElement, string>('g.legend-item')
+      .attr('opacity', (d) => (this._focusedKey === null || this._focusedKey === d ? 1 : 0.35));
+  }
+
   draw(frameTime: number, updateTime: number, drawTime: number) {
+    if (!this.isConnected) {
+      return;
+    }
     this.frameTimeData.push(frameTime);
     this.frameTimeData.shift();
     this.updateTimeData.push(updateTime);
     this.updateTimeData.shift();
     this.drawTimeData.push(drawTime);
     this.drawTimeData.shift();
+
+    this._rescaleY();
 
     // Append a path for the line.
     this.d3Svg.select('path#line').attr('d', this.line(this.frameTimeData));

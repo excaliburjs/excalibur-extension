@@ -1,7 +1,7 @@
 {
   "name": "Excalibur Dev Tools",
   "author": "Erik Onarheim & contributors",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Excalibur.js browser plugin for debugging your games",
   "manifest_version": 3,
   "devtools_page": "../devtools.html",
@@ -13,7 +13,7 @@
   },
   "permissions": ["tabs", "scripting"],
   "background": {
-    "scripts": ["../background.js"]
+    "scripts": ["../background.ts"]
   },
   "host_permissions": [
     "http://localhost/*",

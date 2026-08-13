@@ -1,11 +1,27 @@
+import './screen-debug-settings';
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators";
 import { colors } from "../colors";
 import { common } from "../common";
 import { BoundingBox, Color, DisplayMode, EngineOptions, Resolution, ViewportDimension } from "../@types/excalibur";
 
+interface ScreenLike {
+  viewport: ViewportDimension;
+  resolution: Resolution;
+  displayMode: DisplayMode;
+  pixelRatio: number;
+  unsafeArea: BoundingBox;
+  contentArea: BoundingBox;
+}
+
+interface CameraLike {
+  pos: { _x: number; _y: number };
+}
+
 const colorToHex = (color: Color) => {
-  if (!color) return "#FFFFFFFF";
+  if (!color) {
+    return "#FFFFFFFF";
+  }
   const r = color.r.toString(16).padStart(2, '0');
   const g = color.g.toString(16).padStart(2, '0');
   const b = color.b.toString(16).padStart(2, '0');
@@ -26,20 +42,29 @@ export class ScreenAndCamera extends LitElement {
   ];
 
 
-  @property({ type: Object }) screen: {
-    viewport: ViewportDimension,
-    resolution: Resolution,
-    displayMode: DisplayMode,
-    pixelRatio: number,
-    unsafeArea: BoundingBox,
-    contentArea: BoundingBox
-  } = {} as any;
+  override shouldUpdate() {
+    return this.isConnected;
+  }
+
+  @property({ type: Object }) screen: ScreenLike = {} as unknown as ScreenLike;
 
   @property({ type: Object }) config: EngineOptions = {};
-  @property({ type: Object }) camera: any = {};
+  @property({ type: Object }) camera: CameraLike = {} as unknown as CameraLike;
+
+  /**
+   * When false, Excalibur is older than v0.33.0 and the screen-debug overlay
+   * is unsupported. Forwarded to <screen-debug-settings .unsupported>.
+   */
+  @property({ type: Boolean }) isV33OrLater = false;
 
   render() {
     return html`
+
+<div class="row">
+  <div class="widget">
+    <screen-debug-settings .unsupported=${!this.isV33OrLater}></screen-debug-settings>
+  </div>
+</div>
 
 <div class="row">
   <div class="widget">

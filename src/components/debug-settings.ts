@@ -1,145 +1,20 @@
 import { css, html, LitElement } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
 import { SlChangeEvent, SlColorPicker, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
+import {
+  settingsStore,
+  settingsSchema,
+  hexToColor,
+  colorToHex,
+  Settings,
+  BooleanSettingsKey,
+  ColorSettingsKey,
+} from '../settings';
 
-interface Color {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-}
-
-const black: Color = {
-  r: 0,
-  g: 0,
-  b: 0,
-  a: 1.0
-};
-
-
-const transparent: Color = {
-  r: 0,
-  g: 0,
-  b: 0,
-  a: 0.0
-};
-
-const hexToColor = (hex: string) => {
-  hex = hex.substring(1);
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  let a = 1.0;
-  if (hex.length > 6) {
-    a = parseInt(hex.substring(6, 8), 16) / 255;
-  }
-  return { r, g, b, a } satisfies Color;
-};
-
-const colorToHex = (color: Color) => {
-  const r = color.r.toString(16).padStart(2, '0');
-  const g = color.g.toString(16).padStart(2, '0');
-  const b = color.b.toString(16).padStart(2, '0');
-  const a = Math.floor(color.a * 255).toString(16).padStart(2, '0');
-  return `#${r}${g}${b}${a}`;
-};
-
-export interface Settings {
-  debugTextForegroundColor: Color;
-  debugTextBackgroundColor: Color;
-  debugTextBorderColor: Color;
-
-  showNames: boolean;
-  showIds: boolean;
-
-  showPos: boolean;
-  showPosLabel: boolean;
-  posColor: Color;
-  showRotation: boolean;
-  rotationColor: Color;
-  showScale: boolean;
-  scaleColor: Color;
-  showZIndex: boolean;
-
-  showGraphicsBounds: boolean;
-  graphicsBoundsColor: Color;
-
-  showColliderBounds: boolean;
-  colliderBoundsColor: Color;
-
-  showGeometryBounds: boolean;
-  geometryBoundsColor: Color;
-
-  showCollisionGroup: boolean;
-  showCollisionType: boolean;
-  showMass: boolean;
-  showMotion: boolean;
-  showSleeping: boolean;
-
-  showContact: boolean;
-  contactColor: Color;
-  showContactNormal: boolean;
-  contactNormalColor: Color;
-
-  showSpacePartition: boolean;
-
-
-  showTileMapGrid: boolean;
-  tileMapGridColor: Color;
-  showIsometricGrid: boolean;
-  isometricGridColor: Color;
-}
-
-export const DefaultSettings: Settings = {
-  debugTextForegroundColor: { r: 0, g: 0, b: 0, a: 1 },
-  debugTextBackgroundColor: { r: 0, g: 0, b: 0, a: 0 },
-  debugTextBorderColor: { r: 0, g: 0, b: 0, a: 0 },
-
-  showNames: false,
-  showIds: false,
-
-  showPos: false,
-  showPosLabel: false,
-  posColor: { r: 0, g: 0, b: 0, a: 1 },
-
-  showRotation: false,
-  rotationColor: { r: 0, g: 0, b: 0, a: 1 },
-
-  showScale: false,
-  scaleColor: { r: 0, g: 0, b: 0, a: 1 },
-  showZIndex: false,
-
-  showGraphicsBounds: false,
-  graphicsBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
-
-  showColliderBounds: false,
-  colliderBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
-
-  showGeometryBounds: false,
-  geometryBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
-
-  showCollisionGroup: false,
-  showCollisionType: false,
-  showMotion: false,
-  showSleeping: false,
-  showMass: false,
-
-  showContact: false,
-  contactColor: { r: 255, g: 0, b: 0, a: 1 },
-  showContactNormal: false,
-  contactNormalColor: { r: 255, g: 0, b: 0, a: 1 },
-
-  showSpacePartition: false,
-
-
-  showTileMapGrid: false,
-  tileMapGridColor: { r: 0, g: 0, b: 0, a: 1 },
-  showIsometricGrid: false,
-  isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
-
-};
+// Re-export for backward compatibility
+export { Settings, DefaultSettings } from '../settings';
 
 /**
  * @event debug-settings-change - Emitted when settings change
@@ -170,66 +45,47 @@ export class DebugSettings extends LitElement {
     `
   ];
 
-  @property({ type: Object })
-  settings: Settings | null = {
-    debugTextForegroundColor: { r: 0, g: 0, b: 0, a: 1 },
-    debugTextBackgroundColor: { r: 0, g: 0, b: 0, a: 0 },
-    debugTextBorderColor: { r: 0, g: 0, b: 0, a: 0 },
-
-    showNames: false,
-    showIds: false,
-    showPos: false,
-    showPosLabel: false,
-    posColor: { r: 0, g: 0, b: 0, a: 1 },
-    showRotation: false,
-    rotationColor: { r: 0, g: 0, b: 0, a: 1 },
-    showScale: false,
-    scaleColor: { r: 0, g: 0, b: 0, a: 1 },
-    showZIndex: false,
-
-    showGraphicsBounds: false,
-    graphicsBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
-    showColliderBounds: false,
-    colliderBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
-    showGeometryBounds: false,
-    geometryBoundsColor: { r: 0, g: 0, b: 0, a: 1 },
-    showCollisionGroup: false,
-    showCollisionType: false,
-    showMass: false,
-    showSleeping: false,
-    showMotion: false,
-
-    showContact: false,
-    contactColor: { r: 0, g: 0, b: 0, a: 1 },
-    showContactNormal: false,
-    contactNormalColor: { r: 0, g: 0, b: 0, a: 1 },
-
-    showSpacePartition: false,
-
-    showTileMapGrid: false,
-    tileMapGridColor: { r: 0, g: 0, b: 0, a: 1 },
-    showIsometricGrid: false,
-    isometricGridColor: { r: 0, g: 0, b: 0, a: 1 },
-
-
-  };
-
-  updateSettings(settings: Settings) {
-    this.settings = settings;
-    this.requestUpdate();
+  override shouldUpdate() {
+    return this.isConnected;
   }
 
-  dispatchDebugSettingsChange() {
+  private _unsubscribe: (() => void) | null = null;
+
+  connectedCallback() {
+    super.connectedCallback();
+    const handler = () => {
+      if (!this.isConnected) {
+        return;
+      }
+      this.requestUpdate();
+    };
+    settingsStore.addEventListener('change', handler);
+    this._unsubscribe = () => settingsStore.removeEventListener('change', handler);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubscribe?.();
+  }
+
+  /**
+   * Update settings from external source (e.g., initial load from game state)
+   */
+  updateSettings(settings: Settings) {
+    settingsStore.setAll(settings);
+  }
+
+  private _dispatchDebugSettingsChange() {
     this.dispatchEvent(
-      new CustomEvent<Settings | null>('debug-settings-change', {
-        detail: this.settings,
+      new CustomEvent<Settings>('debug-settings-change', {
+        detail: settingsStore.getAll(),
         bubbles: true,
         composed: true
       })
     );
   }
 
-  dispatchToggleDebugDraw() {
+  private _dispatchToggleDebugDraw() {
     this.dispatchEvent(
       new CustomEvent('toggle-debug-draw', {
         bubbles: true,
@@ -238,24 +94,19 @@ export class DebugSettings extends LitElement {
     );
   }
 
-  settingSwitchChangeHandler(setting: keyof Settings) {
+  private _handleSwitchChange(key: BooleanSettingsKey) {
     return (evt: SlChangeEvent) => {
-      if (this.settings && typeof this.settings[setting] === 'boolean') {
-        (this.settings[setting] as boolean) = !!(evt.target as SlSwitch).checked;
-        this.dispatchDebugSettingsChange();
-      }
+      settingsStore.setBoolean(key, (evt.target as SlSwitch).checked);
+      this._dispatchDebugSettingsChange();
     };
   }
 
-  settingsColorInputHandler(setting: keyof Settings) {
+  private _handleColorInput(key: ColorSettingsKey) {
     return (evt: SlInputEvent) => {
-      if (this.settings && typeof this.settings[setting] === 'object') {
-        (this.settings[setting] as Color) = hexToColor((evt.target as SlColorPicker).value);
-        this.dispatchDebugSettingsChange();
-      }
+      settingsStore.setColor(key, hexToColor((evt.target as SlColorPicker).value));
+      this._dispatchDebugSettingsChange();
     };
   }
-
 
   transformHtml() {
     return html`
@@ -266,18 +117,18 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-pos"
-              .checked=${this.settings?.showPos ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showPos')}
+              .checked=${settingsStore.get('showPos')}
+              @sl-change=${this._handleSwitchChange('showPos')}
             ></sl-switch>
-            <label for="show-pos">Show Position</label>
+            <label for="show-pos">${settingsSchema.showPos.label}</label>
           </div>
           <div>
             <sl-switch
               id="show-pos-label"
-              .checked=${this.settings?.showPosLabel ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showPosLabel')}
+              .checked=${settingsStore.get('showPosLabel')}
+              @sl-change=${this._handleSwitchChange('showPosLabel')}
             ></sl-switch>
-            <label for="show-pos-label">Show Coordinates</label>
+            <label for="show-pos-label">${settingsSchema.showPosLabel.label}</label>
           </div>
           <div>
             <sl-color-picker
@@ -285,9 +136,9 @@ export class DebugSettings extends LitElement {
               format="hex"
               .noFormatToggle=${true}
               .hoist=${true}
-              .value=${colorToHex(this.settings?.posColor ?? black)}
+              .value=${colorToHex(settingsStore.get('posColor'))}
               opacity
-              @sl-input=${this.settingsColorInputHandler('posColor')}>Color</sl-color-picker>
+              @sl-input=${this._handleColorInput('posColor')}>Color</sl-color-picker>
           </div>
         </div>
 
@@ -295,10 +146,10 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-rotation"
-              .checked=${this.settings?.showRotation ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showRotation')}
+              .checked=${settingsStore.get('showRotation')}
+              @sl-change=${this._handleSwitchChange('showRotation')}
             ></sl-switch>
-            <label for="show-rotation">Show Rotation</label>
+            <label for="show-rotation">${settingsSchema.showRotation.label}</label>
           </div>
 
           <div>
@@ -307,9 +158,9 @@ export class DebugSettings extends LitElement {
               format="hex"
               .noFormatToggle=${true}
               .hoist=${true}
-              .value=${colorToHex(this.settings?.rotationColor ?? black)}
+              .value=${colorToHex(settingsStore.get('rotationColor'))}
               opacity
-              @sl-input=${this.settingsColorInputHandler('rotationColor')}>Color</sl-color-picker>
+              @sl-input=${this._handleColorInput('rotationColor')}>Color</sl-color-picker>
           </div>
         </div>
 
@@ -317,10 +168,10 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-scale"
-              .checked=${this.settings?.showScale ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showScale')}
+              .checked=${settingsStore.get('showScale')}
+              @sl-change=${this._handleSwitchChange('showScale')}
             ></sl-switch>
-            <label for="show-scale">Show Scale</label>
+            <label for="show-scale">${settingsSchema.showScale.label}</label>
           </div>
           <div>
             <sl-color-picker
@@ -328,9 +179,9 @@ export class DebugSettings extends LitElement {
               format="hex"
               .noFormatToggle=${true}
               .hoist=${true}
-              .value=${colorToHex(this.settings?.scaleColor ?? black)}
+              .value=${colorToHex(settingsStore.get('scaleColor'))}
               opacity
-              @sl-input=${this.settingsColorInputHandler('scaleColor')}>Color</sl-color-picker>
+              @sl-input=${this._handleColorInput('scaleColor')}>Color</sl-color-picker>
           </div>
         </div>
 
@@ -338,17 +189,17 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-zindex"
-              .checked=${this.settings?.showZIndex ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showZIndex')}
+              .checked=${settingsStore.get('showZIndex')}
+              @sl-change=${this._handleSwitchChange('showZIndex')}
             ></sl-switch>
-            <label for="show-rotation">Show Z Index</label>
+            <label for="show-zindex">${settingsSchema.showZIndex.label}</label>
           </div>
           <div>
           </div>
         </div>
       </form>
     </div>
-    `
+    `;
   }
 
   componentsHtml() {
@@ -360,19 +211,19 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-graphics-bounds"
-              .checked=${this.settings?.showGraphicsBounds ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showGraphicsBounds')}
+              .checked=${settingsStore.get('showGraphicsBounds')}
+              @sl-change=${this._handleSwitchChange('showGraphicsBounds')}
             ></sl-switch>
-            <label for="show-graphics-bounds">Show Graphics Bounds</label>
+            <label for="show-graphics-bounds">${settingsSchema.showGraphicsBounds.label}</label>
           </div>
 
           <div>
             <sl-color-picker
               id="graphics-bounds-colors"
               .hoist=${true}
-              .value=${colorToHex(this.settings?.graphicsBoundsColor ?? black)}
+              .value=${colorToHex(settingsStore.get('graphicsBoundsColor'))}
               opacity
-              @sl-input=${this.settingsColorInputHandler('graphicsBoundsColor')}
+              @sl-input=${this._handleColorInput('graphicsBoundsColor')}
               >Color</sl-color-picker
             >
           </div>
@@ -382,19 +233,19 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-collider-bounds"
-              .checked=${this.settings?.showColliderBounds ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showColliderBounds')}
+              .checked=${settingsStore.get('showColliderBounds')}
+              @sl-change=${this._handleSwitchChange('showColliderBounds')}
             ></sl-switch>
-            <label for="show-collider-bounds">Show Collider Bounds</label>
+            <label for="show-collider-bounds">${settingsSchema.showColliderBounds.label}</label>
           </div>
 
           <div>
             <sl-color-picker
               id="collider-bounds-colors"
               .hoist=${true}
-              .value=${colorToHex(this.settings?.colliderBoundsColor ?? black)}
+              .value=${colorToHex(settingsStore.get('colliderBoundsColor'))}
               opacity
-              @sl-input=${this.settingsColorInputHandler('colliderBoundsColor')}
+              @sl-input=${this._handleColorInput('colliderBoundsColor')}
               >Color</sl-color-picker
             >
           </div>
@@ -404,19 +255,19 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-geometry-bounds"
-              .checked=${this.settings?.showGeometryBounds ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showGeometryBounds')}
+              .checked=${settingsStore.get('showGeometryBounds')}
+              @sl-change=${this._handleSwitchChange('showGeometryBounds')}
             ></sl-switch>
-            <label for="show-geometry-bounds">Show Geometry</label>
+            <label for="show-geometry-bounds">${settingsSchema.showGeometryBounds.label}</label>
           </div>
 
           <div>
             <sl-color-picker
               id="collider-geometry-colors"
               .hoist=${true}
-              .value=${colorToHex(this.settings?.geometryBoundsColor ?? black)}
+              .value=${colorToHex(settingsStore.get('geometryBoundsColor'))}
               opacity
-              @sl-input=${this.settingsColorInputHandler('geometryBoundsColor')}
+              @sl-input=${this._handleColorInput('geometryBoundsColor')}
               >Color</sl-color-picker>
           </div>
         </div>
@@ -425,10 +276,10 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-collision-type"
-              .checked=${this.settings?.showCollisionType ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showCollisionType')}
+              .checked=${settingsStore.get('showCollisionType')}
+              @sl-change=${this._handleSwitchChange('showCollisionType')}
             ></sl-switch>
-            <label for="show-collision-type">Show Collision Type</label>
+            <label for="show-collision-type">${settingsSchema.showCollisionType.label}</label>
           </div>
           <div>
           </div>
@@ -438,19 +289,18 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-collision-group"
-              .checked=${this.settings?.showCollisionGroup ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showCollisionGroup')}
+              .checked=${settingsStore.get('showCollisionGroup')}
+              @sl-change=${this._handleSwitchChange('showCollisionGroup')}
             ></sl-switch>
-            <label for="show-collision-group">Show Collision Group</label>
+            <label for="show-collision-group">${settingsSchema.showCollisionGroup.label}</label>
           </div>
           <div>
           </div>
         </div>
       </form>
     </div>
-    `
+    `;
   }
-
 
   entityHtml() {
     return html`
@@ -460,22 +310,22 @@ export class DebugSettings extends LitElement {
         <div>
           <sl-switch
             id="show-names"
-            .checked=${this.settings?.showNames ?? false}
-            @sl-change=${this.settingSwitchChangeHandler('showNames')}
+            .checked=${settingsStore.get('showNames')}
+            @sl-change=${this._handleSwitchChange('showNames')}
           ></sl-switch>
-          <label for="show-names">Show Names</label>
+          <label for="show-names">${settingsSchema.showNames.label}</label>
         </div>
         <div>
           <sl-switch
             id="show-ids"
-            .checked=${this.settings?.showIds ?? false}
-            @sl-change=${this.settingSwitchChangeHandler('showIds')}
+            .checked=${settingsStore.get('showIds')}
+            @sl-change=${this._handleSwitchChange('showIds')}
           ></sl-switch>
-          <label for="show-ids">Show Ids</label>
+          <label for="show-ids">${settingsSchema.showIds.label}</label>
         </div>
       </form>
     </div>
-    `
+    `;
   }
 
   debugTextHtml() {
@@ -488,9 +338,9 @@ export class DebugSettings extends LitElement {
           <sl-color-picker
             id="debug-text-foreground-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.debugTextForegroundColor ?? black)}
+            .value=${colorToHex(settingsStore.get('debugTextForegroundColor'))}
             opacity
-            @sl-input=${this.settingsColorInputHandler('debugTextForegroundColor')}>Foreground Color
+            @sl-input=${this._handleColorInput('debugTextForegroundColor')}>Foreground Color
           </sl-color-picker>
        </div>
 
@@ -499,9 +349,9 @@ export class DebugSettings extends LitElement {
           <sl-color-picker
             id="debug-text-background-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.debugTextBackgroundColor ?? transparent)}
+            .value=${colorToHex(settingsStore.get('debugTextBackgroundColor'))}
             opacity
-            @sl-input=${this.settingsColorInputHandler('debugTextBackgroundColor')}>Background Color
+            @sl-input=${this._handleColorInput('debugTextBackgroundColor')}>Background Color
           </sl-color-picker>
         </div>
 
@@ -510,15 +360,14 @@ export class DebugSettings extends LitElement {
           <sl-color-picker
             id="debug-text-border-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.debugTextBorderColor ?? transparent)}
+            .value=${colorToHex(settingsStore.get('debugTextBorderColor'))}
             opacity
-            @sl-input=${this.settingsColorInputHandler('debugTextBorderColor')}>Background Color
+            @sl-input=${this._handleColorInput('debugTextBorderColor')}>Background Color
           </sl-color-picker>
         </div>
       </form>
     </div>
-    `
-
+    `;
   }
 
   physicsHtml() {
@@ -531,17 +380,17 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-contact-normal"
-              .checked=${this.settings?.showContactNormal ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showContactNormal')}
+              .checked=${settingsStore.get('showContactNormal')}
+              @sl-change=${this._handleSwitchChange('showContactNormal')}
             ></sl-switch>
-            <label for="show-contact-normal">Show Contact Normal</label>
+            <label for="show-contact-normal">${settingsSchema.showContactNormal.label}</label>
           </div>
           <sl-color-picker
             id="debug-contact-normal-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.contactNormalColor ?? black)}
+            .value=${colorToHex(settingsStore.get('contactNormalColor'))}
             opacity
-            @sl-input=${this.settingsColorInputHandler('contactNormalColor')}>Contact Normal Color
+            @sl-input=${this._handleColorInput('contactNormalColor')}>Contact Normal Color
           </sl-color-picker>
        </div>
 
@@ -549,17 +398,17 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-contact"
-              .checked=${this.settings?.showContact ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showContact')}
+              .checked=${settingsStore.get('showContact')}
+              @sl-change=${this._handleSwitchChange('showContact')}
             ></sl-switch>
-            <label for="show-contact-normal">Show Contact</label>
+            <label for="show-contact">${settingsSchema.showContact.label}</label>
           </div>
           <sl-color-picker
             id="debug-contact-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.contactColor ?? black)}
+            .value=${colorToHex(settingsStore.get('contactColor'))}
             opacity
-            @sl-input=${this.settingsColorInputHandler('contactColor')}>Contact Color
+            @sl-input=${this._handleColorInput('contactColor')}>Contact Color
           </sl-color-picker>
         </div>
 
@@ -567,10 +416,10 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-space-partitioning"
-              .checked=${this.settings?.showSpacePartition ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showSpacePartition')}
+              .checked=${settingsStore.get('showSpacePartition')}
+              @sl-change=${this._handleSwitchChange('showSpacePartition')}
             ></sl-switch>
-            <label for="show-contact-normal">Show Space Partitioning</label>
+            <label for="show-space-partitioning">${settingsSchema.showSpacePartition.label}</label>
           </div>
           <div>
           </div>
@@ -580,10 +429,10 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-body-mass"
-              .checked=${this.settings?.showMass ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showMass')}
+              .checked=${settingsStore.get('showMass')}
+              @sl-change=${this._handleSwitchChange('showMass')}
             ></sl-switch>
-            <label for="show-body-mass">Show Body Mass</label>
+            <label for="show-body-mass">${settingsSchema.showMass.label}</label>
           </div>
           <div>
           </div>
@@ -593,10 +442,10 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-body-motion"
-              .checked=${this.settings?.showMotion?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showMotion')}
+              .checked=${settingsStore.get('showMotion')}
+              @sl-change=${this._handleSwitchChange('showMotion')}
             ></sl-switch>
-            <label for="show-body-motion">Show Body Motion</label>
+            <label for="show-body-motion">${settingsSchema.showMotion.label}</label>
           </div>
           <div>
           </div>
@@ -606,18 +455,17 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-body-sleeping"
-              .checked=${this.settings?.showSleeping?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showSleeping')}
+              .checked=${settingsStore.get('showSleeping')}
+              @sl-change=${this._handleSwitchChange('showSleeping')}
             ></sl-switch>
-            <label for="show-body-sleeping">Show Body Sleeping</label>
+            <label for="show-body-sleeping">${settingsSchema.showSleeping.label}</label>
           </div>
           <div>
           </div>
         </div>
       </form>
     </div>
-    `
-
+    `;
   }
 
   tilemapHtml() {
@@ -629,17 +477,17 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-grid-tilemap"
-              .checked=${this.settings?.showTileMapGrid ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showTileMapGrid')}
+              .checked=${settingsStore.get('showTileMapGrid')}
+              @sl-change=${this._handleSwitchChange('showTileMapGrid')}
             ></sl-switch>
-            <label for="show-grid-tilemap">Show Grid Tilemap</label>
+            <label for="show-grid-tilemap">${settingsSchema.showTileMapGrid.label}</label>
           </div>
           <sl-color-picker
             id="debug-grid-tilemap-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.tileMapGridColor ?? black)}
+            .value=${colorToHex(settingsStore.get('tileMapGridColor'))}
             opacity
-            @sl-input=${this.settingsColorInputHandler('tileMapGridColor')}>Grid Tilemap Color
+            @sl-input=${this._handleColorInput('tileMapGridColor')}>Grid Tilemap Color
           </sl-color-picker>
        </div>
 
@@ -647,23 +495,22 @@ export class DebugSettings extends LitElement {
           <div>
             <sl-switch
               id="show-grid-isometric"
-              .checked=${this.settings?.showIsometricGrid ?? false}
-              @sl-change=${this.settingSwitchChangeHandler('showIsometricGrid')}
+              .checked=${settingsStore.get('showIsometricGrid')}
+              @sl-change=${this._handleSwitchChange('showIsometricGrid')}
             ></sl-switch>
-            <label for="show-grid-isometric">Show Grid Isometric</label>
+            <label for="show-grid-isometric">${settingsSchema.showIsometricGrid.label}</label>
           </div>
           <sl-color-picker
             id="debug-grid-isometric-color"
             .hoist=${true}
-            .value=${colorToHex(this.settings?.isometricGridColor ?? black)}
+            .value=${colorToHex(settingsStore.get('isometricGridColor'))}
             opacity
-            @sl-input=${this.settingsColorInputHandler('isometricGridColor')}>Grid Isometric Color
+            @sl-input=${this._handleColorInput('isometricGridColor')}>Grid Isometric Color
           </sl-color-picker>
         </div>
       </form>
     </div>
-    `
-
+    `;
   }
 
   render() {
@@ -674,7 +521,7 @@ export class DebugSettings extends LitElement {
     <div class="section">
       <form>
         <div>
-          <sl-button id="toggle-debug" @click="${this.dispatchToggleDebugDraw}">Toggle Debug Draw</sl-button>
+          <sl-button id="toggle-debug" @click="${this._dispatchToggleDebugDraw}">Toggle Debug Draw</sl-button>
         </div>
       </form>
     </div>
