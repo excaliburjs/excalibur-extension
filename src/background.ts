@@ -1907,7 +1907,7 @@ function execInFrame(
     })
     .catch((e) => {
       console.info('executeScript failed:', e);
-      return [] as (chrome.scripting.InjectionResult[]);
+      return [] as chrome.scripting.InjectionResult[];
     });
 }
 
