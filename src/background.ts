@@ -283,8 +283,8 @@ function startEntityPicker() {
             continue;
           }
           try {
-            if (entity.graphics) {
-              const bounds = entity.graphics?.bounds;
+            if ((entity as any).graphics) {
+              const bounds = (entity as any).graphics?.bounds;
               if (bounds && typeof bounds.contains === 'function' && bounds.contains(worldVec)) {
                 hits.set(entity.id, entity);
               }
