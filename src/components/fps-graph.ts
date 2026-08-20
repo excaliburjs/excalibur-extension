@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import { css, html, LitElement } from 'lit';
-import { customElement } from 'lit/decorators';
+import { customElement } from 'lit/decorators.js';
 import { colors } from '../colors';
 
 @customElement('fps-graph')

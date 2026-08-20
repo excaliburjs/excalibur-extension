@@ -1198,7 +1198,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
 
   // Send game state to dev tools
   let currentScene = 'root';
-  const sceneNames = [];
+  const sceneNames: string[] = [];
   for (const key of Object.keys(game.scenes)) {
     if (game.currentSceneName === key) {
       currentScene = key;
@@ -1907,7 +1907,7 @@ function execInFrame(
     })
     .catch((e) => {
       console.info('executeScript failed:', e);
-      return [] as chrome.scripting.InjectionResult[];
+      return [] as (chrome.scripting.InjectionResult[]);
     });
 }
 

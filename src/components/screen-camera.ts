@@ -1,6 +1,6 @@
 import './screen-debug-settings';
 import { css, html, LitElement } from 'lit';
-import { customElement, property } from 'lit/decorators';
+import { customElement, property } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
 import { BoundingBox, Color, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';

@@ -1,7 +1,7 @@
 import { css, html, LitElement } from 'lit';
 import { colors } from '../colors';
 import * as d3 from 'd3';
-import { customElement } from 'lit/decorators';
+import { customElement } from 'lit/decorators.js';
 
 const totalHeight = 350; //px
 const totalWidth = 900; //px

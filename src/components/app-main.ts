@@ -35,7 +35,7 @@ import { MaterialDetail, MaterialsState, UniformChange } from './material-detail
 import { MaterialSelected } from './materials-panel';
 import type { EntityGraphicsDetail, EntityPropertyUpdate, ExInstance, HeartbeatMessage, InspectedEntity, PickerState } from '../protocol';
 
-globalThis.browser = globalThis.browser || chrome;
+globalThis.browser = globalThis.browser || (globalThis.chrome);
 
 interface Point {
   _x: number;

@@ -2,7 +2,7 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
-import { repeat } from 'lit/directives/repeat';
+import { repeat } from 'lit/directives/repeat.js';
 
 @customElement('system-stats-list')
 export class SystemStatsList extends LitElement {
