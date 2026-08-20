@@ -3,14 +3,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
 import { SlChangeEvent, SlColorPicker, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
-import {
-  settingsStore,
-  settingsSchema,
-  hexToColor,
-  colorToHex,
-  BooleanSettingsKey,
-  ColorSettingsKey,
-} from '../settings';
+import { settingsStore, settingsSchema, hexToColor, colorToHex, BooleanSettingsKey, ColorSettingsKey } from '../settings';
 
 /**
  * Controls for the `debug.screen.*` overlay (Excalibur v0.33+):
@@ -135,70 +128,78 @@ export class ScreenDebugSettings extends LitElement {
             <div></div>
           </div>
 
-          ${showAll ? html`
-            <div class="form-row indent">
-              <div>
-                <sl-switch
-                  id="screen-debug-show-content-area"
-                  .checked=${settingsStore.get('screenDebugShowContentArea')}
-                  @sl-change=${this._handleSwitchChange('screenDebugShowContentArea')}
-                ></sl-switch>
-                <label for="screen-debug-show-content-area">${settingsSchema.screenDebugShowContentArea.label}</label>
-              </div>
-              <div>
-                <sl-color-picker
-                  id="screen-debug-content-area-color"
-                  format="hex"
-                  .noFormatToggle=${true}
-                  .hoist=${true}
-                  .value=${colorToHex(settingsStore.get('screenContentAreaColor'))}
-                  opacity
-                  @sl-input=${this._handleColorInput('screenContentAreaColor')}>Color</sl-color-picker>
-              </div>
-            </div>
+          ${showAll
+            ? html`
+                <div class="form-row indent">
+                  <div>
+                    <sl-switch
+                      id="screen-debug-show-content-area"
+                      .checked=${settingsStore.get('screenDebugShowContentArea')}
+                      @sl-change=${this._handleSwitchChange('screenDebugShowContentArea')}
+                    ></sl-switch>
+                    <label for="screen-debug-show-content-area">${settingsSchema.screenDebugShowContentArea.label}</label>
+                  </div>
+                  <div>
+                    <sl-color-picker
+                      id="screen-debug-content-area-color"
+                      format="hex"
+                      .noFormatToggle=${true}
+                      .hoist=${true}
+                      .value=${colorToHex(settingsStore.get('screenContentAreaColor'))}
+                      opacity
+                      @sl-input=${this._handleColorInput('screenContentAreaColor')}
+                      >Color</sl-color-picker
+                    >
+                  </div>
+                </div>
 
-            <div class="form-row indent">
-              <div>
-                <sl-switch
-                  id="screen-debug-show-unsafe-area"
-                  .checked=${settingsStore.get('screenDebugShowUnsafeArea')}
-                  @sl-change=${this._handleSwitchChange('screenDebugShowUnsafeArea')}
-                ></sl-switch>
-                <label for="screen-debug-show-unsafe-area">${settingsSchema.screenDebugShowUnsafeArea.label}</label>
-              </div>
-              <div>
-                <sl-color-picker
-                  id="screen-debug-unsafe-area-color"
-                  format="hex"
-                  .noFormatToggle=${true}
-                  .hoist=${true}
-                  .value=${colorToHex(settingsStore.get('screenUnsafeAreaColor'))}
-                  opacity
-                  @sl-input=${this._handleColorInput('screenUnsafeAreaColor')}>Color</sl-color-picker>
-              </div>
-            </div>
+                <div class="form-row indent">
+                  <div>
+                    <sl-switch
+                      id="screen-debug-show-unsafe-area"
+                      .checked=${settingsStore.get('screenDebugShowUnsafeArea')}
+                      @sl-change=${this._handleSwitchChange('screenDebugShowUnsafeArea')}
+                    ></sl-switch>
+                    <label for="screen-debug-show-unsafe-area">${settingsSchema.screenDebugShowUnsafeArea.label}</label>
+                  </div>
+                  <div>
+                    <sl-color-picker
+                      id="screen-debug-unsafe-area-color"
+                      format="hex"
+                      .noFormatToggle=${true}
+                      .hoist=${true}
+                      .value=${colorToHex(settingsStore.get('screenUnsafeAreaColor'))}
+                      opacity
+                      @sl-input=${this._handleColorInput('screenUnsafeAreaColor')}
+                      >Color</sl-color-picker
+                    >
+                  </div>
+                </div>
 
-            <div class="form-row indent">
-              <div>
-                <sl-switch
-                  id="screen-debug-show-legend"
-                  .checked=${settingsStore.get('screenDebugShowLegend')}
-                  @sl-change=${this._handleSwitchChange('screenDebugShowLegend')}
-                ></sl-switch>
-                <label for="screen-debug-show-legend">${settingsSchema.screenDebugShowLegend.label}</label>
-              </div>
-              <div>
-                <sl-color-picker
-                  id="screen-debug-legend-color"
-                  format="hex"
-                  .noFormatToggle=${true}
-                  .hoist=${true}
-                  .value=${colorToHex(settingsStore.get('screenLegendColor'))}
-                  opacity
-                  @sl-input=${this._handleColorInput('screenLegendColor')}>Color</sl-color-picker>
-              </div>
-            </div>
-          ` : ''}
+                <div class="form-row indent">
+                  <div>
+                    <sl-switch
+                      id="screen-debug-show-legend"
+                      .checked=${settingsStore.get('screenDebugShowLegend')}
+                      @sl-change=${this._handleSwitchChange('screenDebugShowLegend')}
+                    ></sl-switch>
+                    <label for="screen-debug-show-legend">${settingsSchema.screenDebugShowLegend.label}</label>
+                  </div>
+                  <div>
+                    <sl-color-picker
+                      id="screen-debug-legend-color"
+                      format="hex"
+                      .noFormatToggle=${true}
+                      .hoist=${true}
+                      .value=${colorToHex(settingsStore.get('screenLegendColor'))}
+                      opacity
+                      @sl-input=${this._handleColorInput('screenLegendColor')}
+                      >Color</sl-color-picker
+                    >
+                  </div>
+                </div>
+              `
+            : ''}
         </form>
       </div>
     `;

@@ -167,8 +167,8 @@ export class MaterialsPanel extends LitElement {
           No materials found in the running game.
           ${this.materials.source === 'scan'
             ? html`<div class="hint">
-                Materials are discovered by scanning scene entities. Materials not attached to an entity require a
-                newer version of Excalibur to appear here.
+                Materials are discovered by scanning scene entities. Materials not attached to an entity require a newer version of
+                Excalibur to appear here.
               </div>`
             : nothing}
         </div>
@@ -186,10 +186,7 @@ export class MaterialsPanel extends LitElement {
             list,
             (material) => material.key,
             (material) => html`
-              <button
-                class=${material.key === selected.key ? 'selected' : ''}
-                @click=${() => this._select(material)}
-              >
+              <button class=${material.key === selected.key ? 'selected' : ''} @click=${() => this._select(material)}>
                 ${material.name}<span class="id">#${material.id}</span>
               </button>
             `

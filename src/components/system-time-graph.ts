@@ -17,9 +17,9 @@ function slugify(str: string) {
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, '') // Remove non-word chars (except spaces and hyphens)
-    .replace(/[\s_]+/g, '-')   // Replace spaces and underscores with hyphens
-    .replace(/^-+|-+$/g, '')   // Remove leading/trailing hyphens
-    .replace(/^(\d)/, '_$1');  // Prefix with underscore if starts with digit
+    .replace(/[\s_]+/g, '-') // Replace spaces and underscores with hyphens
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .replace(/^(\d)/, '_$1'); // Prefix with underscore if starts with digit
 }
 
 @customElement('system-time-graph')
@@ -46,7 +46,6 @@ export class SystemTimeGraph extends LitElement {
   svg!: SVGSVGElement;
   d3Svg!: d3.Selection<SVGSVGElement, undefined, null, undefined>;
 
-
   private _color = d3.scaleOrdinal<string>().range([...d3.schemeDark2, ...d3.schemeAccent]);
   private _focusedKey: string | null = null;
   private _legendKeys = ''; // joined key list; guards legend re-join
@@ -65,7 +64,7 @@ export class SystemTimeGraph extends LitElement {
 
     const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
 
-    const y = this._y = d3.scaleLinear([0, defaultYMax], [totalHeight - marginBottom, marginTop]);
+    const y = (this._y = d3.scaleLinear([0, defaultYMax], [totalHeight - marginBottom, marginTop]));
 
     this.d3Svg = d3
       .create('svg')
@@ -73,7 +72,6 @@ export class SystemTimeGraph extends LitElement {
       .attr('height', totalHeight)
       .attr('viewBox', [0, 0, totalWidth, totalHeight + 20]) // -10,-10,310,140
       .attr('style', 'max-width: 100%; height: auto; height: intrinsic;');
-
 
     this.d3Svg
       .append('g')
@@ -131,7 +129,7 @@ export class SystemTimeGraph extends LitElement {
     }
 
     for (const key in systemDuration) {
-      if(!this.timeData[key]) {
+      if (!this.timeData[key]) {
         this.timeData[key] = d3.range(nTicks).map(zeroes);
         const focused = this._focusedKey === null || this._focusedKey === key;
         this.d3Svg
@@ -183,13 +181,7 @@ export class SystemTimeGraph extends LitElement {
       .attr('class', 'legend-item')
       .on('click', (_event, d) => this._toggleFocus(d));
 
-    enter
-      .append('rect')
-      .attr('x', -10)
-      .attr('y', -10)
-      .attr('width', 260)
-      .attr('height', 20)
-      .attr('fill', 'transparent');
+    enter.append('rect').attr('x', -10).attr('y', -10).attr('width', 260).attr('height', 20).attr('fill', 'transparent');
 
     enter
       .append('circle')
@@ -204,9 +196,7 @@ export class SystemTimeGraph extends LitElement {
       .attr('text-anchor', 'left')
       .style('alignment-baseline', 'middle');
 
-    enter
-      .merge(items)
-      .attr('transform', (_, i) => `translate(${totalWidth - 270}, ${20 + i * 25})`);
+    enter.merge(items).attr('transform', (_, i) => `translate(${totalWidth - 270}, ${20 + i * 25})`);
 
     items.exit().remove();
 
@@ -240,10 +230,7 @@ export class SystemTimeGraph extends LitElement {
     }
     this._yMax = domainMax;
     this.d3Svg.select<SVGGElement>('g#yAxis').call(d3.axisLeft(this._y).tickArguments([5]));
-    this.d3Svg
-      .select('line#budget-line')
-      .attr('y1', this._y(16.6))
-      .attr('y2', this._y(16.6));
+    this.d3Svg.select('line#budget-line').attr('y1', this._y(16.6)).attr('y2', this._y(16.6));
     for (const key of Object.keys(this.timeData)) {
       this.d3Svg.select('path#' + slugify(key)).attr('d', this.line(this.timeData[key]));
     }

@@ -38,7 +38,9 @@ export function colorToHex(color: Color): string {
   const r = color.r.toString(16).padStart(2, '0');
   const g = color.g.toString(16).padStart(2, '0');
   const b = color.b.toString(16).padStart(2, '0');
-  const a = Math.floor(color.a * 255).toString(16).padStart(2, '0');
+  const a = Math.floor(color.a * 255)
+    .toString(16)
+    .padStart(2, '0');
   return `#${r}${g}${b}${a}`;
 }
 

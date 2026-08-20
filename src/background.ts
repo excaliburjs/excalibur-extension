@@ -44,7 +44,6 @@ function stepClock(stepMs: number) {
     return;
   }
 
-
   /**
    * @typedef {import('./@types/excalibur').Engine} Engine
    * @type {Engine}
@@ -94,7 +93,6 @@ function startClock() {
  */
 function toggleTestClock() {
   if (window.___EXCALIBUR_DEVTOOL) {
-
     /**
      * @typedef {import('./@types/excalibur').Engine} Engine
      * @type {Engine}
@@ -140,13 +138,15 @@ function identifyEntity(entityId: number) {
    * @type {Engine}
    */
   const game = window.___EXCALIBUR_DEVTOOL;
-  const actor = game.currentScene.world.entityManager.getById(entityId) as {
-    actions: {
-      repeat(fn: (ctx: { fade(opacity: number, duration: number): void }) => void, times: number): void;
-    };
-  } | undefined;
+  const actor = game.currentScene.world.entityManager.getById(entityId) as
+    | {
+        actions: {
+          repeat(fn: (ctx: { fade(opacity: number, duration: number): void }) => void, times: number): void;
+        };
+      }
+    | undefined;
   if (actor === undefined) {
-    throw new Error(`No entity found for id ${entityId}`)
+    throw new Error(`No entity found for id ${entityId}`);
   }
   actor.actions.repeat((context) => {
     context.fade(0, 200);
@@ -174,7 +174,6 @@ function startEntityPicker() {
     return;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   /**
    * @typedef {import('./@types/excalibur').Engine} Engine
    * @type {Engine}
@@ -195,8 +194,7 @@ function startEntityPicker() {
   // world->page projection
   const highlight = document.createElement('div');
   highlight.style.cssText =
-    'position:absolute;pointer-events:none;z-index:2147483647;' +
-    'background:rgba(255,213,46,0.15);box-sizing:border-box;display:none;';
+    'position:absolute;pointer-events:none;z-index:2147483647;' + 'background:rgba(255,213,46,0.15);box-sizing:border-box;display:none;';
 
   const label = document.createElement('div');
   label.style.cssText =
@@ -241,7 +239,9 @@ function startEntityPicker() {
           return c.z;
         }
       }
-    } catch { }
+    } catch {
+      // pass
+    }
 
     return -Infinity;
   };
@@ -275,7 +275,9 @@ function startEntityPicker() {
             hits.set(owner.id, owner);
           }
         }
-      } catch { }
+      } catch {
+        // pass
+      }
 
       try {
         for (const entity of scene.entities ?? []) {
@@ -283,15 +285,21 @@ function startEntityPicker() {
             continue;
           }
           try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((entity as any).graphics) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const bounds = (entity as any).graphics?.bounds;
               if (bounds && typeof bounds.contains === 'function' && bounds.contains(worldVec)) {
                 hits.set(entity.id, entity);
               }
             }
-          } catch { }
+          } catch {
+            // pass
+          }
         }
-      } catch { }
+      } catch {
+        // pass
+      }
 
       if (hits.size === 0) {
         return null;
@@ -343,11 +351,7 @@ function startEntityPicker() {
       return;
     }
     label.textContent = `${hovered.name} | ${hovered.ctor} #${hovered.id}`;
-    if (hovered.bounds &&
-        scratchVec &&
-        game.screen &&
-        typeof game.screen.worldToPageCoordinates === 'function') {
-
+    if (hovered.bounds && scratchVec && game.screen && typeof game.screen.worldToPageCoordinates === 'function') {
       try {
         const tl = game.screen.worldToPageCoordinates(makeVec(hovered.bounds.left, hovered.bounds.top));
         const br = game.screen.worldToPageCoordinates(makeVec(hovered.bounds.right, hovered.bounds.bottom));
@@ -358,7 +362,9 @@ function startEntityPicker() {
         highlight.style.border = '1px solid #ffd52e';
         highlight.style.display = 'block';
         return;
-      } catch {}
+      } catch {
+        // pass
+      }
     }
 
     highlight.style.left = `${pageX + 14}px`;
@@ -447,16 +453,20 @@ function startEntityPicker() {
   window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER = state;
 }
 
+/**
+ * Cancel the entity picker and cleanup
+ */
 function stopEntityPicker() {
   const picker = window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER;
   if (picker && typeof picker.teardown === 'function') {
     try {
       picker.teardown();
-    } catch {}
+    } catch {
+      // pass
+    }
   }
   window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER = undefined;
 }
-
 
 /**
  * Set Color Blind Mode
@@ -494,7 +504,6 @@ function goToScene(sceneName: string) {
   game.goToScene(sceneName);
 }
 
-
 /**
  * Updates physics related settings.
  * @typedef {import('./components/physics-settings').Physics} Physics
@@ -505,17 +514,16 @@ function updatePhysics(settings: { config: Record<string, unknown> }) {
     return;
   }
 
-
-/**
- * Performs a deep merge of objects and returns mutated first object.
- * @param {...object} objects - Objects to merge
- * @returns {object} New object with merged key/values
- */
+  /**
+   * Performs a deep merge of objects and returns mutated first object.
+   * @param {...object} objects - Objects to merge
+   * @returns {object} New object with merged key/values
+   */
   function mergeDeep(...objects: Record<string, unknown>[]) {
     const isObject = (obj: unknown) => obj && typeof obj === 'object';
 
     return objects.reduce((prev, obj) => {
-      Object.keys(obj).forEach(key => {
+      Object.keys(obj).forEach((key) => {
         const pVal = prev[key];
         const oVal = obj[key];
         if (Array.isArray(pVal) && Array.isArray(oVal)) {
@@ -530,13 +538,15 @@ function updatePhysics(settings: { config: Record<string, unknown> }) {
     }, objects[0]); // keep first object reference
   }
 
-
   /**
    * @typedef {import('./@types/excalibur').Engine} Engine
    * @type {Engine}
    */
   const game = window.___EXCALIBUR_DEVTOOL;
-  (game as unknown as { physics: Record<string, unknown> }).physics = mergeDeep(game.physics as unknown as Record<string, unknown>, settings.config);
+  (game as unknown as { physics: Record<string, unknown> }).physics = mergeDeep(
+    game.physics as unknown as Record<string, unknown>,
+    settings.config
+  );
 }
 
 /**
@@ -565,6 +575,9 @@ function updateMaterialUniform(update: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyGame = game as any;
 
+  /**
+   * QUery ex for materials (if any)
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function findMaterial(): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -687,7 +700,7 @@ function getMaterialDetail(query: { materialId: number; materialName: string }) 
     return JSON.stringify(null);
   }
 
-  const id = typeof material.id === 'number' ? material.id : material.__exDevtoolsId ?? 0;
+  const id = typeof material.id === 'number' ? material.id : (material.__exDevtoolsId ?? 0);
   const shader = material.getShader();
   const vertexSource: string = shader?.vertexSource ?? '';
   const fragmentSource: string = shader?.fragmentSource ?? '';
@@ -904,7 +917,11 @@ function getEntityGraphics(query: { entityId: number }) {
   // exposes the ex namespace; reading it never requires Serializer.init()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const serializer = (window as any).ex?.Serializer;
-  const registryAvailable = !!(serializer && typeof serializer.getRegisteredGraphics === 'function' && typeof serializer.getGraphic === 'function');
+  const registryAvailable = !!(
+    serializer &&
+    typeof serializer.getRegisteredGraphics === 'function' &&
+    typeof serializer.getGraphic === 'function'
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const registry: any[] = [];
   if (registryAvailable) {
@@ -1175,7 +1192,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
     if (value && typeof value === 'object' && 'r' in value && 'g' in value && 'b' in value) {
       value = new ColorLike(value as { r: number; g: number; b: number; a?: number });
     }
-    
+
     patchByPath(game as unknown as Record<string, unknown>, path, value);
   }
 
@@ -1259,27 +1276,48 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
           return 'unknown';
         }
         switch (glType) {
-          case gl.FLOAT: return 'float';
-          case gl.FLOAT_VEC2: return 'vec2';
-          case gl.FLOAT_VEC3: return 'vec3';
-          case gl.FLOAT_VEC4: return 'vec4';
-          case gl.INT: return 'int';
-          case gl.INT_VEC2: return 'ivec2';
-          case gl.INT_VEC3: return 'ivec3';
-          case gl.INT_VEC4: return 'ivec4';
-          case gl.UNSIGNED_INT: return 'uint';
-          case gl.BOOL: return 'bool';
-          case gl.BOOL_VEC2: return 'bvec2';
-          case gl.BOOL_VEC3: return 'bvec3';
-          case gl.BOOL_VEC4: return 'bvec4';
-          case gl.FLOAT_MAT2: return 'mat2';
-          case gl.FLOAT_MAT3: return 'mat3';
-          case gl.FLOAT_MAT4: return 'mat4';
-          case gl.SAMPLER_2D: return 'sampler2D';
-          case gl.SAMPLER_3D: return 'sampler3D';
-          case gl.SAMPLER_CUBE: return 'samplerCube';
-          case gl.SAMPLER_2D_ARRAY: return 'sampler2DArray';
-          default: return `0x${glType.toString(16)}`;
+          case gl.FLOAT:
+            return 'float';
+          case gl.FLOAT_VEC2:
+            return 'vec2';
+          case gl.FLOAT_VEC3:
+            return 'vec3';
+          case gl.FLOAT_VEC4:
+            return 'vec4';
+          case gl.INT:
+            return 'int';
+          case gl.INT_VEC2:
+            return 'ivec2';
+          case gl.INT_VEC3:
+            return 'ivec3';
+          case gl.INT_VEC4:
+            return 'ivec4';
+          case gl.UNSIGNED_INT:
+            return 'uint';
+          case gl.BOOL:
+            return 'bool';
+          case gl.BOOL_VEC2:
+            return 'bvec2';
+          case gl.BOOL_VEC3:
+            return 'bvec3';
+          case gl.BOOL_VEC4:
+            return 'bvec4';
+          case gl.FLOAT_MAT2:
+            return 'mat2';
+          case gl.FLOAT_MAT3:
+            return 'mat3';
+          case gl.FLOAT_MAT4:
+            return 'mat4';
+          case gl.SAMPLER_2D:
+            return 'sampler2D';
+          case gl.SAMPLER_3D:
+            return 'sampler3D';
+          case gl.SAMPLER_CUBE:
+            return 'samplerCube';
+          case gl.SAMPLER_2D_ARRAY:
+            return 'sampler2DArray';
+          default:
+            return `0x${glType.toString(16)}`;
         }
       };
 
@@ -1378,7 +1416,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
       }
 
       const builtInFallback = [
-        'u_time_ms', 
+        'u_time_ms',
         'u_opacity',
         'u_resolution',
         'u_graphic_resolution',
@@ -1739,8 +1777,10 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
           tags: Array.from(entity.tags ?? []),
           isKilled: !!(typeof entity.isKilled === 'function' && entity.isKilled()),
           parent: entity.parent ? { id: entity.parent.id, name: entity.parent.name } : null,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          children: (entity.children ?? []).slice(0, 100).map((child: any) => ({ id: child.id, name: child.name, ctor: child.constructor.name })),
+          children: (entity.children ?? [])
+            .slice(0, 100)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((child: any) => ({ id: child.id, name: child.name, ctor: child.constructor.name })),
           components,
           graphicsNames,
           graphicsCurrent,
@@ -1770,7 +1810,7 @@ function inject(settings: Record<string, unknown>, mappings: Record<string, stri
 
   // _originalOptions is a private engine field; guard for versions without it
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
-  const {scenes: _, ...config } = (game as any)._originalOptions ?? {};
+  const { scenes: _, ...config } = (game as any)._originalOptions ?? {};
 
   // scene.physics is missing on older engines; never let it kill the payload
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1952,17 +1992,17 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
             execInFrame(message.tabId, state.selectedFrameId, kill, [message.actorId]);
           }
           break;
-        case "ex-debug:color-blind":
+        case 'ex-debug:color-blind':
           {
             execInFrame(message.tabId, state.selectedFrameId, setColorBlind, [message.colorBlindMode]);
           }
           break;
-        case "ex-debug:goto-scene":
+        case 'ex-debug:goto-scene':
           {
             execInFrame(message.tabId, state.selectedFrameId, goToScene, [message.sceneName]);
           }
           break;
-        case "ex-debug:identify-actor":
+        case 'ex-debug:identify-actor':
           {
             execInFrame(message.tabId, state.selectedFrameId, identifyEntity, [message.actorId]);
           }
@@ -1992,14 +2032,16 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
           {
             execInFrame(message.tabId, state.selectedFrameId, getMaterialDetail, [
               { materialId: message.materialId, materialName: message.materialName }
-            ]).then((results) => {
-              safePostMessage({
-                name: 'ex-debug:material-detail',
-                data: results?.[0]?.result ?? null
+            ])
+              .then((results) => {
+                safePostMessage({
+                  name: 'ex-debug:material-detail',
+                  data: results?.[0]?.result ?? null
+                });
+              })
+              .catch((e) => {
+                console.info('material detail reply failed:', e);
               });
-            }).catch((e) => {
-              console.info('material detail reply failed:', e);
-            });
           }
           break;
         case 'ex-debug:inspect-entity':
@@ -2033,16 +2075,16 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
           break;
         case 'ex-debug:get-entity-graphics':
           {
-            execInFrame(message.tabId, state.selectedFrameId, getEntityGraphics, [
-              { entityId: message.entityId }
-            ]).then((results) => {
-              safePostMessage({
-                name: 'ex-debug:entity-graphics',
-                data: results?.[0]?.result ?? null
+            execInFrame(message.tabId, state.selectedFrameId, getEntityGraphics, [{ entityId: message.entityId }])
+              .then((results) => {
+                safePostMessage({
+                  name: 'ex-debug:entity-graphics',
+                  data: results?.[0]?.result ?? null
+                });
+              })
+              .catch((e) => {
+                console.info('entity graphics reply failed:', e);
               });
-            }).catch((e) => {
-              console.info('entity graphics reply failed:', e);
-            });
           }
           break;
         case 'ex-debug:update-entity-property':
@@ -2099,11 +2141,7 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
           debugSettings.pickerActive = false;
           execInFrame(tabId, state.selectedFrameId, stopEntityPicker);
         }
-        state.selectedFrameId = instances.some((i) => i.frameId === 0)
-          ? 0
-          : instances.length > 0
-            ? instances[0].frameId
-            : null;
+        state.selectedFrameId = instances.some((i) => i.frameId === 0) ? 0 : instances.length > 0 ? instances[0].frameId : null;
       }
       let data: string | null = null;
       if (state.selectedFrameId !== null) {

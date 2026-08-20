@@ -6,15 +6,24 @@ import { common } from '../common';
 import type { EntityGraphicsDetail, EntityPropertyUpdate, InspectedComponent, InspectedEntity } from '../protocol';
 import type { SlInput, SlRange, SlSelect, SlSwitch } from '@shoelace-style/shoelace';
 
+/**
+ * Format unknown value as number
+ */
 function asNumber(value: unknown, fallback = 0): number {
   return typeof value === 'number' ? value : fallback;
 }
 
+/**
+ * Format unknown as vector
+ */
 function asVector(value: unknown): { x: number; y: number } {
   const vec = value as { x?: unknown; y?: unknown } | null | undefined;
   return { x: asNumber(vec?.x), y: asNumber(vec?.y) };
 }
 
+/**
+ * Format number to 4 decimals
+ */
 function formatNumber(n: number): string {
   if (Number.isInteger(n)) {
     return n.toString();
@@ -22,6 +31,9 @@ function formatNumber(n: number): string {
   return (Math.round(n * 10000) / 10000).toString();
 }
 
+/**
+ * Handle weird numbers
+ */
 function formatLoose(value: unknown): string {
   if (value === null || value === undefined) {
     return '—';
@@ -432,9 +444,7 @@ export class EntityInspector extends LitElement {
   }
 
   private _renderBoolEditor(target: EntityPropertyUpdate['target'], property: string, value: boolean) {
-    return html`
-      <sl-switch class="prop-editor" .checked=${value} @sl-change=${this._boolChangeHandler(target, property)}></sl-switch>
-    `;
+    return html` <sl-switch class="prop-editor" .checked=${value} @sl-change=${this._boolChangeHandler(target, property)}></sl-switch> `;
   }
 
   private _renderRow(name: string, contents: unknown) {
@@ -584,9 +594,7 @@ export class EntityInspector extends LitElement {
         title=${isCurrent ? 'Current graphic' : 'Click to show this graphic'}
         @click=${this._useGraphicHandler(thumb.name, source)}
       >
-        ${thumb.dataUrl
-          ? html`<img src=${thumb.dataUrl} alt=${thumb.name} />`
-          : html`<div class="placeholder">${thumb.type}</div>`}
+        ${thumb.dataUrl ? html`<img src=${thumb.dataUrl} alt=${thumb.name} />` : html`<div class="placeholder">${thumb.type}</div>`}
         <div class="meta">
           <div class="name">${thumb.name}</div>
           <div>${thumb.type}${thumb.width && thumb.height ? html` — ${thumb.width}×${thumb.height}` : nothing}</div>
@@ -657,22 +665,14 @@ export class EntityInspector extends LitElement {
     }
     return html`
       <h3>${component.type}</h3>
-      <div class="section">
-        ${component.error ? html`<div class="component-error">Failed to serialize this component</div>` : body}
-      </div>
+      <div class="section">${component.error ? html`<div class="component-error">Failed to serialize this component</div>` : body}</div>
     `;
   }
 
   private _renderEntity(entity: InspectedEntity) {
     return html`
       <div class="header-row">
-        <sl-input
-          class="prop-editor"
-          size="small"
-          label="Name"
-          .value=${entity.name}
-          @sl-change=${this._nameChangeHandler}
-        ></sl-input>
+        <sl-input class="prop-editor" size="small" label="Name" .value=${entity.name} @sl-change=${this._nameChangeHandler}></sl-input>
         <sl-tag variant="primary">id:${entity.id}</sl-tag>
         <sl-tag variant="neutral">${entity.ctor}</sl-tag>
         ${repeat(
@@ -682,7 +682,10 @@ export class EntityInspector extends LitElement {
         )}
         ${entity.isKilled ? html`<sl-tag variant="danger">killed</sl-tag>` : nothing}
         ${entity.serializerSource === 'reflection'
-          ? html`<sl-tag variant="warning" title="This engine version predates the serialization API; showing a best-effort reflection of well-known components">
+          ? html`<sl-tag
+              variant="warning"
+              title="This engine version predates the serialization API; showing a best-effort reflection of well-known components"
+            >
               reflection fallback
             </sl-tag>`
           : nothing}
@@ -705,9 +708,7 @@ export class EntityInspector extends LitElement {
                       entity.children,
                       (child) => child.id,
                       (child) => html`
-                        <sl-tag variant="neutral" @click=${this._navigateHandler(child.id)}>
-                          ${child.name} (#${child.id})
-                        </sl-tag>
+                        <sl-tag variant="neutral" @click=${this._navigateHandler(child.id)}> ${child.name} (#${child.id}) </sl-tag>
                       `
                     )}
                   `
@@ -728,7 +729,12 @@ export class EntityInspector extends LitElement {
   override render() {
     const entity = this.entity;
     return html`
-      <sl-dialog class="entity-inspect" label=${entity ? `${entity.name} | ${entity.ctor}` : 'Entity Inspector'} ?open=${this.open} @sl-hide=${this._closeHandler}>
+      <sl-dialog
+        class="entity-inspect"
+        label=${entity ? `${entity.name} | ${entity.ctor}` : 'Entity Inspector'}
+        ?open=${this.open}
+        @sl-hide=${this._closeHandler}
+      >
         <div class="dialog-body">
           ${this.open
             ? entity

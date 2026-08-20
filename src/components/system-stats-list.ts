@@ -42,7 +42,7 @@ export class SystemStatsList extends LitElement {
   private _samples: Record<string, number[]> = {};
 
   @property({ type: Object })
-  systemDuration: Record<string, number>= {};
+  systemDuration: Record<string, number> = {};
 
   updateStats(stats: Record<string, number>) {
     if (!this.isConnected) {
@@ -62,7 +62,7 @@ export class SystemStatsList extends LitElement {
         delete this._samples[key];
       }
     }
-    this.systemDuration= stats;
+    this.systemDuration = stats;
     this.requestUpdate();
   }
 
@@ -74,19 +74,20 @@ export class SystemStatsList extends LitElement {
   }
 
   override render() {
-    const averages = Object.entries(this._samples).map(([key, samples]) =>
-      [key, samples.reduce((a, b) => a + b, 0) / samples.length] as [string, number]);
+    const averages = Object.entries(this._samples).map(
+      ([key, samples]) => [key, samples.reduce((a, b) => a + b, 0) / samples.length] as [string, number]
+    );
     averages.sort((a, b) => b[1] - a[1]);
 
     return html`
       <div class="section">
         ${repeat(
-            averages,
-            item => item[0],
-            (item) => {
-              return html`<div class="form-row">${item[0]}<span>${item[1].toFixed(2)}</span></div>`
-            })
-        }
+          averages,
+          (item) => item[0],
+          (item) => {
+            return html`<div class="form-row">${item[0]}<span>${item[1].toFixed(2)}</span></div>`;
+          }
+        )}
       </div>
     `;
   }

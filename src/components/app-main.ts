@@ -33,14 +33,7 @@ import { SystemTimeGraph } from './system-time-graph';
 import { SystemStatsList } from './system-stats-list';
 import { MaterialDetail, MaterialsState, UniformChange } from './material-detail';
 import { MaterialSelected } from './materials-panel';
-import type {
-  EntityGraphicsDetail,
-  EntityPropertyUpdate,
-  ExInstance,
-  HeartbeatMessage,
-  InspectedEntity,
-  PickerState
-} from '../protocol';
+import type { EntityGraphicsDetail, EntityPropertyUpdate, ExInstance, HeartbeatMessage, InspectedEntity, PickerState } from '../protocol';
 
 globalThis.browser = globalThis.browser || chrome;
 
@@ -159,8 +152,6 @@ export class App extends LitElement {
       sl-radio {
         margin-bottom: 5px;
       }
-
-
     `
   ];
   @query('fps-graph')
@@ -248,7 +239,7 @@ export class App extends LitElement {
 
   @state()
   screenPos: string = '???';
-  
+
   @state()
   pagePos: string = '???';
 
@@ -303,8 +294,7 @@ export class App extends LitElement {
     // If heartbeats stop arriving without the port firing onDisconnect
     // (a wedged service worker), tear the port down and reconnect
     this._stalenessIntervalId = setInterval(() => {
-      if (this.hasReceivedHeartbeat && Date.now() - this._lastHeartbeatAt > 1500 && 
-          this._reconnectTimerId === undefined) {
+      if (this.hasReceivedHeartbeat && Date.now() - this._lastHeartbeatAt > 1500 && this._reconnectTimerId === undefined) {
         this.connectionLost = true;
         this._teardownPort();
         this._scheduleReconnect();
@@ -455,20 +445,7 @@ export class App extends LitElement {
         }
 
         const data = JSON.parse(message.data);
-        const {
-          version,
-          isDebug,
-          config,
-          screen,
-          camera,
-          currentScene,
-          scenes,
-          pointer,
-          entities,
-          stats,
-          physics,
-          materials
-        } = data;
+        const { version, isDebug, config, screen, camera, currentScene, scenes, pointer, entities, stats, physics, materials } = data;
 
         // Adopt the game's actual debug state on the first heartbeat that
         // carries data, so reopening devtools doesn't reset a previously-
@@ -514,7 +491,7 @@ export class App extends LitElement {
           currentScene: currentScene,
           scenes: scenes,
           entities: entities,
-          pointer: pointer,
+          pointer: pointer
         };
 
         const currentPointer = this.engine.pointer;
@@ -545,13 +522,11 @@ export class App extends LitElement {
             frameBudget: elapsedMs - stats.currFrame._durationStats.total,
             frameTime: stats.currFrame._durationStats.total,
             updateTime: stats.currFrame._durationStats.update,
-            systemDuration: this.isV31OrLater ? stats.currFrame.systemDuration: {},
+            systemDuration: this.isV31OrLater ? stats.currFrame.systemDuration : {},
             drawTime: stats.currFrame._durationStats.draw,
             drawCalls: stats.currFrame._graphicsStats.drawCalls,
             numActors: stats.currFrame._actorStats.total,
-            rendererSwaps: this.isV31OrLater ?
-              stats.currFrame._graphicsStats.rendererSwaps :
-              'Upgrade to v0.32+ to see'
+            rendererSwaps: this.isV31OrLater ? stats.currFrame._graphicsStats.rendererSwaps : 'Upgrade to v0.32+ to see'
           };
 
           this.fpsGraph?.draw(fps);
@@ -564,7 +539,7 @@ export class App extends LitElement {
 
           if (this.isV31OrLater) {
             this.systemTimeGraph?.draw(this.stats.systemDuration);
-            this.systemStatsList?.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration: {});
+            this.systemStatsList?.updateStats(this.isV31OrLater ? stats.currFrame.systemDuration : {});
           }
         } catch (e) {
           console.info('Error reading engine stats:', e);
@@ -673,9 +648,8 @@ export class App extends LitElement {
    * Builds a human-readable label for an Excalibur instance in the dropdown.
    */
   private _instanceLabel(instance: ExInstance) {
-    const location = instance.frameId === 0
-      ? `Top frame — ${instance.title || this._shortUrl(instance.url)}`
-      : this._shortUrl(instance.url);
+    const location =
+      instance.frameId === 0 ? `Top frame — ${instance.title || this._shortUrl(instance.url)}` : this._shortUrl(instance.url);
     return `${location} (v${instance.version})`;
   }
 
@@ -812,7 +786,7 @@ export class App extends LitElement {
 
   setColorBlind() {
     const colorBlindRadioGroup = this.shadowRoot?.querySelector('#color-blind') as SlRadioGroup;
-    const colorBlindMode = (colorBlindRadioGroup?.value) ?? 'Normal';
+    const colorBlindMode = colorBlindRadioGroup?.value ?? 'Normal';
     this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
@@ -826,7 +800,7 @@ export class App extends LitElement {
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:identify-actor',
-      actorId: evt.detail,
+      actorId: evt.detail
     });
   }
 
@@ -958,11 +932,7 @@ export class App extends LitElement {
       <div class="version">
         <span>Engine Version: <span id="excalibur-version">${this.engine.version}</span></span>
         ${this.instances.length > 1
-          ? html`<sl-select
-              size="small"
-              .value=${String(this.selectedFrameId ?? '')}
-              @sl-change=${this.selectFrame}
-            >
+          ? html`<sl-select size="small" .value=${String(this.selectedFrameId ?? '')} @sl-change=${this.selectFrame}>
               ${this.instances.map(
                 (instance) => html`<sl-option value=${String(instance.frameId)}>${this._instanceLabel(instance)}</sl-option>`
               )}
@@ -1035,7 +1005,8 @@ export class App extends LitElement {
                   @sl-change=${this.setColorBlind}
                   label="Select an option"
                   name="color-blindness"
-                  value="Normal">
+                  value="Normal"
+                >
                   <sl-radio value="Normal">Fully Sighted</sl-radio>
                   <sl-radio value="Protanope">Protanope</sl-radio>
                   <sl-radio value="Deuteranope">Deuteranope</sl-radio>
@@ -1093,7 +1064,8 @@ export class App extends LitElement {
                 </div>
                 <stats-list .stats=${this.stats}></stats-list>
               </div>
-              ${ this.isV31OrLater ? html`
+              ${this.isV31OrLater
+                ? html`
                 <div class="row">
                   <div class="widget">
                     <system-time-graph class="chart"></system-time-graph>
@@ -1106,8 +1078,7 @@ export class App extends LitElement {
                   </div
                 </div>
                 `
-                : ''
-              }
+                : ''}
             </div>
           </div>
 
@@ -1126,7 +1097,6 @@ export class App extends LitElement {
                         </div>
                     </div>
                 </div> -->
-
         </sl-tab-panel>
         <sl-tab-panel name="debugdraw">
           <debug-settings
@@ -1137,11 +1107,7 @@ export class App extends LitElement {
           </debug-settings>
         </sl-tab-panel>
         <sl-tab-panel name="physics">
-          <physics-settings
-            @physics-settings-change=${this.updatePhysicsSetting}
-            .settings=${this.physics}
-          >
-          </physics-settings>
+          <physics-settings @physics-settings-change=${this.updatePhysicsSetting} .settings=${this.physics}> </physics-settings>
         </sl-tab-panel>
         <sl-tab-panel name="materials">
           <materials-panel

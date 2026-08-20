@@ -1,7 +1,6 @@
 import { css } from 'lit';
 
 export const common = css`
-
   h2 {
     position: relative;
     background-color: var(--panel-color);

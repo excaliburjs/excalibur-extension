@@ -129,8 +129,8 @@ export class EntityList extends LitElement {
     return () => {
       this.dispatchEvent(
         new CustomEvent('identify-actor', {
-          detail: id,
-        }),
+          detail: id
+        })
       );
     };
   }
@@ -139,8 +139,8 @@ export class EntityList extends LitElement {
     return () => {
       this.dispatchEvent(
         new CustomEvent('inspect-entity', {
-          detail: id,
-        }),
+          detail: id
+        })
       );
     };
   }
@@ -163,11 +163,7 @@ export class EntityList extends LitElement {
 
     return html`
       <div class="section">
-        <sl-button
-          id="pick-entity"
-          size="small"
-          variant=${this.pickerArmed ? 'primary' : 'default'}
-          @click=${this._togglePicker}>
+        <sl-button id="pick-entity" size="small" variant=${this.pickerArmed ? 'primary' : 'default'} @click=${this._togglePicker}>
           <sl-icon slot="prefix" name="crosshair"></sl-icon>
           ${this.pickerArmed ? 'Picking… (Esc to cancel)' : 'Pick entity on page'}
         </sl-button>
@@ -183,8 +179,16 @@ export class EntityList extends LitElement {
                   <div slot="header">
                     <span class="entity-name">${entity.name} | ${entity.ctor}</span>
                     <div class="actions">
-                      <sl-icon-button name="zoom-in" label="Inspect entity ${entity.id}" @click="${this._inspectEntity(entity.id)}"></sl-icon-button>
-                      <sl-icon-button name="search" label="Identify entity ${entity.id}" @click="${this._identifyEntity(entity.id)}"></sl-icon-button>
+                      <sl-icon-button
+                        name="zoom-in"
+                        label="Inspect entity ${entity.id}"
+                        @click="${this._inspectEntity(entity.id)}"
+                      ></sl-icon-button>
+                      <sl-icon-button
+                        name="search"
+                        label="Identify entity ${entity.id}"
+                        @click="${this._identifyEntity(entity.id)}"
+                      ></sl-icon-button>
                       <sl-icon-button name="trash" label="kill" @click=${this.handleKill(entity.id)}></sl-icon-button>
                     </div>
                   </div>
@@ -196,10 +200,14 @@ export class EntityList extends LitElement {
                     (tag) => tag,
                     (tag) => html` <sl-tag variant="success">${tag}</sl-tag> `
                   )}
-                  ${entity.coordPlane ? html`<sl-tag variant="warning">coordPlane:${entity.coordPlane}</sl-tag>` : nothing }
-                  ${entity.collisionType ? html`<sl-tag variant="danger">collision type:${entity.collisionType}</sl-tag>` : nothing }
-                  ${entity.collisionGroup && entity.collisionGroup !== -1 ? html`<sl-tag variant="neutral">collision group:0x${(entity.collisionGroup >>> 0).toString(16)}</sl-tag>` : nothing }
-                  ${entity.collisionMask && entity.collisionMask !== -1 ? html`<sl-tag variant="neutral">collision mask:0x${(entity.collisionMask >>> 0).toString(16)}</sl-tag>` : nothing }
+                  ${entity.coordPlane ? html`<sl-tag variant="warning">coordPlane:${entity.coordPlane}</sl-tag>` : nothing}
+                  ${entity.collisionType ? html`<sl-tag variant="danger">collision type:${entity.collisionType}</sl-tag>` : nothing}
+                  ${entity.collisionGroup && entity.collisionGroup !== -1
+                    ? html`<sl-tag variant="neutral">collision group:0x${(entity.collisionGroup >>> 0).toString(16)}</sl-tag>`
+                    : nothing}
+                  ${entity.collisionMask && entity.collisionMask !== -1
+                    ? html`<sl-tag variant="neutral">collision mask:0x${(entity.collisionMask >>> 0).toString(16)}</sl-tag>`
+                    : nothing}
                 </sl-card>
               </li>
             `

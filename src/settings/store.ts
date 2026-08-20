@@ -133,7 +133,7 @@ class SettingsStore extends EventTarget {
     persistSettings(this._state);
     this.dispatchEvent(
       new CustomEvent<SettingsChangeEvent>('change', {
-        detail: { settings: this._state },
+        detail: { settings: this._state }
       })
     );
   }

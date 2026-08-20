@@ -252,8 +252,7 @@ export class MaterialDetailView extends LitElement {
         height: var(--preview-size, 192px);
         object-fit: contain;
         image-rendering: pixelated;
-        background:
-          repeating-conic-gradient(#333 0% 25%, #444 0% 50%) 0 0 / 16px 16px;
+        background: repeating-conic-gradient(#333 0% 25%, #444 0% 50%) 0 0 / 16px 16px;
       }
 
       .texture .placeholder {
@@ -287,8 +286,7 @@ export class MaterialDetailView extends LitElement {
         height: calc(100vh - 220px);
         overflow: auto;
         display: flex;
-        background:
-          repeating-conic-gradient(#333 0% 25%, #444 0% 50%) 0 0 / 16px 16px;
+        background: repeating-conic-gradient(#333 0% 25%, #444 0% 50%) 0 0 / 16px 16px;
       }
 
       .inspect-viewport img {
@@ -484,9 +482,9 @@ export class MaterialDetailView extends LitElement {
 
   private _vecChangeHandler(uniform: MaterialUniform) {
     return () => {
-      const inputs = Array.from(
-        this.shadowRoot!.querySelectorAll<SlInput>(`sl-input[data-uniform="${CSS.escape(uniform.name)}"]`)
-      ).sort((a, b) => Number(a.dataset.index) - Number(b.dataset.index));
+      const inputs = Array.from(this.shadowRoot!.querySelectorAll<SlInput>(`sl-input[data-uniform="${CSS.escape(uniform.name)}"]`)).sort(
+        (a, b) => Number(a.dataset.index) - Number(b.dataset.index)
+      );
       const values = inputs.map((input) => (input.value.trim() === '' ? NaN : Number(input.value)));
       // An emptied or non-numeric component must not be coerced to 0
       if (values.some((v) => !Number.isFinite(v))) {
@@ -529,11 +527,7 @@ export class MaterialDetailView extends LitElement {
     switch (uniform.typeName) {
       case 'bool':
         return html`
-          <sl-switch
-            class="uniform-editor"
-            .checked=${value === true}
-            @sl-change=${this._boolChangeHandler(uniform)}
-          ></sl-switch>
+          <sl-switch class="uniform-editor" .checked=${value === true} @sl-change=${this._boolChangeHandler(uniform)}></sl-switch>
         `;
       case 'float':
       case 'int':
@@ -555,20 +549,22 @@ export class MaterialDetailView extends LitElement {
         const components = Array.isArray(value) ? value : new Array(dim).fill(0);
         return html`
           <div class="vec-editor">
-            ${components.slice(0, dim).map(
-              (component, i) => html`
-                <sl-input
-                  class="uniform-editor"
-                  type="number"
-                  size="small"
-                  step="any"
-                  data-uniform=${uniform.name}
-                  data-index=${i}
-                  .value=${component.toString()}
-                  @sl-change=${this._vecChangeHandler(uniform)}
-                ></sl-input>
-              `
-            )}
+            ${components
+              .slice(0, dim)
+              .map(
+                (component, i) => html`
+                  <sl-input
+                    class="uniform-editor"
+                    type="number"
+                    size="small"
+                    step="any"
+                    data-uniform=${uniform.name}
+                    data-index=${i}
+                    .value=${component.toString()}
+                    @sl-change=${this._vecChangeHandler(uniform)}
+                  ></sl-input>
+                `
+              )}
             ${uniform.typeName === 'vec4'
               ? html`
                   <sl-color-picker
@@ -667,13 +663,7 @@ export class MaterialDetailView extends LitElement {
     return html`
       <div class="textures-toolbar">
         <span class="label">Preview size</span>
-        <sl-range
-          min="64"
-          max="512"
-          step="32"
-          .value=${this._previewSize}
-          @sl-input=${this._previewSizeHandler}
-        ></sl-range>
+        <sl-range min="64" max="512" step="32" .value=${this._previewSize} @sl-input=${this._previewSizeHandler}></sl-range>
       </div>
       <div class="textures" style="--preview-size: ${this._previewSize}px">
         ${repeat(
@@ -683,8 +673,7 @@ export class MaterialDetailView extends LitElement {
             const texture = detailTextures.find((t) => t.sampler === image.sampler);
             const clickable = !!texture?.dataUrl;
             const sampling = formatSampling(image) ?? (texture ? formatSampling(texture) : null);
-            const placeholderText =
-              image.sampler === 'u_screen_texture' ? 'live screen' : image.loaded ? 'no preview' : 'not loaded';
+            const placeholderText = image.sampler === 'u_screen_texture' ? 'live screen' : image.loaded ? 'no preview' : 'not loaded';
             return html`
               <div
                 class="texture ${clickable ? 'clickable' : ''}"
@@ -726,31 +715,20 @@ export class MaterialDetailView extends LitElement {
     const sampling = (image ? formatSampling(image) : null) ?? (texture ? formatSampling(texture) : null);
     const zoom = this._zoom;
     return html`
-      <sl-dialog
-        class="texture-inspect"
-        label=${sampler ?? ''}
-        ?open=${open}
-        @sl-hide=${this._closeInspectHandler}
-      >
+      <sl-dialog class="texture-inspect" label=${sampler ?? ''} ?open=${open} @sl-hide=${this._closeInspectHandler}>
         ${open
           ? html`
               <div class="inspect-toolbar">
                 <sl-button-group label="Zoom">
                   ${[0, 1, 2, 4, 8].map(
                     (z) => html`
-                      <sl-button
-                        size="small"
-                        variant=${zoom === z ? 'primary' : 'default'}
-                        @click=${() => (this._zoom = z)}
-                      >
+                      <sl-button size="small" variant=${zoom === z ? 'primary' : 'default'} @click=${() => (this._zoom = z)}>
                         ${z === 0 ? 'Fit' : `${z}×`}
                       </sl-button>
                     `
                   )}
                 </sl-button-group>
-                <span class="inspect-meta"
-                  >${width}×${height}${sampling ? ` — ${sampling}` : ''}${label ? ` — ${label}` : ''}</span
-                >
+                <span class="inspect-meta">${width}×${height}${sampling ? ` — ${sampling}` : ''}${label ? ` — ${label}` : ''}</span>
               </div>
               <div class="inspect-viewport">
                 <img
@@ -775,15 +753,15 @@ export class MaterialDetailView extends LitElement {
       <sl-details summary="Vertex Source">
         <pre class="source"><code
           >${guard([this.detail.vertexSource], () =>
-            this.detail?.vertexSource ? highlightGlsl(this.detail.vertexSource) : '(empty)'
-          )}</code
+          this.detail?.vertexSource ? highlightGlsl(this.detail.vertexSource) : '(empty)'
+        )}</code
         ></pre>
       </sl-details>
       <sl-details summary="Fragment Source" open>
         <pre class="source"><code
           >${guard([this.detail.fragmentSource], () =>
-            this.detail?.fragmentSource ? highlightGlsl(this.detail.fragmentSource) : '(empty)'
-          )}</code
+          this.detail?.fragmentSource ? highlightGlsl(this.detail.fragmentSource) : '(empty)'
+        )}</code
         ></pre>
       </sl-details>
     `;
@@ -810,10 +788,7 @@ export class MaterialDetailView extends LitElement {
           ? html`
               <div class="info-row">
                 <span class="label">Color (u_color):</span>
-                <span
-                  class="swatch"
-                  style="background-color: rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})"
-                ></span>
+                <span class="swatch" style="background-color: rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})"></span>
                 <sl-color-picker
                   class="uniform-editor"
                   size="small"

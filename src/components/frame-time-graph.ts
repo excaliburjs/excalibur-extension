@@ -71,7 +71,7 @@ export class FrameTimeGraph extends LitElement {
 
     const x = d3.scaleLinear([0, nTicks], [marginLeft, totalWidth - marginRight]);
 
-    const y = this._y = d3.scaleLinear([0, FrameTimeGraph._DEFAULT_Y_MAX], [totalHeight - marginBottom, marginTop]);
+    const y = (this._y = d3.scaleLinear([0, FrameTimeGraph._DEFAULT_Y_MAX], [totalHeight - marginBottom, marginTop]));
 
     this.d3Svg = d3
       .create('svg')
@@ -89,13 +89,7 @@ export class FrameTimeGraph extends LitElement {
       .attr('transform', (_, i) => `translate(250, ${20 + i * 25})`) // 25 is the distance between dots
       .on('click', (_event, d) => this._toggleFocus(d));
 
-    legendItems
-      .append('rect')
-      .attr('x', -10)
-      .attr('y', -10)
-      .attr('width', 60)
-      .attr('height', 20)
-      .attr('fill', 'transparent');
+    legendItems.append('rect').attr('x', -10).attr('y', -10).attr('width', 60).attr('height', 20).attr('fill', 'transparent');
 
     legendItems
       .append('circle')
@@ -193,10 +187,7 @@ export class FrameTimeGraph extends LitElement {
     }
     this._yMax = domainMax;
     this.d3Svg.select<SVGGElement>('g#yAxis').call(d3.axisLeft(this._y).tickArguments([5]));
-    this.d3Svg
-      .select('line#budget-line')
-      .attr('y1', this._y(16.6))
-      .attr('y2', this._y(16.6));
+    this.d3Svg.select('line#budget-line').attr('y1', this._y(16.6)).attr('y2', this._y(16.6));
     for (const [legendKey, pathId] of Object.entries(FrameTimeGraph._PATH_IDS)) {
       this.d3Svg.select('path#' + pathId).attr('d', this.line(this._seriesData()[legendKey]));
     }
