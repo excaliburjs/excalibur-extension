@@ -246,6 +246,76 @@ function startEntityPicker() {
     return -Infinity;
   };
 
+  // Composite pick score: z-order, proximity to the candidate's own bounds
+  // center, and inverse bounds area, each normalized to 0..1 across the
+  // current candidate set (so it stays meaningful regardless of the game's
+  // own z/world-unit scale) then combined with fixed weights. This lets a
+  // small actor nested on/inside a much larger one (an icon over a
+  // full-screen background, say) win the pick even when it isn't strictly
+  // the highest z - pure z-order alone made those effectively unpickable.
+  const Z_WEIGHT = 0.5;
+  const PROXIMITY_WEIGHT = 0.25;
+  const SIZE_WEIGHT = 0.25;
+  const AREA_FALLBACK = 1e9;
+  const Z_FALLBACK = -1e9;
+
+  const norm = (value: number, min: number, max: number) => (max - min > 1e-9 ? (value - min) / (max - min) : 0);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pickTopEntity = (entities: any[], worldVec: { x: number; y: number }) => {
+    if (entities.length === 0) {
+      return null;
+    }
+    const scored = entities.map((entity) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let bounds: any = null;
+      try {
+        bounds = entity.graphics?.bounds ?? entity.collider?.bounds ?? null;
+      } catch {
+        bounds = null;
+      }
+      let dist = 0;
+      let area = AREA_FALLBACK;
+      if (bounds) {
+        const cx = (bounds.left + bounds.right) / 2;
+        const cy = (bounds.top + bounds.bottom) / 2;
+        const dx = worldVec.x - cx;
+        const dy = worldVec.y - cy;
+        dist = Math.sqrt(dx * dx + dy * dy);
+        const w = Math.abs(bounds.right - bounds.left);
+        const h = Math.abs(bounds.bottom - bounds.top);
+        area = Math.max(w * h, 1);
+      }
+      const rawZ = getEntityZ(entity);
+      return { entity, z: Number.isFinite(rawZ) ? rawZ : Z_FALLBACK, dist, area };
+    });
+
+    const zVals = scored.map((s) => s.z);
+    const distVals = scored.map((s) => s.dist);
+    const areaVals = scored.map((s) => s.area);
+    const minZ = Math.min(...zVals);
+    const maxZ = Math.max(...zVals);
+    const minDist = Math.min(...distVals);
+    const maxDist = Math.max(...distVals);
+    const minArea = Math.min(...areaVals);
+    const maxArea = Math.max(...areaVals);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let top: any = null;
+    let topScore = -Infinity;
+    for (const s of scored) {
+      const zScore = norm(s.z, minZ, maxZ);
+      const proximityScore = 1 - norm(s.dist, minDist, maxDist);
+      const sizeScore = 1 - norm(s.area, minArea, maxArea);
+      const score = zScore * Z_WEIGHT + proximityScore * PROXIMITY_WEIGHT + sizeScore * SIZE_WEIGHT;
+      if (top === null || score > topScore || (score === topScore && s.entity.id > top.id)) {
+        top = s.entity;
+        topScore = score;
+      }
+    }
+    return top;
+  };
+
   const pickAt = (pageX: number, pageY: number) => {
     try {
       const scene = game.currentScene;
@@ -305,15 +375,9 @@ function startEntityPicker() {
         return null;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let top: any = null;
-      let topZ = -Infinity;
-      for (const entity of hits.values()) {
-        const z = getEntityZ(entity);
-        if (top === null || z > topZ || (z === topZ && entity.id > top.id)) {
-          top = entity;
-          topZ = z;
-        }
+      const top = pickTopEntity(Array.from(hits.values()), worldVec);
+      if (!top) {
+        return null;
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let bounds: any = null;
