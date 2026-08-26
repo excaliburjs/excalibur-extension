@@ -309,7 +309,9 @@ export class EntityList extends LitElement {
             ? html`
                 <sl-dropdown class="ignore-dropdown" hoist>
                   <span slot="trigger" class="ignore-trigger ${ignoredCount > 0 ? 'active' : ''}" tabindex="0">
-                    Ignore…${ignoredCount > 0 ? html`<sl-badge class="ignore-badge" variant="success" pill>${ignoredCount}</sl-badge>` : nothing}
+                    Ignore…${ignoredCount > 0
+                      ? html`<sl-badge class="ignore-badge" variant="success" pill>${ignoredCount}</sl-badge>`
+                      : nothing}
                   </span>
                   <div class="ignore-panel">
                     <div class="ignore-panel-header">
