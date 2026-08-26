@@ -29,8 +29,13 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
 
+      - name: Install chromium for vitest browser mode
+        run: npx playwright install --with-deps chromium
+      - run: npm run test
+
       - run: npm run build:chrome
       - run: npm run build:firefox
+      - run: npm run build:embedded
 
       - name: Compute version
         id: ver
@@ -47,12 +52,17 @@ jobs:
         working-directory: dist-firefox
         run: zip -r "../ff-${{ steps.ver.outputs.version }}.zip" .
 
+      - name: Zip embedded build (contents, not the dist-embedded folder)
+        working-directory: dist-embedded
+        run: zip -r "../ex-devtools-${{ steps.ver.outputs.version }}.zip" .
+
       - name: Zip source (root minus node_modules and build artifacts)
         run: |
           zip -r "ex-${{ steps.ver.outputs.version }}-source.zip" . \
             -x 'node_modules/*' '.git/*' '.parcel-cache/*' \
             'dist/*' 'dist-chrome/*' 'dist-firefox/*' 'releases/*' \
-            '*.zip'
+            'dist-embedded/*' 'dist-embedded-dev/*' '.parcel-cache-embedded/*' \
+            'coverage/*' '*.zip'
 
       - uses: actions/upload-artifact@v4
         with:
@@ -63,6 +73,11 @@ jobs:
         with:
           name: ff-${{ steps.ver.outputs.version }}
           path: ff-${{ steps.ver.outputs.version }}.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ex-devtools-${{ steps.ver.outputs.version }}
+          path: ex-devtools-${{ steps.ver.outputs.version }}.zip
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
@@ -78,7 +93,7 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -e
-          ASSETS=( "chrome-${VERSION}.zip" "ff-${VERSION}.zip" "ex-${VERSION}-source.zip" )
+          ASSETS=( "chrome-${VERSION}.zip" "ff-${VERSION}.zip" "ex-devtools-${VERSION}.zip" "ex-${VERSION}-source.zip" )
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "Release ${TAG} exists; uploading assets (clobber)"
             gh release upload "${TAG}" "${ASSETS[@]}" --clobber

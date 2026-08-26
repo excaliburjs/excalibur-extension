@@ -4,62 +4,8 @@ import { repeat } from 'lit/directives/repeat.js';
 import { colors } from '../colors';
 import { common } from '../common';
 import type { EntityGraphicsDetail, EntityPropertyUpdate, InspectedComponent, InspectedEntity } from '../protocol';
+import { asNumber, asVector, formatLoose, formatNumber } from '../format';
 import type { SlInput, SlRange, SlSelect, SlSwitch } from '@shoelace-style/shoelace';
-
-/**
- * Format unknown value as number
- */
-function asNumber(value: unknown, fallback = 0): number {
-  return typeof value === 'number' ? value : fallback;
-}
-
-/**
- * Format unknown as vector
- */
-function asVector(value: unknown): { x: number; y: number } {
-  const vec = value as { x?: unknown; y?: unknown } | null | undefined;
-  return { x: asNumber(vec?.x), y: asNumber(vec?.y) };
-}
-
-/**
- * Format number to 4 decimals
- */
-function formatNumber(n: number): string {
-  if (Number.isInteger(n)) {
-    return n.toString();
-  }
-  return (Math.round(n * 10000) / 10000).toString();
-}
-
-/**
- * Handle weird numbers
- */
-function formatLoose(value: unknown): string {
-  if (value === null || value === undefined) {
-    return '—';
-  }
-  if (typeof value === 'number') {
-    return formatNumber(value);
-  }
-  if (value === 'Infinity') {
-    return '∞';
-  }
-  if (value === '-Infinity') {
-    return '-∞';
-  }
-  if (typeof value === 'string' || typeof value === 'boolean') {
-    return String(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(formatLoose).join(', ')}]`;
-  }
-  const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj);
-  if (keys.length === 2 && keys.includes('x') && keys.includes('y')) {
-    return `(${formatLoose(obj.x)}, ${formatLoose(obj.y)})`;
-  }
-  return JSON.stringify(value);
-}
 
 const COLLISION_TYPES = ['Active', 'Fixed', 'Passive', 'PreventCollision'];
 

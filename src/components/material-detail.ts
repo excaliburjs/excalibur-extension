@@ -5,7 +5,8 @@ import { guard } from 'lit/directives/guard.js';
 import { colors } from '../colors';
 import { common } from '../common';
 import { highlightGlsl } from '../glsl-highlight';
-import { SlColorPicker, SlInput, SlRange, SlSwitch } from '@shoelace-style/shoelace';
+import { formatMatrix, formatSampling, formatValue } from '../format';
+import type { SlColorPicker, SlInput, SlRange, SlSwitch } from '@shoelace-style/shoelace';
 
 export interface MaterialUniform {
   name: string;
@@ -71,65 +72,6 @@ export interface UniformChange {
   uniformName: string;
   kind: 'float' | 'int' | 'bool' | 'floatArray' | 'color';
   value: number | boolean | number[] | { r: number; g: number; b: number; a: number };
-}
-
-/**
- * Formats a number for display, trimming float noise to 4 decimal places.
- */
-function formatNumber(n: number): string {
-  if (Number.isInteger(n)) {
-    return n.toString();
-  }
-  return (Math.round(n * 10000) / 10000).toString();
-}
-
-/**
- * Formats a uniform value (scalar, boolean, or array) for display.
- */
-function formatValue(value: MaterialUniform['value']): string {
-  if (value === null || value === undefined) {
-    return '—';
-  }
-  if (typeof value === 'boolean') {
-    return value.toString();
-  }
-  if (typeof value === 'number') {
-    return formatNumber(value);
-  }
-  return `[${value.map(formatNumber).join(', ')}]`;
-}
-
-/**
- * Formats a flat column-major matrix array (the GL convention returned by
- * gl.getUniform) as aligned rows for conventional row-major reading.
- */
-function formatMatrix(value: number[], dim: number): string {
-  const rows: string[] = [];
-  for (let r = 0; r < dim; r++) {
-    const row: number[] = [];
-    for (let c = 0; c < dim; c++) {
-      row.push(value[r + c * dim]);
-    }
-    rows.push(row.map((n) => formatNumber(n).padStart(10)).join(' '));
-  }
-  return rows.join('\n');
-}
-
-/**
- * Formats a texture's sampling modes as "filtering · wrap" (e.g. "Pixel · Clamp"
- * or "Blended · Repeat×Mirror"), or null when unknown.
- */
-function formatSampling(texture: Pick<MaterialTexture, 'filtering' | 'wrapX' | 'wrapY'>): string | null {
-  const parts: string[] = [];
-  if (texture.filtering) {
-    parts.push(texture.filtering);
-  }
-  if (texture.wrapX || texture.wrapY) {
-    const x = texture.wrapX ?? '?';
-    const y = texture.wrapY ?? '?';
-    parts.push(x === y ? x : `${x}×${y}`);
-  }
-  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 /**

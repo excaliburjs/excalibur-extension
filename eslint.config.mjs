@@ -85,5 +85,37 @@ export default [
         }
       ]
     }
+  },
+  {
+    // Page functions are serialized into the inspected page via
+    // Function.prototype.toString — a runtime import would leave a dangling
+    // reference to module scope in the injected copy. Type-only imports are
+    // erased at compile time and stay safe.
+    files: ['src/page/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['*'],
+              allowTypeImports: true,
+              message: 'src/page functions are serialized into the page — runtime imports are forbidden (type-only imports are fine).'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    // Test files: node globals, console output allowed, no JSDoc requirement.
+    // Vitest APIs are imported explicitly (no globals mode).
+    files: ['**/*.spec.ts', 'test/**/*.ts', 'vitest.config.ts'],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-empty-function': 'off',
+      'jsdoc/require-jsdoc': 'off'
+    }
   }
 ];

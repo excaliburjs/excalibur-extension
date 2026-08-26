@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Excalibur Embedded Devtools — Dev Harness</title>
+    <style>
+      body {
+        margin: 0;
+        background: #111;
+        color: #ccc;
+        font-family: sans-serif;
+      }
+      main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Embedded devtools dev harness</h1>
+      <p>A demo Excalibur game runs below; click the floating <strong>Ex</strong> button (or add <code>?ex-devtools=open</code>).</p>
+      <canvas id="game"></canvas>
+    </main>
+    <script type="module" src="./dev.ts"></script>
+  </body>
+</html>

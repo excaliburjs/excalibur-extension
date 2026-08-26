@@ -3,22 +3,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { colors } from '../colors';
 import { common } from '../common';
-import { SlChangeEvent, SlCheckbox, SlInput, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
-
-/**
- * Case-insensitive sort with lowercase sorting before uppercase on an
- * otherwise-equal string (default JS sort puts 'A' before 'a', the opposite)
- */
-function sortIgnoreCase(values: string[]): string[] {
-  return [...values].sort((a, b) => {
-    const al = a.toLowerCase();
-    const bl = b.toLowerCase();
-    if (al !== bl) {
-      return al < bl ? -1 : 1;
-    }
-    return a < b ? 1 : a > b ? -1 : 0;
-  });
-}
+import type { SlChangeEvent, SlCheckbox, SlInput, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
+import { sortIgnoreCase } from '../format';
 
 export interface Entity {
   id: number;

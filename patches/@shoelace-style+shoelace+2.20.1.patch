@@ -11,3 +11,16 @@ index e1379d2..f60b397 100644
    }
    handleChange() {
      this.emit("sl-change");
+diff --git a/node_modules/@shoelace-style/shoelace/dist/chunks/chunk.HRYVEIKV.js b/node_modules/@shoelace-style/shoelace/dist/chunks/chunk.HRYVEIKV.js
+index 3ab6f9f..c4dfa87 100644
+--- a/node_modules/@shoelace-style/shoelace/dist/chunks/chunk.HRYVEIKV.js
++++ b/node_modules/@shoelace-style/shoelace/dist/chunks/chunk.HRYVEIKV.js
+@@ -82,7 +82,7 @@ var SlRange = class extends ShoelaceElement {
+   disconnectedCallback() {
+     var _a;
+     super.disconnectedCallback();
+-    (_a = this.resizeObserver) == null ? void 0 : _a.unobserve(this.input);
++    if (this.input) { (_a = this.resizeObserver) == null ? void 0 : _a.unobserve(this.input); }
+   }
+   handleChange() {
+     this.emit("sl-change");

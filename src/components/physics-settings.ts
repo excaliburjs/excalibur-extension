@@ -2,8 +2,8 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
-import { SlChangeEvent, SlSwitch } from '@shoelace-style/shoelace';
-import { PhysicsConfig } from '../@types/excalibur';
+import type { SlChangeEvent, SlSwitch } from '@shoelace-style/shoelace';
+import type { PhysicsConfig } from '../@types/excalibur';
 
 declare module '../@types/excalibur' {
   interface PhysicsConfig {

@@ -1,0 +1,14 @@
+/* Styles for the embedded panel iframe — the same sheets the extension's
+ * excalibur-panel.html pulls in via <link> tags. The cdn theme path is the
+ * patched Shoelace build (see patches/). */
+@import 'npm:@shoelace-style/shoelace/cdn/themes/dark.css';
+@import '../excalibur.css';
+
+/* The iframe document itself */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: #292929;
+}

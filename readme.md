@@ -52,6 +52,90 @@ If you want to develop locally
   - Zip the files in the directory, not the `dist-firefox` directory
   - Upload the zip to mozilla
 
+## How it works
+
+The message protocol (`src/protocol.ts`) is the fixed seam. Three layers carry it,
+and each seam has two interchangeable implementations — one for the browser
+extension, one for the embedded build:
+
+```mermaid
+flowchart LR
+    APP["<b>&lt;app-main&gt;</b><br/>Lit panel UI<br/><i>src/components/</i>"]
+    CONN["<b>createConnection()</b><br/>command switch · 200ms heartbeat poll<br/>frame reconcile · pickerOpSeq · 3-strike tolerance<br/><i>src/driver/connection.ts</i>"]
+    FNS["<b>page functions</b> (closure-free, serializable)<br/>detect · inject · clock · picker<br/>entities · scene · materials<br/><i>src/page/</i>"]
+    ENGINE[("window.___EXCALIBUR_DEVTOOL<br/>Excalibur Engine")]
+
+    APP <-- "PanelTransport" --> CONN
+    CONN <-- "PageExecutor" --> FNS
+    FNS <--> ENGINE
+```
+
+| Seam               | Extension build                                                      | Embedded build                                        |
+| ------------------ | -------------------------------------------------------------------- | ----------------------------------------------------- |
+| `PanelTransport`   | chrome runtime Port (`src/panel-transport/extension.ts`)             | in-memory pair (`src/embedded/local-driver.ts`)       |
+| `PageExecutor`     | `chrome.scripting.executeScript`, world `MAIN` (`src/background.ts`) | direct function call (`src/embedded/local-driver.ts`) |
+| Panel UI lives in  | the devtools panel page                                              | a same-origin dock iframe (`src/embedded/host.ts`)    |
+| Connection runs in | the background service worker                                        | the game page itself                                  |
+
+The runtime flow is identical in both builds — only the plugs differ:
+
+```mermaid
+sequenceDiagram
+    participant Panel as app-main (panel)
+    participant Conn as createConnection (driver)
+    participant Exec as PageExecutor
+    participant Game as Excalibur Engine
+
+    Panel->>Conn: ex-debug:hello (tabId stamped by the transport)
+    Conn-->>Panel: ex-debug:init
+    Panel->>Conn: ex-debug:update-debug (settings push)
+
+    loop every 200ms
+        Conn->>Exec: execAll(detectExcalibur)
+        Exec->>Game: find window.___EXCALIBUR_DEVTOOL (all frames)
+        Conn->>Exec: exec(inject, settings)
+        Exec->>Game: apply debug settings, serialize game state
+        Conn-->>Panel: ex-debug:heartbeat (instances, selectedFrameId, data)
+    end
+
+    Panel->>Conn: ex-debug:command (dispatch: ex-debug:kill, actorId)
+    Conn->>Exec: exec(kill, [actorId])
+    Exec->>Game: actor.kill()
+    Note over Panel,Conn: on-demand replies (material-detail,<br/>entity-graphics) post back the same way
+```
+
+## Embedded devtools (no extension needed)
+
+The panel can also run directly inside a game page, firebug-style — no browser
+extension, no devtools window. Build it with:
+
+- `npm run build:embedded` → `dist-embedded/ex-devtools.js` (self-contained)
+
+Drop it into any page running an Excalibur game (the engine already exposes
+itself to the devtools — no game-side code needed):
+
+```html
+<script type="module" src="ex-devtools.js"></script>
+```
+
+A floating **Ex** button appears bottom-right and opens a resizable dock with
+the full panel (inspector, debug draw, materials, graphs, entity picker).
+`window.ExDevtools` exposes `open()`, `close()`, `toggle()`, and `destroy()`;
+appending `?ex-devtools=open` to the URL opens the dock on load.
+
+For development, `npm run start:embedded` serves a harness page with a demo
+game and the embedded devtools on top.
+
+## Testing
+
+- `npm run test:unit` — node-level Vitest specs (settings schema/store/utils,
+  formatters, GLSL tokenizer, and a serialization tripwire that proves every
+  `src/page/` function is still self-contained).
+- `npm run test:browser` — Vitest browser mode (headless Chromium via
+  Playwright; run `npx playwright install chromium` once): boots a real
+  Excalibur game and drives the embedded panel against it end to end.
+- `npm run test` — both.
+
 ## Features That We Want!
 
 PR's welcome

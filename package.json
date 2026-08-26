@@ -2,13 +2,19 @@
   "scripts": {
     "format": "prettier . --check",
     "format:fix": "npm run format -- --write",
-    "lint": "eslint ./src/",
+    "lint": "eslint ./src/ ./test/ ./vitest.config.ts",
     "postinstall": "patch-package",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:browser": "vitest run --project browser",
+    "test:watch": "vitest",
     "start:chrome": "parcel watch src/chrome/manifest.json --host localhost --no-source-maps --dist-dir dist-chrome",
     "build:chrome": "npm run typecheck && parcel build src/chrome/manifest.json --no-source-maps --no-optimize --dist-dir dist-chrome",
     "start:firefox": "parcel watch src/firefox/manifest.json --host localhost --no-source-maps --dist-dir dist-firefox",
-    "build:firefox": "npm run typecheck && parcel build src/firefox/manifest.json --no-source-maps --no-optimize --dist-dir dist-firefox"
+    "build:firefox": "npm run typecheck && parcel build src/firefox/manifest.json --no-source-maps --no-optimize --dist-dir dist-firefox",
+    "start:embedded": "parcel src/embedded/dev.html --config .parcelrc.embedded --dist-dir dist-embedded-dev --cache-dir .parcel-cache-embedded",
+    "build:embedded": "npm run typecheck && parcel build src/embedded/ex-devtools.ts --config .parcelrc.embedded --dist-dir dist-embedded --cache-dir .parcel-cache-embedded --no-source-maps"
   },
   "staticFiles": {
     "staticPath": "static"
@@ -22,17 +28,25 @@
   "devDependencies": {
     "@eslint/js": "^9.20.0",
     "@parcel/config-webextension": "2.12.0",
+    "@parcel/transformer-inline-string": "^2.12.0",
     "@types/chrome": "0.0.277",
     "@types/d3": "7.4.3",
+    "@types/node": "^26.3.0",
+    "@vitest/browser": "^4.1.10",
+    "@vitest/browser-playwright": "^4.1.10",
     "eslint": "^9.20.1",
     "eslint-plugin-jsdoc": "^50.6.3",
+    "excalibur": "^0.32.0",
     "globals": "^15.15.0",
+    "jsdom": "^29.1.1",
     "parcel": "2.12.0",
     "parcel-reporter-static-files-copy": "1.5.3",
     "patch-package": "^8.0.1",
+    "playwright": "^1.60.0",
     "prettier": "3.5.2",
     "process": "^0.11.10",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.67.0"
+    "typescript-eslint": "8.67.0",
+    "vitest": "^4.1.10"
   }
 }

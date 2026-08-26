@@ -4,7 +4,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { colors } from '../colors';
 import { common } from '../common';
 import './material-detail';
-import { MaterialDetail, MaterialsState, MaterialSummary } from './material-detail';
+import type { MaterialDetail, MaterialsState, MaterialSummary } from './material-detail';
 
 export interface MaterialSelected {
   materialId: number;

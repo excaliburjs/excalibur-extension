@@ -2,11 +2,15 @@ import { css, html, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
-import { SlChangeEvent, SlColorPicker, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
-import { settingsStore, settingsSchema, hexToColor, colorToHex, Settings, BooleanSettingsKey, ColorSettingsKey } from '../settings';
+import type { SlChangeEvent, SlColorPicker, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
+import { settingsStore, settingsSchema, hexToColor, colorToHex, type BooleanSettingsKey, type ColorSettingsKey } from '../settings';
+import type { Settings } from '../settings';
 
-// Re-export for backward compatibility
-export { Settings, DefaultSettings } from '../settings';
+// Re-export for backward compatibility. Settings is a type and must be
+// re-exported as one — a value re-export breaks cold-cache dev builds
+// ("src/settings/index.ts does not export 'Settings'").
+export { DefaultSettings } from '../settings';
+export type { Settings } from '../settings';
 
 /**
  * @event debug-settings-change - Emitted when settings change
