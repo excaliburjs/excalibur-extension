@@ -3,7 +3,22 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { colors } from '../colors';
 import { common } from '../common';
-import { SlChangeEvent, SlInput, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
+import { SlChangeEvent, SlCheckbox, SlInput, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
+
+/**
+ * Case-insensitive sort with lowercase sorting before uppercase on an
+ * otherwise-equal string (default JS sort puts 'A' before 'a', the opposite)
+ */
+function sortIgnoreCase(values: string[]): string[] {
+  return [...values].sort((a, b) => {
+    const al = a.toLowerCase();
+    const bl = b.toLowerCase();
+    if (al !== bl) {
+      return al < bl ? -1 : 1;
+    }
+    return a < b ? 1 : a > b ? -1 : 0;
+  });
+}
 
 export interface Entity {
   id: number;
@@ -25,6 +40,9 @@ export interface Entity {
  * @event identify-actor
  * @event inspect-entity
  * @event toggle-picker
+ * @event toggle-ignored-ctor
+ * @event toggle-ignored-name
+ * @event clear-ignored
  */
 @customElement('entity-list')
 export class EntityList extends LitElement {
@@ -70,11 +88,91 @@ export class EntityList extends LitElement {
       sl-input {
         padding-bottom: 10px;
       }
-      #pick-entity {
-        margin-bottom: 10px;
-      }
       sl-switch {
         padding-bottom: 10px;
+      }
+
+      .picker-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .ignore-trigger {
+        font-size: inherit;
+        color: var(--blue-text);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .ignore-trigger:hover {
+        text-decoration: underline;
+      }
+
+      .ignore-trigger.active {
+        color: var(--green-text);
+      }
+
+      .ignore-badge {
+        margin-left: 4px;
+        vertical-align: middle;
+      }
+
+      .ignore-panel {
+        padding: 10px;
+        background-color: var(--darker-panel-color);
+        width: 220px;
+      }
+
+      .ignore-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .ignore-panel-header .title {
+        color: #888;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
+      .ignore-panel-header .clear-btn {
+        font-size: 11px;
+        color: var(--blue-text);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .ignore-panel-header .clear-btn:hover {
+        text-decoration: underline;
+      }
+
+      .ignore-group {
+        margin-bottom: 8px;
+      }
+
+      .ignore-group:last-child {
+        margin-bottom: 0;
+      }
+
+      .ignore-group .group-label {
+        color: #888;
+        font-size: 11px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+
+      .ignore-list {
+        max-height: 140px;
+        overflow-y: auto;
+      }
+
+      .ignore-list sl-checkbox {
+        display: block;
+        margin: 2px 0;
+        font-size: 13px;
       }
 
       .scrollbar::-webkit-scrollbar-track {
@@ -104,6 +202,12 @@ export class EntityList extends LitElement {
 
   @property({ type: Boolean })
   pickerArmed = false;
+
+  @property({ type: Array })
+  ignoredCtors: string[] = [];
+
+  @property({ type: Array })
+  ignoredNames: string[] = [];
 
   @state()
   showOffscreen = false;
@@ -149,6 +253,34 @@ export class EntityList extends LitElement {
     this.dispatchEvent(new CustomEvent('toggle-picker', { bubbles: true, composed: true }));
   }
 
+  private _toggleIgnoredCtor(ctor: string) {
+    return (evt: SlChangeEvent) => {
+      this.dispatchEvent(
+        new CustomEvent<{ ctor: string; ignored: boolean }>('toggle-ignored-ctor', {
+          detail: { ctor, ignored: (evt.target as SlCheckbox).checked },
+          bubbles: true,
+          composed: true
+        })
+      );
+    };
+  }
+
+  private _toggleIgnoredName(name: string) {
+    return (evt: SlChangeEvent) => {
+      this.dispatchEvent(
+        new CustomEvent<{ name: string; ignored: boolean }>('toggle-ignored-name', {
+          detail: { name, ignored: (evt.target as SlCheckbox).checked },
+          bubbles: true,
+          composed: true
+        })
+      );
+    };
+  }
+
+  private _clearIgnored = () => {
+    this.dispatchEvent(new CustomEvent('clear-ignored', { bubbles: true, composed: true }));
+  };
+
   render() {
     let entities = this.entities.slice();
     if (!this.showOffscreen) {
@@ -161,12 +293,70 @@ export class EntityList extends LitElement {
       );
     }
 
+    // Unfiltered, so a type/name stays toggleable even while the filter above hides its instances
+    const allCtors = sortIgnoreCase(Array.from(new Set(this.entities.map((e) => e.ctor))));
+    const allNames = sortIgnoreCase(Array.from(new Set(this.entities.map((e) => e.name))).filter(Boolean));
+    const ignoredCount = this.ignoredCtors.length + this.ignoredNames.length;
+
     return html`
       <div class="section">
-        <sl-button id="pick-entity" size="small" variant=${this.pickerArmed ? 'primary' : 'default'} @click=${this._togglePicker}>
-          <sl-icon slot="prefix" name="crosshair"></sl-icon>
-          ${this.pickerArmed ? 'Picking… (Esc to cancel)' : 'Pick entity on page'}
-        </sl-button>
+        <div class="picker-row">
+          <sl-button id="pick-entity" size="small" variant=${this.pickerArmed ? 'primary' : 'default'} @click=${this._togglePicker}>
+            <sl-icon slot="prefix" name="crosshair"></sl-icon>
+            ${this.pickerArmed ? 'Picking… (Esc to cancel)' : 'Pick entity on page'}
+          </sl-button>
+          ${allCtors.length > 0 || allNames.length > 0
+            ? html`
+                <sl-dropdown class="ignore-dropdown" hoist>
+                  <span slot="trigger" class="ignore-trigger ${ignoredCount > 0 ? 'active' : ''}" tabindex="0">
+                    Ignore…${ignoredCount > 0 ? html`<sl-badge class="ignore-badge" variant="success" pill>${ignoredCount}</sl-badge>` : nothing}
+                  </span>
+                  <div class="ignore-panel">
+                    <div class="ignore-panel-header">
+                      <span class="title">Ignore for picking</span>
+                      ${ignoredCount > 0 ? html`<span class="clear-btn" @click=${this._clearIgnored}>Clear</span>` : nothing}
+                    </div>
+                    ${allCtors.length > 0
+                      ? html`
+                          <div class="ignore-group">
+                            <div class="group-label">By Type</div>
+                            <div class="ignore-list scrollbar">
+                              ${repeat(
+                                allCtors,
+                                (ctor) => ctor,
+                                (ctor) => html`
+                                  <sl-checkbox .checked=${this.ignoredCtors.includes(ctor)} @sl-change=${this._toggleIgnoredCtor(ctor)}
+                                    >${ctor}</sl-checkbox
+                                  >
+                                `
+                              )}
+                            </div>
+                          </div>
+                        `
+                      : nothing}
+                    ${allNames.length > 0
+                      ? html`
+                          <div class="ignore-group">
+                            <div class="group-label">By Name</div>
+                            <div class="ignore-list scrollbar">
+                              ${repeat(
+                                allNames,
+                                (name) => name,
+                                (name) => html`
+                                  <sl-checkbox .checked=${this.ignoredNames.includes(name)} @sl-change=${this._toggleIgnoredName(name)}
+                                    >${name}</sl-checkbox
+                                  >
+                                `
+                              )}
+                            </div>
+                          </div>
+                        `
+                      : nothing}
+                  </div>
+                </sl-dropdown>
+              `
+            : nothing}
+        </div>
         <sl-input id="filter-entities" @sl-input=${this._inputFilter} placeholder="Filter Entities by Name, Ctor, or Tag"></sl-input>
         <sl-switch id="show-offscreen" @sl-change=${this._toggleOffscreen}>Show Offscreen Entities</sl-switch>
         <ul class="scrollbar">

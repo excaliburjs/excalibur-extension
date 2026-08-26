@@ -11,6 +11,8 @@ declare global {
       seq: number;
       pickedId: number | null;
       hovered: { id: number; name: string; ctor: string } | null;
+      ignoredCtors: string[];
+      ignoredNames: string[];
       teardown: () => void;
     };
   }
@@ -164,9 +166,11 @@ function identifyEntity(entityId: number) {
  * touches version-fragile internals. Pick clicks on the canvas are swallowed
  * before the engine's own listeners see them. Results are left on
  * window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER for the heartbeat to read;
- * Escape and stopEntityPicker share the teardown stored there. Idempotent.
+ * Escape and stopEntityPicker share the teardown stored there. Idempotent -
+ * a second call while already armed is a no-op, so ignoredCtors/ignoredNames
+ * here are only the *initial* values; setPickerIgnored updates them live.
  */
-function startEntityPicker() {
+function startEntityPicker(ignoredCtors: string[] = [], ignoredNames: string[] = []) {
   if (window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER) {
     return;
   }
@@ -184,6 +188,8 @@ function startEntityPicker() {
     seq: 0,
     pickedId: null,
     hovered: null,
+    ignoredCtors: Array.isArray(ignoredCtors) ? ignoredCtors : [],
+    ignoredNames: Array.isArray(ignoredNames) ? ignoredNames : [],
     teardown: () => {
       // replaced with the real teardown once listeners are installed
     }
@@ -330,6 +336,15 @@ function startEntityPicker() {
         return null;
       }
 
+      // Read live so a mid-pick ignore-list edit (setPickerIgnored) takes
+      // effect on the very next hover tick without reinstalling.
+      const ignoredCtors = new Set(state.ignoredCtors);
+      const ignoredNames = new Set(state.ignoredNames);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const isIgnored = (entity: any) =>
+        (ignoredCtors.size > 0 && ignoredCtors.has(String(entity?.constructor?.name))) ||
+        (ignoredNames.size > 0 && ignoredNames.has(String(entity?.name)));
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hits = new Map<number, any>();
       try {
@@ -337,6 +352,9 @@ function startEntityPicker() {
           for (const collider of scene.physics.query(worldVec) ?? []) {
             const owner = collider?.owner;
             if (!owner || (typeof owner.isKilled === 'function' && owner.isKilled())) {
+              continue;
+            }
+            if (isIgnored(owner)) {
               continue;
             }
             if (typeof collider.contains === 'function' && !collider.contains(worldVec)) {
@@ -352,6 +370,9 @@ function startEntityPicker() {
       try {
         for (const entity of scene.entities ?? []) {
           if (hits.has(entity.id) || (typeof entity.isKilled === 'function' && entity.isKilled())) {
+            continue;
+          }
+          if (isIgnored(entity)) {
             continue;
           }
           try {
@@ -530,6 +551,20 @@ function stopEntityPicker() {
     }
   }
   window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER = undefined;
+}
+
+/**
+ * Live-updates the ignored constructor/name lists on an already-installed
+ * picker (startEntityPicker is idempotent-guarded once armed, so re-running
+ * it can't push a new list). No-op if the picker isn't currently installed -
+ * the next picker-start carries the current lists as their initial value.
+ */
+function setPickerIgnored(ctors: string[], names: string[]) {
+  const picker = window.___EXCALIBUR_DEVTOOL_EXTENSION_PICKER;
+  if (picker) {
+    picker.ignoredCtors = Array.isArray(ctors) ? ctors : [];
+    picker.ignoredNames = Array.isArray(names) ? names : [];
+  }
 }
 
 /**
@@ -2119,7 +2154,7 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
             // observe pickerActive with no page global and wrongly disarm
             const op = ++pickerOpSeq;
             const frameId = state.selectedFrameId;
-            execInFrame(message.tabId, frameId, startEntityPicker).then(() => {
+            execInFrame(message.tabId, frameId, startEntityPicker, [message.ignoredCtors ?? [], message.ignoredNames ?? []]).then(() => {
               if (op === pickerOpSeq) {
                 debugSettings.pickerActive = true;
               } else {
@@ -2135,6 +2170,11 @@ globalThis.browser.runtime.onConnect.addListener((port) => {
             pickerOpSeq++;
             debugSettings.pickerActive = false;
             execInFrame(message.tabId, state.selectedFrameId, stopEntityPicker);
+          }
+          break;
+        case 'ex-debug:picker-set-ignored':
+          {
+            execInFrame(message.tabId, state.selectedFrameId, setPickerIgnored, [message.ignoredCtors ?? [], message.ignoredNames ?? []]);
           }
           break;
         case 'ex-debug:get-entity-graphics':

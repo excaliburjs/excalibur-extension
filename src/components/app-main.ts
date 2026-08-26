@@ -88,6 +88,34 @@ interface EntityGraphicsEvent {
 
 type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent | EntityGraphicsEvent;
 
+const IGNORED_PICKER_CTORS_KEY = 'ex-devtools:ignored-picker-ctors';
+const IGNORED_PICKER_NAMES_KEY = 'ex-devtools:ignored-picker-names';
+
+/**
+ * Loads a persisted picker ignore-list (ctors or names); best-effort, like
+ * settingsStore - a missing/corrupt value must never break the panel.
+ */
+function loadStringList(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Persists a picker ignore-list (ctors or names); best-effort, like settingsStore.
+ */
+function persistStringList(key: string, values: string[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(values));
+  } catch {
+    // best-effort only
+  }
+}
+
 @customElement('app-main')
 export class App extends LitElement {
   static styles = [
@@ -230,6 +258,12 @@ export class App extends LitElement {
 
   @state()
   pickerArmed = false;
+
+  @state()
+  ignoredPickerCtors: string[] = loadStringList(IGNORED_PICKER_CTORS_KEY);
+
+  @state()
+  ignoredPickerNames: string[] = loadStringList(IGNORED_PICKER_NAMES_KEY);
 
   private _pickerArmedAt = 0;
   private _lastPickSeq = 0;
@@ -853,13 +887,16 @@ export class App extends LitElement {
   /**
    * Posts the picker command matching the current armed state: start installs
    * the page-side picker (the background arms its flag once the install
-   * resolves), stop tears it down and clears the flag.
+   * resolves), stop tears it down and clears the flag. ignoredCtors/
+   * ignoredNames ride along as the picker's initial ignore-lists.
    */
   private _syncPicker() {
     this._post({
       name: 'ex-debug:command',
       tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: this.pickerArmed ? 'ex-debug:picker-start' : 'ex-debug:picker-stop'
+      dispatch: this.pickerArmed ? 'ex-debug:picker-start' : 'ex-debug:picker-stop',
+      ignoredCtors: this.ignoredPickerCtors,
+      ignoredNames: this.ignoredPickerNames
     });
   }
 
@@ -874,6 +911,68 @@ export class App extends LitElement {
       this._lastPickSeq = 0;
     }
     this._syncPicker();
+  }
+
+  /**
+   * Posts the current ignore-lists to an already-armed picker so a mid-pick
+   * checklist edit live-updates without reinstalling; no-op while disarmed
+   * since the next arm sends the lists as the picker's initial value anyway.
+   */
+  private _syncIgnoredIfArmed() {
+    if (this.pickerArmed) {
+      this._post({
+        name: 'ex-debug:command',
+        tabId: browser.devtools.inspectedWindow.tabId,
+        dispatch: 'ex-debug:picker-set-ignored',
+        ignoredCtors: this.ignoredPickerCtors,
+        ignoredNames: this.ignoredPickerNames
+      });
+    }
+  }
+
+  /**
+   * Toggles a constructor name in the picker's ignore-list from the entity
+   * list checklist and persists it.
+   */
+  toggleIgnoredCtor(evt: CustomEvent<{ ctor: string; ignored: boolean }>) {
+    const { ctor, ignored } = evt.detail;
+    const set = new Set(this.ignoredPickerCtors);
+    if (ignored) {
+      set.add(ctor);
+    } else {
+      set.delete(ctor);
+    }
+    this.ignoredPickerCtors = Array.from(set);
+    persistStringList(IGNORED_PICKER_CTORS_KEY, this.ignoredPickerCtors);
+    this._syncIgnoredIfArmed();
+  }
+
+  /**
+   * Toggles an entity name in the picker's ignore-list from the entity list
+   * checklist and persists it.
+   */
+  toggleIgnoredName(evt: CustomEvent<{ name: string; ignored: boolean }>) {
+    const { name, ignored } = evt.detail;
+    const set = new Set(this.ignoredPickerNames);
+    if (ignored) {
+      set.add(name);
+    } else {
+      set.delete(name);
+    }
+    this.ignoredPickerNames = Array.from(set);
+    persistStringList(IGNORED_PICKER_NAMES_KEY, this.ignoredPickerNames);
+    this._syncIgnoredIfArmed();
+  }
+
+  /**
+   * Clears both picker ignore-lists from the dropdown's Clear button.
+   */
+  clearIgnored() {
+    this.ignoredPickerCtors = [];
+    this.ignoredPickerNames = [];
+    persistStringList(IGNORED_PICKER_CTORS_KEY, this.ignoredPickerCtors);
+    persistStringList(IGNORED_PICKER_NAMES_KEY, this.ignoredPickerNames);
+    this._syncIgnoredIfArmed();
   }
 
   /**
@@ -1023,10 +1122,15 @@ export class App extends LitElement {
               <entity-list
                 .entities=${this.engine.entities}
                 .pickerArmed=${this.pickerArmed}
+                .ignoredCtors=${this.ignoredPickerCtors}
+                .ignoredNames=${this.ignoredPickerNames}
                 @kill-actor=${this.killActor}
                 @identify-actor=${this.identifyActor}
                 @inspect-entity=${this.inspectEntity}
                 @toggle-picker=${this.togglePicker}
+                @toggle-ignored-ctor=${this.toggleIgnoredCtor}
+                @toggle-ignored-name=${this.toggleIgnoredName}
+                @clear-ignored=${this.clearIgnored}
               ></entity-list>
             </div>
             <div class="widget">
