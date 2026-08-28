@@ -32,6 +32,7 @@ import { SystemTimeGraph } from './system-time-graph';
 import { SystemStatsList } from './system-stats-list';
 import type { MaterialDetail, MaterialsState, UniformChange } from './material-detail';
 import type { MaterialSelected } from './materials-panel';
+import type { PassUniformChange, PipelineDetail, PipelineDetailRequest, PostProcessorsState } from './pipeline-view';
 import type {
   EntityGraphicsDetail,
   EntityPropertyUpdate,
@@ -229,6 +230,14 @@ export class App extends LitElement {
 
   @state()
   materialDetails: Record<string, MaterialDetail> = {};
+
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  postprocessors: PostProcessorsState = { list: [] };
+
+  @state()
+  pipelineDetails: Record<string, PipelineDetail> = {};
 
   @state()
   inspectedEntityId: number | null = null;
@@ -470,6 +479,10 @@ export class App extends LitElement {
           this.materials = materials;
         }
 
+        if (data.postprocessors) {
+          this.postprocessors = data.postprocessors;
+        }
+
         if (data.inspectedEntity !== undefined) {
           this.inspectedEntity = data.inspectedEntity;
           if (data.inspectedEntity && data.inspectedEntity.graphicsKey !== this._fetchedGraphicsKey) {
@@ -580,6 +593,26 @@ export class App extends LitElement {
         }
         break;
       }
+      case 'ex-debug:pipeline-detail': {
+        if (message.data) {
+          const detail: PipelineDetail | null = JSON.parse(message.data);
+          if (detail) {
+            // merge partial replies: a framebuffers-only refresh (live poll /
+            // refresh button) must not drop the cached pass sources
+            const previous = this.pipelineDetails[detail.key];
+            this.pipelineDetails = {
+              ...this.pipelineDetails,
+              [detail.key]: {
+                ...previous,
+                ...detail,
+                passes: detail.passes ?? previous?.passes,
+                framebuffers: detail.framebuffers ?? previous?.framebuffers
+              }
+            };
+          }
+        }
+        break;
+      }
       case 'ex-debug:entity-graphics': {
         if (message.data) {
           const detail: EntityGraphicsDetail | null = JSON.parse(message.data);
@@ -621,6 +654,8 @@ export class App extends LitElement {
     this.systemStatsList?.reset();
     this.materials = { source: 'scan', list: [] };
     this.materialDetails = {};
+    this.postprocessors = { list: [] };
+    this.pipelineDetails = {};
     this.worldPos = '???';
     this.screenPos = '???';
     this.pagePos = '???';
@@ -691,6 +726,22 @@ export class App extends LitElement {
     this._post({
       name: 'ex-debug:command',
       dispatch: 'ex-debug:update-material-uniform',
+      update: evt.detail
+    });
+  }
+
+  pipelineDetailRequested(evt: CustomEvent<PipelineDetailRequest>) {
+    this._post({
+      name: 'ex-debug:command',
+      dispatch: 'ex-debug:get-pipeline-detail',
+      query: evt.detail
+    });
+  }
+
+  updatePassUniform(evt: CustomEvent<PassUniformChange>) {
+    this._post({
+      name: 'ex-debug:command',
+      dispatch: 'ex-debug:update-pass-uniform',
       update: evt.detail
     });
   }
@@ -994,7 +1045,7 @@ export class App extends LitElement {
         <sl-tab slot="nav" panel="perf">Performance</sl-tab>
         <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
         <sl-tab slot="nav" panel="physics">Physics</sl-tab>
-        <sl-tab slot="nav" panel="materials">Materials</sl-tab>
+        <sl-tab slot="nav" panel="materials">Materials/PostProcessors</sl-tab>
 
         <sl-tab-panel name="inspector">
           <div class="row">
@@ -1141,8 +1192,13 @@ export class App extends LitElement {
           <materials-panel
             @material-selected=${this.materialSelected}
             @uniform-change=${this.updateMaterialUniform}
+            @pipeline-detail-request=${this.pipelineDetailRequested}
+            @pass-uniform-change=${this.updatePassUniform}
             .materials=${this.materials}
+            .postprocessors=${this.postprocessors}
             .details=${this.materialDetails}
+            .pipelineDetails=${this.pipelineDetails}
+            .active=${this._currentTabName === 'materials'}
             .unsupported=${!this.isV32OrLater}
           >
           </materials-panel>

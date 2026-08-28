@@ -7,6 +7,7 @@ import { kill, identifyEntity, updateEntityProperty, getEntityGraphics, useEntit
 import { startEntityPicker, stopEntityPicker, setPickerIgnored } from '../page/picker';
 import { setColorBlind, goToScene, updatePhysics } from '../page/scene';
 import { updateMaterialUniform, getMaterialDetail } from '../page/materials';
+import { getPipelineDetail, updatePassUniform } from '../page/pipeline';
 import { inject } from '../page/inject';
 
 /**
@@ -195,6 +196,25 @@ export function createConnection(port: DriverPort, executor: PageExecutor): () =
               })
               .catch((e) => {
                 console.info('material detail reply failed:', e);
+              });
+          }
+          break;
+        case 'ex-debug:update-pass-uniform':
+          {
+            execCommand(message.tabId, state.selectedFrameId, updatePassUniform, [message.update]);
+          }
+          break;
+        case 'ex-debug:get-pipeline-detail':
+          {
+            execCommand(message.tabId, state.selectedFrameId, getPipelineDetail, [message.query])
+              .then((results) => {
+                safePostMessage({
+                  name: 'ex-debug:pipeline-detail',
+                  data: results?.[0]?.result ?? null
+                });
+              })
+              .catch((e) => {
+                console.info('pipeline detail reply failed:', e);
               });
           }
           break;

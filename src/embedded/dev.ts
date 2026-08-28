@@ -44,6 +44,54 @@ const shaded = new ex.Actor({ name: 'shaded', x: 500, y: 240, width: 60, height:
 shaded.graphics.material = material;
 game.add(shaded);
 
+// Two-pass shader pipeline material (0.33+): pass sources are glsl-tag
+// processed (no #version/precision, straight alpha, u_image = previous pass)
+const pipelined = game.graphicsContext.createMaterial({
+  name: 'pipelined',
+  passes: [
+    `in vec2 v_uv;
+uniform sampler2D u_image;
+uniform float u_strength;
+out vec4 fragColor;
+void main() {
+  vec4 color = texture(u_image, v_uv);
+  fragColor = vec4(color.r * u_strength, color.gba);
+}`,
+    `in vec2 v_uv;
+uniform sampler2D u_image;
+out vec4 fragColor;
+void main() {
+  vec4 color = texture(u_image, v_uv);
+  fragColor = vec4(color.b, color.g, color.r, color.a);
+}`
+  ]
+});
+(pipelined.pipeline as ex.ShaderPipeline).passes[0].uniforms.u_strength = 1;
+
+const piped = new ex.Actor({ name: 'piped', x: 350, y: 360, width: 60, height: 60, color: ex.Color.Green });
+piped.graphics.material = pipelined;
+game.add(piped);
+
+// Multipass postprocessors over the screen: a built-in Bloom effect and a
+// named single-pass pipeline
+game.graphicsContext.addPostProcessor(new ex.BloomEffect({ graphicsContext: game.graphicsContext as ex.ExcaliburGraphicsContextWebGL }));
+game.graphicsContext.addPostProcessor(
+  new ex.ShaderPipelinePostProcessor({
+    name: 'vignette',
+    passes: [
+      `in vec2 v_uv;
+uniform sampler2D u_image;
+uniform float u_darkness;
+out vec4 fragColor;
+void main() {
+  vec4 color = texture(u_image, v_uv);
+  float d = distance(v_uv, vec2(0.5));
+  fragColor = vec4(color.rgb * (1.0 - clamp(d * u_darkness, 0.0, 0.8)), color.a);
+}`
+    ]
+  })
+);
+
 game.addScene('level2', new ex.Scene());
 
 void game.start();

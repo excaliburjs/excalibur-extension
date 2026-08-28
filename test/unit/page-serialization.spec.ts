@@ -6,6 +6,7 @@ import { getEntityGraphics, identifyEntity, kill, updateEntityProperty, useEntit
 import { setPickerIgnored, startEntityPicker, stopEntityPicker } from '../../src/page/picker';
 import { goToScene, setColorBlind, updatePhysics } from '../../src/page/scene';
 import { getMaterialDetail, updateMaterialUniform } from '../../src/page/materials';
+import { getPipelineDetail, updatePassUniform } from '../../src/page/pipeline';
 import { inject } from '../../src/page/inject';
 
 /*
@@ -36,9 +37,11 @@ const pageFunctions: Record<string, [(...args: never[]) => unknown, unknown]> = 
   goToScene: [goToScene, undefined],
   updatePhysics: [updatePhysics, undefined],
   updateMaterialUniform: [updateMaterialUniform, undefined],
-  // The two on-demand fetchers stringify their whole payload, sentinel included
+  // The on-demand fetchers stringify their whole payload, sentinel included
   getMaterialDetail: [getMaterialDetail, JSON.stringify(null)],
   getEntityGraphics: [getEntityGraphics, JSON.stringify(null)],
+  getPipelineDetail: [getPipelineDetail, JSON.stringify(null)],
+  updatePassUniform: [updatePassUniform, undefined],
   updateEntityProperty: [updateEntityProperty, undefined],
   useEntityGraphic: [useEntityGraphic, undefined],
   inject: [inject, null]

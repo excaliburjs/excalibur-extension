@@ -163,6 +163,8 @@ export function inject(settings: Record<string, unknown>, mappings: Record<strin
   // Collect material/shader information, only while the Materials tab is visible
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let materials: { source: 'registry' | 'scan'; list: any[] } | undefined = undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let postprocessors: { list: any[] } | undefined = undefined;
   if (settings.collectMaterials) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -225,6 +227,134 @@ export function inject(settings: Record<string, unknown>, mappings: Record<strin
           hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
         }
         return hash;
+      };
+
+      // Resolves the ShaderPass array behind any pipeline-shaped object
+      // (0.33+, PR #3828). Ladder: ShaderPipeline.passes (public) →
+      // effect wrappers' _pipeline (Blur/Glow/ShaderPipelinePostProcessor) →
+      // BloomEffect's four named passes → ColorBlindness's single _pass →
+      // null (opaque custom process() implementation, name only).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resolvePasses = (candidate: any): any[] | null => {
+        if (!candidate) {
+          return null;
+        }
+        if (Array.isArray(candidate.passes)) {
+          return candidate.passes;
+        }
+        if (candidate._pipeline) {
+          return resolvePasses(candidate._pipeline);
+        }
+        if (candidate._threshold && candidate._combine) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return [candidate._threshold, candidate._downsample, candidate._upsampleMerge, candidate._combine].filter((p: any) => !!p);
+        }
+        if (candidate._pass) {
+          return [candidate._pass];
+        }
+        return null;
+      };
+
+      // Set on every pass by trySetUniform each draw; not present in
+      // pass.uniforms, so mark them built-in when reflected from the program
+      const passConventionUniforms = ['u_image', 'u_original', 'u_resolution', 'u_texelSize', 'u_time_ms', 'u_elapsed_ms'];
+
+      // Summarizes one ShaderPass for the heartbeat. Reads only _shader /
+      // _fragmentSource — pass.getShader() lazily COMPILES and must never be
+      // called from the heartbeat.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const summarizePass = (pass: any, index: number) => {
+        const compiledPass = !!pass._shader;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const uniforms: any[] = [];
+        if (compiledPass && gl && typeof pass._shader.getUniformDefinitions === 'function') {
+          for (const def of pass._shader.getUniformDefinitions()) {
+            const typeName = glTypeName(def.glType);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let value: any = null;
+            try {
+              const raw = gl.getUniform(pass._shader.program, def.location);
+              if (raw instanceof Float32Array || raw instanceof Int32Array || raw instanceof Uint32Array) {
+                value = Array.from(raw);
+              } else if (typeof raw === 'number' || typeof raw === 'boolean') {
+                value = raw;
+              } else if (Array.isArray(raw)) {
+                value = raw;
+              }
+            } catch {
+              value = null;
+            }
+            const builtIn = passConventionUniforms.includes(def.name);
+            uniforms.push({
+              name: def.name,
+              typeName,
+              builtIn,
+              editable: !builtIn && ['float', 'int', 'uint', 'bool', 'vec2', 'vec3', 'vec4'].includes(typeName),
+              value
+            });
+          }
+        } else {
+          // uncompiled pass: infer shapes from the watched uniforms dict so
+          // user-set values still show (and stay editable) before first draw
+          const dict = pass.uniforms ?? {};
+          for (const uniformName of Object.keys(dict)) {
+            const raw = dict[uniformName];
+            let typeName = 'unknown';
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let value: any = null;
+            if (typeof raw === 'number') {
+              typeName = 'float';
+              value = raw;
+            } else if (typeof raw === 'boolean') {
+              typeName = 'bool';
+              value = raw;
+            } else if (Array.isArray(raw) || raw instanceof Float32Array) {
+              const arr = Array.from(raw as number[]);
+              typeName = arr.length >= 2 && arr.length <= 4 ? `vec${arr.length}` : 'float[]';
+              value = arr;
+            }
+            uniforms.push({
+              name: uniformName,
+              typeName,
+              builtIn: false,
+              editable: ['float', 'bool', 'vec2', 'vec3', 'vec4'].includes(typeName),
+              value
+            });
+          }
+        }
+        return {
+          index,
+          name: typeof pass.name === 'string' && pass.name ? pass.name : `pass ${index}`,
+          scale: typeof pass.scale === 'number' ? pass.scale : 1,
+          filtering: typeof pass.filtering === 'string' ? pass.filtering : '',
+          compiled: compiledPass,
+          uniforms
+        };
+      };
+
+      // Concatenated raw pass sources, folded into sourceHash so the panel's
+      // detail-refetch-on-change mechanism covers pass edits/hot swaps.
+      // Framebuffer captures are deliberately NOT part of this hash — they
+      // refresh on their own path (refresh button / live toggle).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const passSourcesOf = (pipelineLike: any): string => {
+        const passes = resolvePasses(pipelineLike) ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return passes.map((p: any) => p._fragmentSource ?? '').join('\n');
+      };
+
+      // Summarizes a pipeline-shaped object (from material.pipeline or a
+      // postprocessor) for the heartbeat: pass metadata only, no sources.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const summarizePipeline = (pipelineLike: any, padding: number) => {
+        const rawPasses = resolvePasses(pipelineLike);
+        return {
+          padding,
+          opaque: !rawPasses,
+          pipelineName: typeof pipelineLike?.name === 'string' ? pipelineLike.name : '',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          passes: (rawPasses ?? []).map((p: any, i: number) => summarizePass(p, i))
+        };
       };
 
       // Registry ids (newer engines) win; otherwise tag materials with a page-session-stable id
@@ -458,6 +588,17 @@ export function inject(settings: Record<string, unknown>, mappings: Record<strin
 
           const vertexSource = shader?.vertexSource ?? '';
           const fragmentSource = shader?.fragmentSource ?? '';
+
+          // Multi-pass pipeline summary (0.33+); undefined on plain materials
+          // and dropped by JSON.stringify
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let pipeline: any = undefined;
+          let passSources = '';
+          if (material.pipeline) {
+            pipeline = summarizePipeline(material.pipeline, typeof material.padding === 'number' ? material.padding : 0);
+            passSources = passSourcesOf(material.pipeline);
+          }
+
           list.push({
             id,
             name: material.name ?? 'anonymous material',
@@ -466,17 +607,80 @@ export function inject(settings: Record<string, unknown>, mappings: Record<strin
             isUsingScreenTexture: !!material.isUsingScreenTexture,
             isOverridingGraphic: !!material.isOverridingGraphic,
             compiled,
-            sourceHash: hashSource(vertexSource + fragmentSource),
+            sourceHash: hashSource(vertexSource + fragmentSource + passSources),
             uniforms,
-            images
+            images,
+            pipeline
           });
         } catch {
           // never let one bad material break the heartbeat
         }
       }
       materials = { source, list };
+
+      // Postprocessors: no engine id and no public getter — read the private
+      // _postprocessors array and stamp page-session-stable ids, mirroring
+      // the material fallback. NEVER read pp.pipeline — that getter throws
+      // before initialize(); duck-type the private fields instead.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const getPpId = (pp: any): number => {
+        if (pp.__exDevtoolsId === undefined) {
+          window.___EXCALIBUR_DEVTOOL_EXTENSION_PP_ID = (window.___EXCALIBUR_DEVTOOL_EXTENSION_PP_ID ?? 0) + 1;
+          pp.__exDevtoolsId = window.___EXCALIBUR_DEVTOOL_EXTENSION_PP_ID;
+        }
+        return pp.__exDevtoolsId;
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ppList: any[] = [];
+      const rawPps = anyGame.graphicsContext?._postprocessors;
+      if (Array.isArray(rawPps)) {
+        for (const pp of rawPps) {
+          try {
+            const id = getPpId(pp);
+            const name = (typeof pp.name === 'string' && pp.name) || pp.constructor?.name || 'postprocessor';
+            const rawPasses = resolvePasses(pp);
+            let kind: 'pipeline' | 'legacy' | 'opaque' = 'opaque';
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let ppPipeline: any = null;
+            let ppCompiled = false;
+            let hashInput = name;
+            if (rawPasses) {
+              kind = 'pipeline';
+              ppPipeline = summarizePipeline(pp, 0);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ppCompiled = rawPasses.length > 0 && rawPasses.every((p: any) => !!p._shader);
+              hashInput = passSourcesOf(pp);
+            } else if (typeof pp.getShader === 'function') {
+              // legacy 0.32-style postprocessor: the engine builds its shader
+              // at initialize(), so getShader() is safe here (no lazy compile)
+              kind = 'legacy';
+              try {
+                const ppShader = pp.getShader();
+                ppCompiled = !!ppShader?.compiled;
+                hashInput = (ppShader?.vertexSource ?? '') + (ppShader?.fragmentSource ?? '');
+              } catch {
+                // uninitialized legacy postprocessor; keep name-only hash
+              }
+            }
+            ppList.push({
+              id,
+              name,
+              key: `${name}#${id}`,
+              kind,
+              compiled: ppCompiled,
+              sourceHash: hashSource(hashInput),
+              pipeline: ppPipeline
+            });
+          } catch {
+            // never let one bad postprocessor break the heartbeat
+          }
+        }
+      }
+      postprocessors = { list: ppList };
     } catch {
       materials = { source: 'scan', list: [] };
+      postprocessors = { list: [] };
     }
   }
 
@@ -749,6 +953,7 @@ export function inject(settings: Record<string, unknown>, mappings: Record<strin
     },
     entities: entities,
     materials: materials,
+    postprocessors: postprocessors,
     inspectedEntity: inspectedEntity,
     picker: picker,
     stats: game.debug?.stats,

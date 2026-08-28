@@ -134,6 +134,15 @@ export interface EntityGraphicsEvent {
 }
 
 /**
+ * On-demand reply carrying pipeline pass sources and/or framebuffer captures
+ * as a JSON string (see PipelineDetail in components/pipeline-view.ts).
+ */
+export interface PipelineDetailEvent {
+  name: 'ex-debug:pipeline-detail';
+  data: string | null;
+}
+
+/**
  * Every message the driver can post to the panel.
  */
-export type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent | EntityGraphicsEvent;
+export type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent | EntityGraphicsEvent | PipelineDetailEvent;

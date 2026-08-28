@@ -14,6 +14,7 @@ declare global {
     ___EXCALIBUR_DEVTOOL?: Engine;
     ___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK?: boolean;
     ___EXCALIBUR_DEVTOOL_EXTENSION_MATERIAL_ID?: number;
+    ___EXCALIBUR_DEVTOOL_EXTENSION_PP_ID?: number;
     ___EXCALIBUR_DEVTOOL_EXTENSION_PICKER?: {
       seq: number;
       pickedId: number | null;
