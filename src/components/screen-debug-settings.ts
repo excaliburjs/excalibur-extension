@@ -2,8 +2,8 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { colors } from '../colors';
 import { common } from '../common';
-import { SlChangeEvent, SlColorPicker, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
-import { settingsStore, settingsSchema, hexToColor, colorToHex, BooleanSettingsKey, ColorSettingsKey } from '../settings';
+import type { SlChangeEvent, SlColorPicker, SlInputEvent, SlSwitch } from '@shoelace-style/shoelace';
+import { settingsStore, settingsSchema, hexToColor, colorToHex, type BooleanSettingsKey, type ColorSettingsKey } from '../settings';
 
 /**
  * Controls for the `debug.screen.*` overlay (Excalibur v0.33+):

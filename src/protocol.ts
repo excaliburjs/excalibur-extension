@@ -108,3 +108,41 @@ export interface HeartbeatMessage {
   selectedFrameId: number | null;
   data: string | null;
 }
+
+/**
+ * Pure "the driver (re)started" signal, no payload; the panel responds by
+ * pushing its settings down and restoring per-session state.
+ */
+export interface InitEvent {
+  name: 'ex-debug:init';
+}
+
+/**
+ * On-demand reply carrying the heavy per-material payload as a JSON string.
+ */
+export interface MaterialDetailEvent {
+  name: 'ex-debug:material-detail';
+  data: string | null;
+}
+
+/**
+ * On-demand reply carrying the inspected entity's graphics as a JSON string.
+ */
+export interface EntityGraphicsEvent {
+  name: 'ex-debug:entity-graphics';
+  data: string | null;
+}
+
+/**
+ * On-demand reply carrying pipeline pass sources and/or framebuffer captures
+ * as a JSON string (see PipelineDetail in components/pipeline-view.ts).
+ */
+export interface PipelineDetailEvent {
+  name: 'ex-debug:pipeline-detail';
+  data: string | null;
+}
+
+/**
+ * Every message the driver can post to the panel.
+ */
+export type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent | EntityGraphicsEvent | PipelineDetailEvent;

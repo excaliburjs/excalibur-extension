@@ -5,7 +5,12 @@ import { guard } from 'lit/directives/guard.js';
 import { colors } from '../colors';
 import { common } from '../common';
 import { highlightGlsl } from '../glsl-highlight';
-import { SlColorPicker, SlInput, SlRange, SlSwitch } from '@shoelace-style/shoelace';
+import { formatSampling } from '../format';
+import type { SlColorPicker, SlRange } from '@shoelace-style/shoelace';
+import type { PipelineDetail, PipelineSummary } from './pipeline-view';
+import type { UniformEdit } from './uniform-table';
+import './uniform-table';
+import './pipeline-view';
 
 export interface MaterialUniform {
   name: string;
@@ -39,6 +44,8 @@ export interface MaterialSummary {
   sourceHash: number;
   uniforms: MaterialUniform[];
   images: MaterialImage[];
+  /** Present when the material has a multi-pass pipeline (0.33+). */
+  pipeline?: PipelineSummary;
 }
 
 export interface MaterialsState {
@@ -74,65 +81,6 @@ export interface UniformChange {
 }
 
 /**
- * Formats a number for display, trimming float noise to 4 decimal places.
- */
-function formatNumber(n: number): string {
-  if (Number.isInteger(n)) {
-    return n.toString();
-  }
-  return (Math.round(n * 10000) / 10000).toString();
-}
-
-/**
- * Formats a uniform value (scalar, boolean, or array) for display.
- */
-function formatValue(value: MaterialUniform['value']): string {
-  if (value === null || value === undefined) {
-    return '—';
-  }
-  if (typeof value === 'boolean') {
-    return value.toString();
-  }
-  if (typeof value === 'number') {
-    return formatNumber(value);
-  }
-  return `[${value.map(formatNumber).join(', ')}]`;
-}
-
-/**
- * Formats a flat column-major matrix array (the GL convention returned by
- * gl.getUniform) as aligned rows for conventional row-major reading.
- */
-function formatMatrix(value: number[], dim: number): string {
-  const rows: string[] = [];
-  for (let r = 0; r < dim; r++) {
-    const row: number[] = [];
-    for (let c = 0; c < dim; c++) {
-      row.push(value[r + c * dim]);
-    }
-    rows.push(row.map((n) => formatNumber(n).padStart(10)).join(' '));
-  }
-  return rows.join('\n');
-}
-
-/**
- * Formats a texture's sampling modes as "filtering · wrap" (e.g. "Pixel · Clamp"
- * or "Blended · Repeat×Mirror"), or null when unknown.
- */
-function formatSampling(texture: Pick<MaterialTexture, 'filtering' | 'wrapX' | 'wrapY'>): string | null {
-  const parts: string[] = [];
-  if (texture.filtering) {
-    parts.push(texture.filtering);
-  }
-  if (texture.wrapX || texture.wrapY) {
-    const x = texture.wrapX ?? '?';
-    const y = texture.wrapY ?? '?';
-    parts.push(x === y ? x : `${x}×${y}`);
-  }
-  return parts.length > 0 ? parts.join(' · ') : null;
-}
-
-/**
  * Detail view for a single material: info, editable custom uniforms,
  * live built-in uniforms, textures, and shader sources.
  * @event uniform-change - Emitted when the user edits a uniform value
@@ -145,60 +93,6 @@ export class MaterialDetailView extends LitElement {
     css`
       :host {
         display: block;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
-      }
-
-      th {
-        text-align: left;
-        color: #888;
-        font-weight: normal;
-        padding: 4px 8px;
-        border-bottom: 1px solid #333;
-      }
-
-      td {
-        padding: 4px 8px;
-        border-bottom: 1px solid #2a2a2a;
-        vertical-align: middle;
-      }
-
-      .uniform-name {
-        font-family: monospace;
-        color: var(--blue-text);
-      }
-
-      .uniform-type {
-        font-family: monospace;
-        color: #888;
-      }
-
-      .uniform-value {
-        font-family: monospace;
-      }
-
-      .matrix {
-        font-family: monospace;
-        font-size: 12px;
-        margin: 0;
-      }
-
-      .vec-editor {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-      }
-
-      .vec-editor sl-input {
-        width: 90px;
-      }
-
-      sl-input[type='number'] {
-        width: 120px;
       }
 
       .swatch {
@@ -372,6 +266,14 @@ export class MaterialDetailView extends LitElement {
   @property({ type: Object })
   detail: MaterialDetail | null = null;
 
+  /** On-demand pipeline sources/captures for this material, when it has one. */
+  @property({ type: Object })
+  pipelineDetail: PipelineDetail | null = null;
+
+  /** Whether the host panel's live framebuffer-capture poll is running. */
+  @property({ type: Boolean })
+  pipelineLive = false;
+
   /**
    * While an editor input inside this component has focus, freeze re-renders so
    * the 5Hz heartbeat doesn't clobber in-progress typing.
@@ -460,53 +362,14 @@ export class MaterialDetailView extends LitElement {
     );
   }
 
-  private _scalarChangeHandler(uniform: MaterialUniform) {
-    return (evt: Event) => {
-      const raw = (evt.target as SlInput).value;
-      const num = Number(raw);
-      // An emptied field ('' coerces to 0) or garbage must not overwrite the
-      // uniform; the next heartbeat re-render restores the live value
-      if (raw.trim() === '' || !Number.isFinite(num)) {
-        return;
-      }
-      const kind = uniform.typeName === 'float' ? 'float' : 'int';
-      this._dispatchUniformChange(uniform.name, kind, num);
-    };
-  }
-
-  private _boolChangeHandler(uniform: MaterialUniform) {
-    return (evt: Event) => {
-      this._dispatchUniformChange(uniform.name, 'bool', (evt.target as SlSwitch).checked);
-    };
-  }
-
-  private _vecChangeHandler(uniform: MaterialUniform) {
-    return () => {
-      const inputs = Array.from(this.shadowRoot!.querySelectorAll<SlInput>(`sl-input[data-uniform="${CSS.escape(uniform.name)}"]`)).sort(
-        (a, b) => Number(a.dataset.index) - Number(b.dataset.index)
-      );
-      const values = inputs.map((input) => (input.value.trim() === '' ? NaN : Number(input.value)));
-      // An emptied or non-numeric component must not be coerced to 0
-      if (values.some((v) => !Number.isFinite(v))) {
-        return;
-      }
-      this._dispatchUniformChange(uniform.name, 'floatArray', values);
-    };
-  }
-
-  private _vec4ColorChangeHandler(uniform: MaterialUniform) {
-    return (evt: Event) => {
-      const rgba = (evt.target as SlColorPicker).getFormattedValue('rgba');
-      const match = rgba.match(/rgba?\((\d+),?\s*(\d+),?\s*(\d+)(?:,?\s*\/?\s*([\d.%]+))?\)/);
-      if (match) {
-        let alpha = match[4] !== undefined ? parseFloat(match[4]) : 1;
-        if (match[4]?.includes('%')) {
-          alpha = alpha / 100;
-        }
-        this._dispatchUniformChange(uniform.name, 'floatArray', [+match[1] / 255, +match[2] / 255, +match[3] / 255, alpha]);
-      }
-    };
-  }
+  /**
+   * Re-wraps a generic uniform-edit from a child `<uniform-table>` into the
+   * material-addressed UniformChange this component's consumers expect.
+   */
+  private _uniformEditHandler = (evt: CustomEvent<UniformEdit>) => {
+    evt.stopPropagation();
+    this._dispatchUniformChange(evt.detail.uniformName, evt.detail.kind, evt.detail.value);
+  };
 
   private _materialColorChangeHandler() {
     return (evt: Event) => {
@@ -520,117 +383,6 @@ export class MaterialDetailView extends LitElement {
         this._dispatchUniformChange('u_color', 'color', { r: +match[1], g: +match[2], b: +match[3], a: alpha });
       }
     };
-  }
-
-  private _renderEditor(uniform: MaterialUniform) {
-    const value = uniform.value;
-    switch (uniform.typeName) {
-      case 'bool':
-        return html`
-          <sl-switch class="uniform-editor" .checked=${value === true} @sl-change=${this._boolChangeHandler(uniform)}></sl-switch>
-        `;
-      case 'float':
-      case 'int':
-      case 'uint':
-        return html`
-          <sl-input
-            class="uniform-editor"
-            type="number"
-            size="small"
-            step=${uniform.typeName === 'float' ? 'any' : '1'}
-            .value=${typeof value === 'number' ? value.toString() : '0'}
-            @sl-change=${this._scalarChangeHandler(uniform)}
-          ></sl-input>
-        `;
-      case 'vec2':
-      case 'vec3':
-      case 'vec4': {
-        const dim = Number(uniform.typeName.slice(-1));
-        const components = Array.isArray(value) ? value : new Array(dim).fill(0);
-        return html`
-          <div class="vec-editor">
-            ${components
-              .slice(0, dim)
-              .map(
-                (component, i) => html`
-                  <sl-input
-                    class="uniform-editor"
-                    type="number"
-                    size="small"
-                    step="any"
-                    data-uniform=${uniform.name}
-                    data-index=${i}
-                    .value=${component.toString()}
-                    @sl-change=${this._vecChangeHandler(uniform)}
-                  ></sl-input>
-                `
-              )}
-            ${uniform.typeName === 'vec4'
-              ? html`
-                  <sl-color-picker
-                    class="uniform-editor"
-                    size="small"
-                    opacity
-                    .value=${Array.isArray(value)
-                      ? `rgba(${Math.round((value[0] ?? 0) * 255)}, ${Math.round((value[1] ?? 0) * 255)}, ${Math.round(
-                          (value[2] ?? 0) * 255
-                        )}, ${value[3] ?? 1})`
-                      : 'rgba(0, 0, 0, 1)'}
-                    @sl-change=${this._vec4ColorChangeHandler(uniform)}
-                  ></sl-color-picker>
-                `
-              : nothing}
-          </div>
-        `;
-      }
-      default:
-        return html`<span class="uniform-value">${formatValue(value)}</span>`;
-    }
-  }
-
-  private _renderValue(uniform: MaterialUniform) {
-    if (Array.isArray(uniform.value) && uniform.typeName.startsWith('mat')) {
-      const dim = Number(uniform.typeName.slice(-1));
-      const value = uniform.value;
-      // the flat array is column-major, so the first row strides by dim
-      const firstRow = Array.from({ length: dim }, (_, c) => value[c * dim] ?? 0);
-      return html`
-        <sl-details summary=${formatValue(firstRow) + ' …'}>
-          <pre class="matrix">${formatMatrix(uniform.value, dim)}</pre>
-        </sl-details>
-      `;
-    }
-    return html`<span class="uniform-value">${formatValue(uniform.value)}</span>`;
-  }
-
-  private _renderUniformsTable(uniforms: MaterialUniform[], editable: boolean) {
-    if (uniforms.length === 0) {
-      return html`<div>None</div>`;
-    }
-    return html`
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${repeat(
-            uniforms,
-            (uniform) => uniform.name,
-            (uniform) => html`
-              <tr>
-                <td class="uniform-name">${uniform.name}</td>
-                <td class="uniform-type">${uniform.typeName}</td>
-                <td>${editable && uniform.editable ? this._renderEditor(uniform) : this._renderValue(uniform)}</td>
-              </tr>
-            `
-          )}
-        </tbody>
-      </table>
-    `;
   }
 
   private _previewSizeHandler = (evt: Event) => {
@@ -802,15 +554,31 @@ export class MaterialDetailView extends LitElement {
       </div>
 
       <h3>Custom Uniforms</h3>
-      <div class="section">${this._renderUniformsTable(customUniforms, true)}</div>
+      <div class="section">
+        <uniform-table .uniforms=${customUniforms} editable @uniform-edit=${this._uniformEditHandler}></uniform-table>
+      </div>
 
       <h3>Built-in Uniforms</h3>
-      <div class="section">${this._renderUniformsTable(builtInUniforms, false)}</div>
+      <div class="section"><uniform-table .uniforms=${builtInUniforms}></uniform-table></div>
 
       <h3>Textures</h3>
       <div class="section">${this._renderTextures()}</div>
 
-      <h3>Shader Source</h3>
+      ${material.pipeline
+        ? html`
+            <h3>Pipeline</h3>
+            <div class="section">
+              <pipeline-view
+                .summary=${material.pipeline}
+                .owner=${{ kind: 'material' as const, id: material.id, name: material.name, key: `mat:${material.key}` }}
+                .detail=${this.pipelineDetail}
+                .live=${this.pipelineLive}
+              ></pipeline-view>
+            </div>
+          `
+        : nothing}
+
+      <h3>${material.pipeline ? 'Composite Shader' : 'Shader Source'}</h3>
       <div class="section">${this._renderSources()}</div>
 
       ${this._renderInspectDialog()}

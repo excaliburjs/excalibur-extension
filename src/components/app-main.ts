@@ -19,23 +19,30 @@ import './screen-debug-settings';
 import './entity-inspector';
 import { colors } from '../colors';
 import { common } from '../common';
-import { Settings } from './debug-settings';
+import type { Settings } from './debug-settings';
 import { settingsStore } from '../settings';
 import { FpsGraph } from './fps-graph';
 import { FrameTimeGraph } from './frame-time-graph';
-import { Stats } from './stats-list';
-import { FlameChart } from './flame-chart';
-import { SlChangeEvent, SlInput, SlRadioGroup, SlSelect } from '@shoelace-style/shoelace';
-import { Entity } from './entity-list';
-import { DefaultPhysicsSettings, Physics } from './physics-settings';
-import { BoundingBox, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';
+import type { Stats } from './stats-list';
+import type { SlChangeEvent, SlInput, SlRadioGroup, SlSelect } from '@shoelace-style/shoelace';
+import type { Entity } from './entity-list';
+import { DefaultPhysicsSettings, type Physics } from './physics-settings';
+import type { BoundingBox, DisplayMode, EngineOptions, Resolution, ViewportDimension } from '../@types/excalibur';
 import { SystemTimeGraph } from './system-time-graph';
 import { SystemStatsList } from './system-stats-list';
-import { MaterialDetail, MaterialsState, UniformChange } from './material-detail';
-import { MaterialSelected } from './materials-panel';
-import type { EntityGraphicsDetail, EntityPropertyUpdate, ExInstance, HeartbeatMessage, InspectedEntity, PickerState } from '../protocol';
-
-globalThis.browser = globalThis.browser || globalThis.chrome;
+import type { MaterialDetail, MaterialsState, UniformChange } from './material-detail';
+import type { MaterialSelected } from './materials-panel';
+import type { PassUniformChange, PipelineDetail, PipelineDetailRequest, PostProcessorsState } from './pipeline-view';
+import type {
+  EntityGraphicsDetail,
+  EntityPropertyUpdate,
+  EventDispatchEvents,
+  ExInstance,
+  InspectedEntity,
+  PickerState
+} from '../protocol';
+import type { PanelTransport, TransportFactory } from '../panel-transport/types';
+import { createExtensionTransport } from '../panel-transport/extension';
 
 interface Point {
   _x: number;
@@ -71,22 +78,6 @@ interface ScreenState {
   unsafeArea: BoundingBox;
   contentArea: BoundingBox;
 }
-
-interface InitEvent {
-  name: 'ex-debug:init';
-}
-
-interface MaterialDetailEvent {
-  name: 'ex-debug:material-detail';
-  data: string | null;
-}
-
-interface EntityGraphicsEvent {
-  name: 'ex-debug:entity-graphics';
-  data: string | null;
-}
-
-type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent | EntityGraphicsEvent;
 
 const IGNORED_PICKER_CTORS_KEY = 'ex-devtools:ignored-picker-ctors';
 const IGNORED_PICKER_NAMES_KEY = 'ex-devtools:ignored-picker-names';
@@ -194,9 +185,6 @@ export class App extends LitElement {
   @query('frame-time-graph')
   frameTimeGraph!: FrameTimeGraph;
 
-  @query('flame-chart')
-  flameChart!: FlameChart;
-
   @state({
     hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
   })
@@ -242,6 +230,14 @@ export class App extends LitElement {
 
   @state()
   materialDetails: Record<string, MaterialDetail> = {};
+
+  @state({
+    hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
+  })
+  postprocessors: PostProcessorsState = { list: [] };
+
+  @state()
+  pipelineDetails: Record<string, PipelineDetail> = {};
 
   @state()
   inspectedEntityId: number | null = null;
@@ -303,7 +299,13 @@ export class App extends LitElement {
   private _reconnectDelayMs: number = 500;
   private _hasInitialized: boolean = false;
 
-  backgroundConnection!: browser.runtime.Port;
+  /**
+   * Builds the connection to the driver. Defaults to the extension transport;
+   * the embedded build (and browser tests) inject a local transport instead.
+   */
+  transportFactory: TransportFactory = createExtensionTransport;
+
+  private _transport?: PanelTransport;
   camera: Camera = {
     pos: { _x: 0, _y: 0 },
     vel: { _x: 0, _y: 0 },
@@ -347,34 +349,18 @@ export class App extends LitElement {
   }
 
   connectToExtension = () => {
-    this.backgroundConnection = browser.runtime.connect({
-      name: 'panel'
-    });
-    this.backgroundConnection.onMessage.addListener(this.backgroundMessageDispatch);
-    this.backgroundConnection.onDisconnect.addListener(this._handleDisconnect);
-
-    // Tell the background which tab this panel inspects so the heartbeat
-    // polls the right tab instead of whichever tab is focused
-    this.backgroundConnection.postMessage({
-      name: 'ex-debug:hello',
-      tabId: browser.devtools.inspectedWindow.tabId
-    });
-    return this.backgroundConnection;
+    const transport = this.transportFactory();
+    transport.onMessage(this.backgroundMessageDispatch);
+    transport.onDisconnect(this._handleDisconnect);
+    this._transport = transport;
+    return transport;
   };
 
   /**
    * Removes port listeners and disconnects without triggering a reconnect.
    */
   private _teardownPort() {
-    if (this.backgroundConnection) {
-      this.backgroundConnection.onMessage.removeListener(this.backgroundMessageDispatch);
-      this.backgroundConnection.onDisconnect.removeListener(this._handleDisconnect);
-      try {
-        this.backgroundConnection.disconnect();
-      } catch {
-        // port already dead
-      }
-    }
+    this._transport?.disconnect();
   }
 
   /**
@@ -411,8 +397,11 @@ export class App extends LitElement {
    * throwing out of the calling event handler when the port is dead.
    */
   private _post(message: object) {
+    if (!this._transport) {
+      return;
+    }
     try {
-      this.backgroundConnection.postMessage(message);
+      this._transport.post(message);
     } catch {
       this._handleDisconnect();
     }
@@ -436,7 +425,6 @@ export class App extends LitElement {
       case 'ex-debug:init': {
         this._post({
           name: 'ex-debug:command',
-          tabId: browser.devtools.inspectedWindow.tabId,
           dispatch: 'ex-debug:update-debug',
           debug: {
             ...settingsStore.getAll(),
@@ -447,7 +435,6 @@ export class App extends LitElement {
           if (this.selectedFrameId !== null) {
             this._post({
               name: 'ex-debug:command',
-              tabId: browser.devtools.inspectedWindow.tabId,
               dispatch: 'ex-debug:select-frame',
               frameId: this.selectedFrameId
             });
@@ -490,6 +477,10 @@ export class App extends LitElement {
 
         if (materials) {
           this.materials = materials;
+        }
+
+        if (data.postprocessors) {
+          this.postprocessors = data.postprocessors;
         }
 
         if (data.inspectedEntity !== undefined) {
@@ -602,6 +593,26 @@ export class App extends LitElement {
         }
         break;
       }
+      case 'ex-debug:pipeline-detail': {
+        if (message.data) {
+          const detail: PipelineDetail | null = JSON.parse(message.data);
+          if (detail) {
+            // merge partial replies: a framebuffers-only refresh (live poll /
+            // refresh button) must not drop the cached pass sources
+            const previous = this.pipelineDetails[detail.key];
+            this.pipelineDetails = {
+              ...this.pipelineDetails,
+              [detail.key]: {
+                ...previous,
+                ...detail,
+                passes: detail.passes ?? previous?.passes,
+                framebuffers: detail.framebuffers ?? previous?.framebuffers
+              }
+            };
+          }
+        }
+        break;
+      }
       case 'ex-debug:entity-graphics': {
         if (message.data) {
           const detail: EntityGraphicsDetail | null = JSON.parse(message.data);
@@ -643,6 +654,8 @@ export class App extends LitElement {
     this.systemStatsList?.reset();
     this.materials = { source: 'scan', list: [] };
     this.materialDetails = {};
+    this.postprocessors = { list: [] };
+    this.pipelineDetails = {};
     this.worldPos = '???';
     this.screenPos = '???';
     this.pagePos = '???';
@@ -660,7 +673,6 @@ export class App extends LitElement {
     const frameId = +String((evt.target as SlSelect).value);
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:select-frame',
       frameId
     });
@@ -696,7 +708,6 @@ export class App extends LitElement {
     const active = this._currentTabName === 'materials' && this.isV32OrLater;
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:materials-active',
       active
     });
@@ -705,7 +716,6 @@ export class App extends LitElement {
   materialSelected(evt: CustomEvent<MaterialSelected>) {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:get-material-detail',
       materialId: evt.detail.materialId,
       materialName: evt.detail.materialName
@@ -715,8 +725,23 @@ export class App extends LitElement {
   updateMaterialUniform(evt: CustomEvent<UniformChange>) {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-material-uniform',
+      update: evt.detail
+    });
+  }
+
+  pipelineDetailRequested(evt: CustomEvent<PipelineDetailRequest>) {
+    this._post({
+      name: 'ex-debug:command',
+      dispatch: 'ex-debug:get-pipeline-detail',
+      query: evt.detail
+    });
+  }
+
+  updatePassUniform(evt: CustomEvent<PassUniformChange>) {
+    this._post({
+      name: 'ex-debug:command',
+      dispatch: 'ex-debug:update-pass-uniform',
       update: evt.detail
     });
   }
@@ -726,7 +751,6 @@ export class App extends LitElement {
 
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-physics',
       physics: settings
     });
@@ -737,7 +761,6 @@ export class App extends LitElement {
 
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-debug',
       debug: settings
     });
@@ -748,7 +771,6 @@ export class App extends LitElement {
     this._toggleDebugUserSet = true;
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-debug',
       debug: { ...settingsStore.getAll(), toggleDebug: this.toggleDebug }
     });
@@ -761,7 +783,6 @@ export class App extends LitElement {
   toggleTestClock() {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:toggle-test-clock'
     });
   }
@@ -769,7 +790,6 @@ export class App extends LitElement {
   startClock() {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:start-clock'
     });
   }
@@ -777,7 +797,6 @@ export class App extends LitElement {
   stopClock() {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:stop-clock'
     });
   }
@@ -785,26 +804,8 @@ export class App extends LitElement {
   stepClock() {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:step-clock',
       stepMs: this.clockStepMs
-    });
-  }
-
-  startProfiler() {
-    this._post({
-      name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'ex-debug:start-profiler',
-      time: 300
-    });
-  }
-
-  collectProfile() {
-    this._post({
-      name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
-      dispatch: 'ex-debug:collect-profiler'
     });
   }
 
@@ -812,7 +813,6 @@ export class App extends LitElement {
     const id = evt.detail;
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:kill',
       actorId: id
     });
@@ -823,7 +823,6 @@ export class App extends LitElement {
     const colorBlindMode = colorBlindRadioGroup?.value ?? 'Normal';
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:color-blind',
       colorBlindMode: colorBlindMode
     });
@@ -832,7 +831,6 @@ export class App extends LitElement {
   identifyActor(evt: CustomEvent<number>) {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:identify-actor',
       actorId: evt.detail
     });
@@ -845,7 +843,6 @@ export class App extends LitElement {
   private _syncInspectEntity() {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:inspect-entity',
       entityId: this.inspectedEntityId
     });
@@ -858,7 +855,6 @@ export class App extends LitElement {
   private _requestEntityGraphics(entityId: number) {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:get-entity-graphics',
       entityId
     });
@@ -893,7 +889,6 @@ export class App extends LitElement {
   private _syncPicker() {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: this.pickerArmed ? 'ex-debug:picker-start' : 'ex-debug:picker-stop',
       ignoredCtors: this.ignoredPickerCtors,
       ignoredNames: this.ignoredPickerNames
@@ -922,7 +917,6 @@ export class App extends LitElement {
     if (this.pickerArmed) {
       this._post({
         name: 'ex-debug:command',
-        tabId: browser.devtools.inspectedWindow.tabId,
         dispatch: 'ex-debug:picker-set-ignored',
         ignoredCtors: this.ignoredPickerCtors,
         ignoredNames: this.ignoredPickerNames
@@ -989,7 +983,6 @@ export class App extends LitElement {
   updateEntityProperty(evt: CustomEvent<EntityPropertyUpdate>) {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:update-entity-property',
       update: evt.detail
     });
@@ -998,7 +991,6 @@ export class App extends LitElement {
   useEntityGraphic(evt: CustomEvent<{ entityId: number; graphicName: string; source: 'local' | 'registry' }>) {
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:use-entity-graphic',
       entityId: evt.detail.entityId,
       graphicName: evt.detail.graphicName,
@@ -1010,7 +1002,6 @@ export class App extends LitElement {
     const scene = evt.detail;
     this._post({
       name: 'ex-debug:command',
-      tabId: browser.devtools.inspectedWindow.tabId,
       dispatch: 'ex-debug:goto-scene',
       sceneName: scene
     });
@@ -1054,7 +1045,7 @@ export class App extends LitElement {
         <sl-tab slot="nav" panel="perf">Performance</sl-tab>
         <sl-tab slot="nav" panel="debugdraw">Debug Draw</sl-tab>
         <sl-tab slot="nav" panel="physics">Physics</sl-tab>
-        <sl-tab slot="nav" panel="materials">Materials</sl-tab>
+        <sl-tab slot="nav" panel="materials">Materials/PostProcessors</sl-tab>
 
         <sl-tab-panel name="inspector">
           <div class="row">
@@ -1185,22 +1176,6 @@ export class App extends LitElement {
                 : ''}
             </div>
           </div>
-
-          <!-- <div class="row">
-                    <div class="widget">
-                        <h2>Profiling</h2>
-                        <div class="section" style="width: 1000px;">
-                            <div>Requires a dev build of excalibur to be used (v0.28.3+)</div>
-                            <div>Read more <a href="https://excaliburjs.com/docs/" target="_blank" rel="noopener">here</a>
-                            </div>
-                            <div>
-                                <sl-button @click=${this.startProfiler}>Start Profile</sl-button>
-                                <sl-button @click=${this.collectProfile}>Collect</sl-button>
-                            </div>
-                            <flame-chart></flame-chart>
-                        </div>
-                    </div>
-                </div> -->
         </sl-tab-panel>
         <sl-tab-panel name="debugdraw">
           <debug-settings
@@ -1217,8 +1192,13 @@ export class App extends LitElement {
           <materials-panel
             @material-selected=${this.materialSelected}
             @uniform-change=${this.updateMaterialUniform}
+            @pipeline-detail-request=${this.pipelineDetailRequested}
+            @pass-uniform-change=${this.updatePassUniform}
             .materials=${this.materials}
+            .postprocessors=${this.postprocessors}
             .details=${this.materialDetails}
+            .pipelineDetails=${this.pipelineDetails}
+            .active=${this._currentTabName === 'materials'}
             .unsupported=${!this.isV32OrLater}
           >
           </materials-panel>

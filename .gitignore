@@ -5,3 +5,7 @@ dist-firefox
 dist-chrome
 releases
 *.zip
+coverage
+.parcel-cache-embedded
+dist-embedded
+dist-embedded-dev

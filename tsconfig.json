@@ -14,5 +14,5 @@
     "noImplicitAny": false,
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
-  "include": ["src/**/*", "@types/**/*"]
+  "include": ["src/**/*", "@types/**/*", "test/**/*", "vitest.config.ts"]
 }

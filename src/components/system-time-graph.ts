@@ -2,6 +2,7 @@ import { css, html, LitElement } from 'lit';
 import { colors } from '../colors';
 import * as d3 from 'd3';
 import { customElement } from 'lit/decorators.js';
+import { slugify } from '../format';
 
 const totalHeight = 350; //px
 const totalWidth = 900; //px
@@ -10,17 +11,6 @@ const tickWidth = 1; // px
 const nTicks = Math.floor(totalWidth / tickWidth);
 const zeroes = () => 0;
 const defaultYMax = 16; // ms
-
-/** Slugifies a string for use as a CSS class or id. */
-function slugify(str: string) {
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove non-word chars (except spaces and hyphens)
-    .replace(/[\s_]+/g, '-') // Replace spaces and underscores with hyphens
-    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
-    .replace(/^(\d)/, '_$1'); // Prefix with underscore if starts with digit
-}
 
 @customElement('system-time-graph')
 export class SystemTimeGraph extends LitElement {
