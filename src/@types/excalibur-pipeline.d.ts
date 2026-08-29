@@ -4,8 +4,8 @@
  * 0.32 snapshot and deliberately NOT regenerated (the nightly publishes a
  * multi-file .d.ts tree, not a rollup); these minimal interfaces describe
  * only the surface the devtools reads. Import them with `import type` ONLY —
- * this module never exists at runtime (see the cold-cache Parcel / Vite ESM
- * rule in CLAUDE.md).
+ * this module never exists at runtime, so a value import breaks Vite
+ * (browser tests) and cold-cache Parcel builds.
  *
  * Underscore-prefixed members mirror engine-private fields the page
  * functions reach via duck typing; every runtime access must stay
