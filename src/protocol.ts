@@ -11,6 +11,8 @@ export interface ExInstance {
   title: string;
   url: string;
   version: string;
+  /** Master debug flag of the game in this frame (from detectExcalibur). */
+  isDebug: boolean;
 }
 
 /**
@@ -143,6 +145,34 @@ export interface PipelineDetailEvent {
 }
 
 /**
+ * Pushed to the panel when an extension surface other than the panel itself
+ * (currently the toolbar popup) toggles the game's debug flag. The panel
+ * adopts the value so its state can't drift from the live game; whether the
+ * panel is "user authoritative" (`_toggleDebugUserSet`) is not affected.
+ */
+export interface DebugToggledEvent {
+  name: 'ex-debug:debug-toggled';
+  value: boolean;
+}
+
+/**
  * Every message the driver can post to the panel.
  */
-export type EventDispatchEvents = InitEvent | HeartbeatMessage | MaterialDetailEvent | EntityGraphicsEvent | PipelineDetailEvent;
+export type EventDispatchEvents =
+  | InitEvent
+  | HeartbeatMessage
+  | MaterialDetailEvent
+  | EntityGraphicsEvent
+  | PipelineDetailEvent
+  | DebugToggledEvent;
+
+/**
+ * Reply to the popup's one-shot runtime.sendMessage requests handled by the
+ * background (`ex-debug:popup-get-state`, `ex-debug:popup-toggle-debug`).
+ * `instances` is empty when the tab has no game (or can't be injected).
+ */
+export interface PopupStateReply {
+  instances: ExInstance[];
+  /** True when any detected instance has its debug flag on. */
+  anyOn: boolean;
+}

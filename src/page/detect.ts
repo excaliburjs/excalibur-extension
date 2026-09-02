@@ -13,7 +13,8 @@
 
 /**
  * Detects an Excalibur instance in the current frame; returns label info for
- * the instance picker or null when the frame has no game.
+ * the instance picker (plus the master debug flag, read by the popup and the
+ * badge) or null when the frame has no game.
  */
 export function detectExcalibur() {
   if (!window.___EXCALIBUR_DEVTOOL) {
@@ -22,6 +23,7 @@ export function detectExcalibur() {
   return {
     title: document.title || '',
     url: location.href,
-    version: window.___EXCALIBUR_DEVTOOL.version || '???'
+    version: window.___EXCALIBUR_DEVTOOL.version || '???',
+    isDebug: !!window.___EXCALIBUR_DEVTOOL.isDebug
   };
 }

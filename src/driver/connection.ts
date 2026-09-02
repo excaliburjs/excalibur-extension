@@ -1,6 +1,6 @@
 import { DefaultSettings, settingsMappings } from '../settings/schema';
 import type { ExInstance } from '../protocol';
-import type { PageExecutor } from './executor';
+import type { FrameResult, PageExecutor } from './executor';
 import { detectExcalibur } from '../page/detect';
 import { stepClock, stopClock, startClock, toggleTestClock } from '../page/clock';
 import { kill, identifyEntity, updateEntityProperty, getEntityGraphics, useEntityGraphic } from '../page/entities';
@@ -19,6 +19,42 @@ export interface DriverPort {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onMessage(cb: (message: any) => void): void;
   onDisconnect(cb: () => void): void;
+}
+
+/**
+ * The control surface for one live panel connection, returned by
+ * createConnection. The background keeps every handle in a registry so
+ * extension surfaces other than the panel itself (the toolbar popup) can
+ * route tab-scoped actions to the connection(s) inspecting that tab.
+ */
+export interface ConnectionHandle {
+  /**
+   * Tears the connection down: stops the poll, invalidates in-flight picker
+   * installs, and never leaves the page swallowing canvas clicks.
+   */
+  dispose(): void;
+  /** The tab this connection's panel inspects, or null before hello. */
+  getTabId(): number | null;
+  /**
+   * Adopts a debug toggle made outside the panel (the popup's quick toggle):
+   * stores the value so this connection's 200ms inject tick keeps asserting
+   * it instead of clobbering it, and syncs the panel's toggle UI.
+   */
+  externalDebugToggle(value: boolean): void;
+}
+
+/**
+ * Optional host callbacks for a connection. Keeps extension-only concerns
+ * (the toolbar badge) out of this transport-agnostic module — the embedded
+ * build passes nothing.
+ */
+export interface ConnectionHooks {
+  /**
+   * Fired when the detected instance set changes (a frame gains/loses a
+   * game, or any instance's master debug flag flips) — including the change
+   * to zero instances, so hosts can clear tab-scoped state on navigation.
+   */
+  onInstancesChanged?(tabId: number | null, instances: ExInstance[]): void;
 }
 
 /**
@@ -42,14 +78,31 @@ const createDefaultDebugSettings = () => ({
 });
 
 /**
+ * Maps a cross-frame detect pass (an execAll of detectExcalibur) to instance
+ * records. Shared by the heartbeat poll and the background's one-shot popup
+ * handlers — the aggregation has to run extension-side: each page function
+ * executes in a single frame, and only the caller sees every frame's result.
+ */
+export const collectInstances = (detected: FrameResult<ReturnType<typeof detectExcalibur>>[]): ExInstance[] => {
+  const instances: ExInstance[] = [];
+  for (const frame of detected) {
+    if (frame && frame.result) {
+      instances.push({ frameId: frame.frameId, ...frame.result });
+    }
+  }
+  return instances;
+};
+
+/**
  * Everything one panel connection needs, independent of transport: the
  * command dispatch, the 200ms heartbeat poll with its 3-strike failure
  * tolerance, frame-selection reconciliation, and the pickerOpSeq guard that
  * serializes picker arm/disarm across async installs.
  *
- * Returns a dispose function; it is also wired to the port's disconnect.
+ * Returns a ConnectionHandle; dispose() is also wired to the port's
+ * disconnect.
  */
-export function createConnection(port: DriverPort, executor: PageExecutor): () => void {
+export function createConnection(port: DriverPort, executor: PageExecutor, hooks?: ConnectionHooks): ConnectionHandle {
   const state: { tabId: number | null; selectedFrameId: number | null } = {
     tabId: null,
     selectedFrameId: null
@@ -94,6 +147,35 @@ export function createConnection(port: DriverPort, executor: PageExecutor): () =
       console.info('page exec failed:', e);
       return [];
     });
+  };
+
+  /**
+   * Adopts a popup-initiated debug toggle: the value is stored so the next
+   * inject tick (re)asserts it on the game, and the panel is told so its
+   * toggle state can't drift from the live game.
+   */
+  const externalDebugToggle = (value: boolean) => {
+    debugSettings.toggleDebug = value;
+    safePostMessage({ name: 'ex-debug:debug-toggled', value });
+  };
+
+  let lastInstancesKey = '';
+
+  /**
+   * Fires the host hook (the background's badge updater) whenever the
+   * detected instance set or any per-frame debug flag changes — including
+   * the change to zero instances. Cheap enough to run every 200ms tick.
+   */
+  const notifyInstancesChanged = (instances: ExInstance[]) => {
+    if (!hooks?.onInstancesChanged) {
+      return;
+    }
+    const key = instances.map((i) => i.frameId + ':' + (i.isDebug ? 1 : 0)).join('|');
+    if (key === lastInstancesKey) {
+      return;
+    }
+    lastInstancesKey = key;
+    hooks.onInstancesChanged(state.tabId, instances);
   };
 
   port.onMessage((message) => {
@@ -298,13 +380,7 @@ export function createConnection(port: DriverPort, executor: PageExecutor): () =
       return;
     }
     try {
-      const detected = await executor.execAll(tabId, detectExcalibur);
-      const instances: ExInstance[] = [];
-      for (const frame of detected) {
-        if (frame && frame.result) {
-          instances.push({ frameId: frame.frameId, ...frame.result });
-        }
-      }
+      const instances = collectInstances(await executor.execAll(tabId, detectExcalibur));
       // Reconcile the selection: keep it while its frame still has a game,
       // otherwise prefer the top frame, then the first instance found
       if (!instances.some((i) => i.frameId === state.selectedFrameId)) {
@@ -324,6 +400,7 @@ export function createConnection(port: DriverPort, executor: PageExecutor): () =
         data = gameState[0]?.result ?? null;
       }
       failedHeartbeatTicks = 0;
+      notifyInstancesChanged(instances);
       safePostMessage({
         name: 'ex-debug:heartbeat',
         instances,
@@ -340,6 +417,7 @@ export function createConnection(port: DriverPort, executor: PageExecutor): () =
       if (failedHeartbeatTicks < 3) {
         return;
       }
+      notifyInstancesChanged([]);
       safePostMessage({
         name: 'ex-debug:heartbeat',
         instances: [],
@@ -376,5 +454,9 @@ export function createConnection(port: DriverPort, executor: PageExecutor): () =
 
   port.onDisconnect(dispose);
 
-  return dispose;
+  return {
+    dispose,
+    getTabId: () => state.tabId,
+    externalDebugToggle
+  };
 }

@@ -8,6 +8,7 @@ import { goToScene, setColorBlind, updatePhysics } from '../../src/page/scene';
 import { getMaterialDetail, updateMaterialUniform } from '../../src/page/materials';
 import { getPipelineDetail, updatePassUniform } from '../../src/page/pipeline';
 import { inject } from '../../src/page/inject';
+import { quickToggleDebug } from '../../src/page/debug';
 
 /*
  * Every function in src/page/ is injected into the inspected page by
@@ -44,6 +45,7 @@ const pageFunctions: Record<string, [(...args: never[]) => unknown, unknown]> = 
   updatePassUniform: [updatePassUniform, undefined],
   updateEntityProperty: [updateEntityProperty, undefined],
   useEntityGraphic: [useEntityGraphic, undefined],
+  quickToggleDebug: [quickToggleDebug, null],
   inject: [inject, null]
 };
 

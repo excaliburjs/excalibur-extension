@@ -53,7 +53,7 @@ export function createLocalTransport(executor: PageExecutor = directExecutor): P
     }
   };
 
-  const disposeConnection = createConnection(driverPort, executor);
+  const connection = createConnection(driverPort, executor);
 
   const post = (message: object) => {
     if (disconnected) {
@@ -83,7 +83,7 @@ export function createLocalTransport(executor: PageExecutor = directExecutor): P
       disconnected = true;
       panelCb = undefined;
       driverDisconnectCb?.();
-      disposeConnection();
+      connection.dispose();
     }
   };
 }

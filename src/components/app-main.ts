@@ -584,6 +584,14 @@ export class App extends LitElement {
         }
         break;
       }
+      case 'ex-debug:debug-toggled': {
+        // Popup-initiated toggle: adopt the value so this state can't drift
+        // from the live game. _toggleDebugUserSet is untouched — a
+        // user-authoritative panel stays authoritative, now with the
+        // correct value (which it will push on the next update-debug).
+        this.toggleDebug = !!message.value;
+        break;
+      }
       case 'ex-debug:material-detail': {
         if (message.data) {
           const detail: MaterialDetail | null = JSON.parse(message.data);
