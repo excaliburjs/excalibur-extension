@@ -8,6 +8,7 @@
  * devtools page functions themselves.
  */
 import type { Engine } from '../@types/excalibur';
+import type { FatalErrorInfo } from '../protocol';
 
 declare global {
   interface Window {
@@ -15,6 +16,15 @@ declare global {
     ___EXCALIBUR_DEVTOOL_EXTENSION_TESTCLOCK?: boolean;
     ___EXCALIBUR_DEVTOOL_EXTENSION_MATERIAL_ID?: number;
     ___EXCALIBUR_DEVTOOL_EXTENSION_PP_ID?: number;
+    /**
+     * Fatal-exception recorder installed by detectExcalibur: which engine
+     * object was wrapped (re-arms when HMR swaps in a new one) and the last
+     * recorded crash, reported by detect until the page navigates.
+     */
+    ___EXCALIBUR_DEVTOOL_EXTENSION_FATAL?: {
+      engine: Engine | null;
+      error: FatalErrorInfo | null;
+    };
     ___EXCALIBUR_DEVTOOL_EXTENSION_PICKER?: {
       seq: number;
       pickedId: number | null;

@@ -56,31 +56,40 @@ const wrapPort = (port: chrome.runtime.Port): DriverPort => ({
  */
 const connections = new Set<ConnectionHandle>();
 
-/** Last badge text set per tab, so steady state never re-calls the action API. */
-const badgeTextByTab = new Map<number, string>();
+/**
+ * Last badge state per tab ('off' | 'on' | 'crash'), so steady state never
+ * re-calls the action API.
+ */
+const badgeStateByTab = new Map<number, string>();
 
-/** The badge background color is set once per worker lifetime. */
-let badgeColorInitialized = false;
+const BADGE_GREEN = '#25a786';
+const BADGE_RED = '#f22337';
 
 /**
- * Mirrors the game's debug state onto the toolbar badge for one tab.
- * Opportunistic by design: only popup actions and live panel heartbeats
- * refresh it, so it can go stale with neither open — accepted.
+ * Mirrors the game's state onto the toolbar badge for one tab: a crashed
+ * game shows a red ✕ (visible without opening anything — crash wins over
+ * debug-on), otherwise the usual debug-on 'ON'. Opportunistic by design:
+ * only popup actions and live panel heartbeats refresh it, so it can go
+ * stale with neither open — accepted.
  */
-const updateBadge = (tabId: number | null, anyOn: boolean) => {
+const updateBadge = (tabId: number | null, anyOn: boolean, crashed: boolean) => {
   if (tabId === null) {
     return;
   }
-  if (!badgeColorInitialized) {
-    badgeColorInitialized = true;
-    globalThis.browser.action.setBadgeBackgroundColor({ color: '#25a786' });
-  }
-  const text = anyOn ? 'ON' : '';
-  if (badgeTextByTab.get(tabId) === text) {
+  const state = crashed ? 'crash' : anyOn ? 'on' : 'off';
+  if (badgeStateByTab.get(tabId) === state) {
     return;
   }
-  badgeTextByTab.set(tabId, text);
-  globalThis.browser.action.setBadgeText({ tabId, text });
+  badgeStateByTab.set(tabId, state);
+  if (state === 'crash') {
+    globalThis.browser.action.setBadgeBackgroundColor({ tabId, color: BADGE_RED });
+    globalThis.browser.action.setBadgeText({ tabId, text: '✕' });
+  } else if (state === 'on') {
+    globalThis.browser.action.setBadgeBackgroundColor({ tabId, color: BADGE_GREEN });
+    globalThis.browser.action.setBadgeText({ tabId, text: 'ON' });
+  } else {
+    globalThis.browser.action.setBadgeText({ tabId, text: '' });
+  }
 };
 
 const connectionHooks: ConnectionHooks = {
@@ -89,7 +98,8 @@ const connectionHooks: ConnectionHooks = {
   onInstancesChanged: (tabId, instances) => {
     updateBadge(
       tabId,
-      instances.some((i) => i.isDebug)
+      instances.some((i) => i.isDebug),
+      instances.some((i) => i.fatalError)
     );
   }
 };
@@ -145,12 +155,14 @@ const handlePopupToggleDebug = async (tabId: number, value: boolean): Promise<Po
     }
   });
   const anyOn = after.some((i) => i.isDebug);
+  // a debug toggle never clears a recorded crash — the loop stays dead
+  const crashed = after.some((i) => i.fatalError);
   for (const connection of connections) {
     if (connection.getTabId() === tabId) {
       connection.externalDebugToggle(value);
     }
   }
-  updateBadge(tabId, anyOn);
+  updateBadge(tabId, anyOn, crashed);
   return { instances: after, anyOn };
 };
 

@@ -163,14 +163,15 @@ export function createConnection(port: DriverPort, executor: PageExecutor, hooks
 
   /**
    * Fires the host hook (the background's badge updater) whenever the
-   * detected instance set or any per-frame debug flag changes — including
-   * the change to zero instances. Cheap enough to run every 200ms tick.
+   * detected instance set, any per-frame debug flag, or any per-frame fatal
+   * error state changes — including the change to zero instances. Cheap
+   * enough to run every 200ms tick.
    */
   const notifyInstancesChanged = (instances: ExInstance[]) => {
     if (!hooks?.onInstancesChanged) {
       return;
     }
-    const key = instances.map((i) => i.frameId + ':' + (i.isDebug ? 1 : 0)).join('|');
+    const key = instances.map((i) => i.frameId + ':' + (i.isDebug ? 1 : 0) + ':' + (i.fatalError ? 1 : 0)).join('|');
     if (key === lastInstancesKey) {
       return;
     }

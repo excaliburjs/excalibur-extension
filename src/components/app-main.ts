@@ -17,6 +17,7 @@ import './materials-panel';
 import './no-excalibur-overlay';
 import './screen-debug-settings';
 import './entity-inspector';
+import './fatal-error-dialog';
 import { colors } from '../colors';
 import { common } from '../common';
 import type { Settings } from './debug-settings';
@@ -38,6 +39,7 @@ import type {
   EntityPropertyUpdate,
   EventDispatchEvents,
   ExInstance,
+  FatalErrorInfo,
   InspectedEntity,
   PickerState
 } from '../protocol';
@@ -171,6 +173,24 @@ export class App extends LitElement {
       sl-radio {
         margin-bottom: 5px;
       }
+
+      .fatal-chip {
+        all: unset;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 3px;
+        background-color: var(--red-background);
+        color: var(--red-accent);
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .fatal-chip:hover {
+        background-color: var(--red-accent);
+        color: #fff;
+      }
     `
   ];
   @query('fps-graph')
@@ -277,6 +297,28 @@ export class App extends LitElement {
     hasChanged: (newValue, oldValue) => JSON.stringify(newValue) !== JSON.stringify(oldValue)
   })
   instances: ExInstance[] = [];
+
+  /** Every detected instance that has recorded a fatal error (chip source). */
+  @state()
+  fatalErrors: { frameId: number; error: FatalErrorInfo }[] = [];
+
+  /** The fatal error currently shown in the dialog, or null while clean. */
+  @state()
+  fatalError: FatalErrorInfo | null = null;
+
+  @state()
+  fatalErrorFrameId: number | null = null;
+
+  @state()
+  fatalErrorOpen = false;
+
+  /**
+   * Dismissed fatal errors, keyed `${frameId}:${time}` — the 200ms heartbeat
+   * re-reports the same crash forever, and must never reopen a dialog the
+   * user closed. Cleared when the tab reports no instances (navigation), so
+   * the next page's crash re-arms the dialog.
+   */
+  private _dismissedFatalKeys = new Set<string>();
 
   @state()
   selectedFrameId: number | null = null;
@@ -459,6 +501,10 @@ export class App extends LitElement {
           this.selectedFrameId = message.selectedFrameId;
           this._resetInstanceState();
         }
+
+        // crash state rides the instances (not the per-frame data payload),
+        // so it flows even while the selected frame's inject missed a tick
+        this._syncFatalErrors(message.instances);
 
         if (message.data == null) {
           // no instance selected (or a transient miss) — keep the last state
@@ -675,6 +721,66 @@ export class App extends LitElement {
       this._syncInspectEntity();
     }
     this.pickerArmed = false;
+    // per-instance fatal-dialog state; dismissed keys survive a frame switch
+    // (the user already closed that error) and only clear on navigation
+    this.fatalErrors = [];
+    this.fatalError = null;
+    this.fatalErrorFrameId = null;
+    this.fatalErrorOpen = false;
+  }
+
+  /**
+   * Reconciles fatal errors from the heartbeat's instances: remembers every
+   * crashed instance (the version-bar chip), and auto-opens the dialog for a
+   * new error — one not dismissed before — preferring the selected frame.
+   * The dismissed set is cleared when the tab reports no instances
+   * (navigation) so a fresh page's crash re-arms the dialog.
+   */
+  private _syncFatalErrors(instances: ExInstance[]) {
+    if (instances.length === 0) {
+      this._dismissedFatalKeys.clear();
+    }
+    const crashed: { frameId: number; error: FatalErrorInfo }[] = [];
+    for (const instance of instances) {
+      if (instance.fatalError) {
+        crashed.push({ frameId: instance.frameId, error: instance.fatalError });
+      }
+    }
+    this.fatalErrors = crashed;
+    if (crashed.length === 0 || this.fatalErrorOpen) {
+      return;
+    }
+    const target = crashed.find((c) => c.frameId === this.selectedFrameId) ?? crashed[0];
+    if (!this._dismissedFatalKeys.has(`${target.frameId}:${target.error.time}`)) {
+      this.fatalError = target.error;
+      this.fatalErrorFrameId = target.frameId;
+      this.fatalErrorOpen = true;
+    }
+  }
+
+  /**
+   * Dismisses the fatal-error dialog. The same error (frame + time) never
+   * re-opens it on its own; the version-bar chip still can.
+   */
+  fatalErrorDismissed() {
+    if (this.fatalError) {
+      this._dismissedFatalKeys.add(`${this.fatalErrorFrameId}:${this.fatalError.time}`);
+    }
+    this.fatalErrorOpen = false;
+  }
+
+  /**
+   * Opens the fatal-error dialog from the version-bar chip — after dismissal,
+   * or for a crash in a frame other than the selected one.
+   */
+  showFatalError() {
+    const target = this.fatalErrors.find((f) => f.frameId === this.selectedFrameId) ?? this.fatalErrors[0];
+    if (!target) {
+      return;
+    }
+    this.fatalError = target.error;
+    this.fatalErrorFrameId = target.frameId;
+    this.fatalErrorOpen = true;
   }
 
   selectFrame(evt: SlChangeEvent) {
@@ -1029,6 +1135,12 @@ export class App extends LitElement {
       <h1><img src=${logoImg} alt="Excalibur Dev Tools" />Dev Tools</h1>
       <div class="version">
         <span>Engine Version: <span id="excalibur-version">${this.engine.version}</span></span>
+        ${this.fatalErrors.length > 0
+          ? html`<button class="fatal-chip" title="A game in this tab has crashed — click for details" @click=${this.showFatalError}>
+              <sl-icon name="x"></sl-icon>
+              fatal error
+            </button>`
+          : ''}
         ${this.instances.length > 1
           ? html`<sl-select size="small" .value=${String(this.selectedFrameId ?? '')} @sl-change=${this.selectFrame}>
               ${this.instances.map(
@@ -1037,6 +1149,13 @@ export class App extends LitElement {
             </sl-select>`
           : ''}
       </div>
+      <fatal-error-dialog
+        .open=${this.fatalErrorOpen}
+        .fatalError=${this.fatalError}
+        .engineVersion=${this.engine.version}
+        .frameId=${this.fatalErrorFrameId}
+        @fatal-error-closed=${this.fatalErrorDismissed}
+      ></fatal-error-dialog>
       <entity-inspector
         .open=${this.inspectedEntityId !== null}
         .entity=${this.inspectedEntity}

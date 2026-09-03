@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import type { PopupStateReply } from './protocol';
+import type { FatalErrorInfo, PopupStateReply } from './protocol';
 import { comboFromEvent, isReservedCombo, prettifyCombo } from './popup-shortcut';
 
 if (typeof browser == 'undefined') {
@@ -125,6 +125,23 @@ export class ExPopup extends LitElement {
       font-size: 12px;
       color: var(--red-accent);
     }
+
+    .crash {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 8px 10px;
+      background-color: var(--red-background);
+      border-left: 4px solid var(--red-accent);
+      color: #f66;
+      font-size: 12px;
+    }
+
+    .crash svg {
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
   `;
 
   override shouldUpdate() {
@@ -146,6 +163,10 @@ export class ExPopup extends LitElement {
   @state()
   private _busy = false;
 
+  /** Last fatal error recorded in any detected game, or null while healthy. */
+  @state()
+  private _fatalError: FatalErrorInfo | null = null;
+
   @state()
   private _shortcut = '';
 
@@ -161,14 +182,18 @@ export class ExPopup extends LitElement {
 
   private _tabId: number | null = null;
 
+  private _pollIntervalId?: ReturnType<typeof setInterval>;
+
   override connectedCallback() {
     super.connectedCallback();
     this._canRemap = typeof globalThis.browser.commands.update === 'function';
     this._init();
+    this._startPolling();
     globalThis.browser.commands.onCommand.addListener(this._onCommand);
   }
 
   override disconnectedCallback() {
+    this._stopPolling();
     globalThis.browser.commands.onCommand.removeListener(this._onCommand);
     this._exitRemap();
     super.disconnectedCallback();
@@ -233,6 +258,38 @@ export class ExPopup extends LitElement {
   }
 
   /**
+   * Refreshes the game state every 500ms while the popup is open so a crash
+   * (or a shortcut toggle) is reflected without reopening. The popup is
+   * short-lived so this stays cheap — the panel's heartbeat already polls at
+   * 200ms.
+   */
+  private _startPolling() {
+    if (this._pollIntervalId !== undefined) {
+      return;
+    }
+    this._pollIntervalId = setInterval(() => {
+      if (this._busy || this._tabId === null) {
+        return;
+      }
+      void this._send({ name: 'ex-debug:popup-get-state', tabId: this._tabId })
+        .then((reply) => this._applyReply(reply))
+        .catch(() => {
+          // background unreachable — the status line already says so
+        });
+    }, 500);
+  }
+
+  /**
+   * Stops the state poll when the popup closes.
+   */
+  private _stopPolling() {
+    if (this._pollIntervalId !== undefined) {
+      clearInterval(this._pollIntervalId);
+      this._pollIntervalId = undefined;
+    }
+  }
+
+  /**
    * Renders a state reply; zero instances means no game (or a tab the
    * extension cannot inject into).
    */
@@ -242,20 +299,23 @@ export class ExPopup extends LitElement {
       this._anyOn = false;
       this._version = '';
       this._instanceCount = 0;
+      this._fatalError = null;
     } else {
       this._status = 'ready';
       this._anyOn = reply.anyOn;
       this._version = reply.instances[0].version;
       this._instanceCount = reply.instances.length;
+      this._fatalError = reply.instances.find((i) => i.fatalError)?.fatalError ?? null;
     }
   }
 
   /**
    * One press: toggle every detected game in the tab to the opposite of the
-   * current aggregate state (mixed states converge).
+   * current aggregate state (mixed states converge). Inert while a game is
+   * crashed — the loop is dead, so toggling debug would be a silent no-op.
    */
   private async _toggle() {
-    if (this._busy || this._status !== 'ready' || this._tabId === null) {
+    if (this._busy || this._status !== 'ready' || this._fatalError !== null || this._tabId === null) {
       return;
     }
     this._busy = true;
@@ -340,7 +400,8 @@ export class ExPopup extends LitElement {
   override render() {
     return html`
       <div class="status" role="status">${this._renderStatus()}</div>
-      <button ?disabled=${this._status !== 'ready' || this._busy} @click=${this._toggle}>
+      ${this._fatalError ? this._renderCrashBanner() : nothing}
+      <button ?disabled=${this._status !== 'ready' || this._busy || this._fatalError !== null} @click=${this._toggle}>
         ${this._busy ? 'Working…' : 'Toggle Debug'}
       </button>
       ${this._remapMode
@@ -357,6 +418,21 @@ export class ExPopup extends LitElement {
                 : html`<button class="remap" @click=${this._openShortcutManager}>Change</button>`}
             </div>
           `}
+    `;
+  }
+
+  /**
+   * Red-X banner shown while any detected game has a recorded fatal error.
+   */
+  private _renderCrashBanner() {
+    return html`
+      <div class="crash" role="alert">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle cx="8" cy="8" r="7.5" fill="var(--red-accent)" />
+          <path d="M5.2 5.2 L10.8 10.8 M10.8 5.2 L5.2 10.8" stroke="#fff" stroke-width="1.8" />
+        </svg>
+        <span>Game crashed — open DevTools for the error and stack trace</span>
+      </div>
     `;
   }
 

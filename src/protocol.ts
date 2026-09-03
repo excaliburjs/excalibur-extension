@@ -13,6 +13,26 @@ export interface ExInstance {
   version: string;
   /** Master debug flag of the game in this frame (from detectExcalibur). */
   isDebug: boolean;
+  /**
+   * Last fatal error recorded in the game in this frame (from detectExcalibur
+   * — something threw out of the engine's main loop, which then stopped), or
+   * null while it runs clean. Surfaced by the panel dialog, the popup banner,
+   * and the badge.
+   */
+  fatalError: FatalErrorInfo | null;
+}
+
+/**
+ * A fatal error recorded in a running game. `time` is recorded page-side at
+ * crash time and identifies the error across heartbeat ticks — the panel
+ * dedupes auto-opens on it so a dismissed dialog is not reopened by the
+ * 200ms poll.
+ */
+export interface FatalErrorInfo {
+  message: string;
+  stack: string;
+  /** Epoch milliseconds, recorded page-side when the crash happened. */
+  time: number;
 }
 
 /**

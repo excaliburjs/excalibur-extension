@@ -20,6 +20,7 @@ import trash2 from 'bundle-text:../../static/assets/icons/trash2.svg';
 import trash2Fill from 'bundle-text:../../static/assets/icons/trash2-fill.svg';
 import trash3 from 'bundle-text:../../static/assets/icons/trash3.svg';
 import trash3Fill from 'bundle-text:../../static/assets/icons/trash3-fill.svg';
+import x from 'bundle-text:../../static/assets/icons/x.svg';
 import zoomIn from 'bundle-text:../../static/assets/icons/zoom-in.svg';
 
 // app-main and every panel component register themselves on import (sl-*
@@ -32,7 +33,7 @@ import type { TransportFactory } from '../panel-transport/types';
 (globalThis as Record<string, unknown>).flameChartJs = (globalThis as Record<string, unknown>).flameChartJs ?? flameChartJs;
 
 // The extension resolves icons from the static copy next to the panel page;
-// the embedded bundle carries the same 9 SVGs inline so it works offline on
+// the embedded bundle carries the same 10 SVGs inline so it works offline on
 // any origin
 const icons: Record<string, string> = {
   crosshair,
@@ -43,6 +44,7 @@ const icons: Record<string, string> = {
   'trash2-fill': trash2Fill,
   trash3,
   'trash3-fill': trash3Fill,
+  x,
   'zoom-in': zoomIn
 };
 registerIconLibrary('default', {
